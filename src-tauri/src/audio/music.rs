@@ -1,55 +1,31 @@
-use std::path::Path;
-
-use super::drive;
+use super::cancel;
 use super::traits::{AudioError, MusicProvider, MusicRequest, ProgressSink};
 
-/// Stub music provider.
-///
-/// TODO(milestone-2): `MusicRequest::Suno` should call a third-party
-/// Suno-compatible endpoint with the user's own API key. Suno does not
-/// publish an official public API. `MusicRequest::LocalFile` should copy
-/// the chosen file into the project.
-pub struct ThirdPartyMusicProvider;
+/// Imports a song the user already downloaded. There is no network call.
+pub struct LocalMusicProvider;
 
-impl MusicProvider for ThirdPartyMusicProvider {
+impl MusicProvider for LocalMusicProvider {
     fn name(&self) -> &'static str {
-        "suno-or-local"
+        "local-file"
     }
 
-    fn import(
-        &self,
-        request: &MusicRequest,
-        output_dir: &Path,
-        progress: &dyn ProgressSink,
-    ) -> Result<std::path::PathBuf, AudioError> {
-        let label = match request {
-            MusicRequest::Suno { prompt } => {
-                let trimmed = prompt.trim();
-                if trimmed.is_empty() {
-                    "untitled prompt".to_string()
-                } else {
-                    trimmed.to_string()
-                }
-            }
-            MusicRequest::LocalFile { path } => {
-                if path.as_os_str().is_empty() {
-                    return Err(AudioError::MissingInput(path.display().to_string()));
-                }
-                path.display().to_string()
-            }
-        };
-
-        let opening = format!("Contacting {} for {label} (stub)", self.name());
-        drive(
-            progress,
-            &[
-                (0.16, opening.as_str()),
-                (0.48, "Fetching arrangement"),
-                (0.8, "Downloading preview"),
-                (1.0, "Music imported (stub, file not written)"),
-            ],
-        );
-
-        Ok(output_dir.join("music.wav"))
+    fn import(&self, request: &MusicRequest, progress: &dyn ProgressSink) -> Result<std::path::PathBuf, AudioError> {
+        cancel::check()?;
+        let path = &request.path;
+        if !path.is_file() {
+            return Err(AudioError::MissingInput(path.display().to_string()));
+        }
+        let ext = path
+            .extension()
+            .and_then(|ext| ext.to_str())
+            .unwrap_or("")
+            .to_ascii_lowercase();
+        if !matches!(ext.as_str(), "mp3" | "wav" | "m4a") {
+            return Err(AudioError::Failed(
+                "Choose an mp3, wav, or m4a file. This is the song you exported from Suno.".into(),
+            ));
+        }
+        progress.report(1.0, "Music ready");
+        Ok(path.clone())
     }
 }

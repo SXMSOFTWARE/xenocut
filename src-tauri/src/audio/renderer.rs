@@ -1,8 +1,8 @@
-use super::drive;
+use super::cancel;
+use super::ffmpeg;
+use super::graph;
 use super::traits::{AudioError, ProgressSink, RenderJob, Renderer};
 
-/// Stub renderer. Builds the FFmpeg argument list the sidecar will run later
-/// and does not execute it.
 pub struct FfmpegRenderer;
 
 impl Renderer for FfmpegRenderer {
@@ -10,108 +10,163 @@ impl Renderer for FfmpegRenderer {
         "ffmpeg-sidecar"
     }
 
-    fn render(
-        &self,
-        job: &RenderJob,
-        progress: &dyn ProgressSink,
-    ) -> Result<std::path::PathBuf, AudioError> {
-        if job.video.as_os_str().is_empty() {
+    fn render(&self, job: &RenderJob, progress: &dyn ProgressSink) -> Result<std::path::PathBuf, AudioError> {
+        cancel::check()?;
+        if !job.video.is_file() {
             return Err(AudioError::MissingInput(job.video.display().to_string()));
         }
-
-        let args = ffmpeg_args(job);
-        if args.len() < 4 {
-            return Err(AudioError::Failed("incomplete ffmpeg plan".into()));
+        if !job.vocals.is_file() {
+            return Err(AudioError::MissingInput(job.vocals.display().to_string()));
+        }
+        if !job.music.is_file() {
+            return Err(AudioError::MissingInput(job.music.display().to_string()));
+        }
+        if let Some(parent) = job.output.parent() {
+            std::fs::create_dir_all(parent).map_err(|err| AudioError::Failed(err.to_string()))?;
         }
 
-        // TODO(milestone-2): spawn the bundled ffmpeg sidecar with `args`
-        // and stream its progress. Do not shell out to a system ffmpeg
-        // until the sidecar is packaged for Windows, Linux, and Android.
-        let _engine = self.name();
-        let _planned = args.len();
-        drive(
-            progress,
-            &[
-                (0.1, "Preparing FFmpeg graph (stub, not executed)"),
-                (0.38, "Mixing dialogue and music"),
-                (0.7, "Encoding video"),
-                (0.9, "Writing output"),
-                (1.0, "Render complete (stub, file not written)"),
-            ],
-        );
+        let mut job = RenderJob {
+            video: job.video.clone(),
+            vocals: job.vocals.clone(),
+            music: job.music.clone(),
+            output: job.output.clone(),
+            vocal_gain: job.vocal_gain,
+            music_gain: job.music_gain,
+            music_offset: job.music_offset,
+            loop_music: job.loop_music,
+            fade_in: job.fade_in,
+            fade_out: job.fade_out,
+            duration: job.duration,
+        };
+        if job.duration <= 0.05 {
+            job.duration = ffmpeg::probe_duration(&job.video)?;
+        }
 
-        Ok(job.output.clone())
+        progress.report(0.04, "Preparing mix");
+        let mut args = graph::render_args(&job);
+        let output = args.pop().ok_or_else(|| AudioError::Failed("missing output path".into()))?;
+        args.extend(["-progress".into(), "pipe:1".into(), "-nostats".into(), output]);
+        ffmpeg::run(&args, Some(job.duration), Some(progress), "Mixing and writing video")?;
+        progress.report(1.0, "Render complete");
+        Ok(job.output)
     }
 }
 
-/// Argument vector for the planned FFmpeg sidecar. Not executed.
-pub fn ffmpeg_args(job: &RenderJob) -> Vec<String> {
-    let mut args = vec![
-        "-hide_banner".to_string(),
-        "-y".to_string(),
-        "-i".to_string(),
-        job.video.display().to_string(),
-    ];
+#[cfg(test)]
+mod tests {
+    use super::super::traits::Renderer;
+    use super::*;
+    use std::time::Instant;
 
-    let mut next_index = 1u32;
-    let vocal_index = if job.vocals.is_some() {
-        let index = next_index;
-        next_index += 1;
-        if let Some(path) = &job.vocals {
-            args.push("-i".into());
-            args.push(path.display().to_string());
+    struct Quiet;
+    impl ProgressSink for Quiet {
+        fn report(&self, _amount: f32, _message: &str) {}
+    }
+
+    #[test]
+    fn renders_a_short_clip_with_the_sidecar() {
+        if ffmpeg::ffmpeg_binary().is_err() {
+            eprintln!("skipping mix render: ffmpeg sidecar missing");
+            return;
         }
-        Some(index)
-    } else {
-        None
-    };
+        cancel::begin();
+        let dir = std::env::temp_dir().join(format!("xenocut-mix-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&dir);
+        std::fs::create_dir_all(&dir).unwrap();
+        let video = dir.join("clip.mp4");
+        let vocals = dir.join("vocals.wav");
+        let music = dir.join("song.wav");
+        let output = dir.join("out.mp4");
 
-    let music_index = if let Some(path) = &job.music {
-        let index = next_index;
-        args.push("-i".into());
-        args.push(path.display().to_string());
-        Some(index)
-    } else {
-        None
-    };
+        let started = Instant::now();
+        ffmpeg::run(
+            &[
+                "-hide_banner".into(),
+                "-y".into(),
+                "-f".into(),
+                "lavfi".into(),
+                "-i".into(),
+                "testsrc=size=320x180:rate=24:duration=2".into(),
+                "-f".into(),
+                "lavfi".into(),
+                "-i".into(),
+                "sine=frequency=220:sample_rate=44100:duration=2".into(),
+                "-shortest".into(),
+                "-c:v".into(),
+                "libx264".into(),
+                "-pix_fmt".into(),
+                "yuv420p".into(),
+                "-c:a".into(),
+                "aac".into(),
+                video.display().to_string(),
+            ],
+            None,
+            None,
+            "sample video",
+        )
+        .expect("sample video");
 
-    args.push("-filter_complex".into());
-    args.push(mix_filter(
-        vocal_index,
-        music_index,
-        job.vocal_gain,
-        job.music_gain,
-    ));
-    args.extend([
-        "-map".into(),
-        "0:v:0".into(),
-        "-map".into(),
-        "[a]".into(),
-        "-c:v".into(),
-        "copy".into(),
-        "-c:a".into(),
-        "aac".into(),
-        "-b:a".into(),
-        "192k".into(),
-        job.output.display().to_string(),
-    ]);
-    args
-}
+        ffmpeg::run(
+            &[
+                "-hide_banner".into(),
+                "-y".into(),
+                "-f".into(),
+                "lavfi".into(),
+                "-i".into(),
+                "sine=frequency=440:sample_rate=44100:duration=2".into(),
+                "-c:a".into(),
+                "pcm_f32le".into(),
+                vocals.display().to_string(),
+            ],
+            None,
+            None,
+            "vocals",
+        )
+        .expect("vocals");
 
-fn mix_filter(
-    vocal_index: Option<u32>,
-    music_index: Option<u32>,
-    vocal_gain: f32,
-    music_gain: f32,
-) -> String {
-    match (vocal_index, music_index) {
-        (Some(vocal), Some(music)) => format!(
-            "[{vocal}:a]volume={vocal_gain}[v];[{music}:a]volume={music_gain}[m];[v][m]amix=inputs=2:duration=longest:dropout_transition=0[a]"
-        ),
-        (None, Some(music)) => format!(
-            "[0:a]volume={vocal_gain}[d];[{music}:a]volume={music_gain}[m];[d][m]amix=inputs=2:duration=first:dropout_transition=0[a]"
-        ),
-        (Some(vocal), None) => format!("[{vocal}:a]volume={vocal_gain}[a]"),
-        (None, None) => format!("[0:a]volume={vocal_gain}[a]"),
+        ffmpeg::run(
+            &[
+                "-hide_banner".into(),
+                "-y".into(),
+                "-f".into(),
+                "lavfi".into(),
+                "-i".into(),
+                "sine=frequency=330:sample_rate=44100:duration=3".into(),
+                "-c:a".into(),
+                "pcm_s16le".into(),
+                music.display().to_string(),
+            ],
+            None,
+            None,
+            "music",
+        )
+        .expect("music");
+
+        let job = RenderJob {
+            video,
+            vocals,
+            music,
+            output: output.clone(),
+            vocal_gain: 1.0,
+            music_gain: 0.6,
+            music_offset: 0.25,
+            loop_music: false,
+            fade_in: 0.1,
+            fade_out: 0.2,
+            duration: 0.0,
+        };
+        let render_started = Instant::now();
+        FfmpegRenderer.render(&job, &Quiet).expect("render");
+        let duration = ffmpeg::probe_duration(&output).expect("duration");
+        let size = std::fs::metadata(&output).expect("stat").len();
+        eprintln!(
+            "mix output {} ({} bytes), duration {duration:.3}s, render {}ms, fixture+render {}ms",
+            output.display(),
+            size,
+            render_started.elapsed().as_millis(),
+            started.elapsed().as_millis()
+        );
+        assert!(size > 8_000, "output too small: {size}");
+        assert!((duration - 2.0).abs() < 0.2, "duration {duration}");
     }
 }

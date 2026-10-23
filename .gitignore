@@ -24,3 +24,4 @@ dist-ssr
 *.sw?
 
 agent-tools/
+src-tauri/binaries/

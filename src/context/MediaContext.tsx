@@ -8,6 +8,7 @@ import {
   type ReactNode,
   type RefObject,
 } from "react";
+import { fileUrl, isTauri, pickPath } from "../lib/audioApi";
 import { captureThumbnails, isVideoFile } from "../lib/media";
 import { snapTime } from "../lib/clips";
 import { clamp } from "../lib/time";
@@ -88,7 +89,7 @@ export function MediaProvider({ children }: { children: ReactNode }) {
     }
     const url = URL.createObjectURL(file);
     tokenRef.current += 1;
-    useEditorStore.getState().beginVideoImport(url, file.name);
+    useEditorStore.getState().beginVideoImport(url, file.name, null);
   }, []);
 
   const handleLoaded = useCallback((video: HTMLVideoElement) => {
@@ -113,7 +114,17 @@ export function MediaProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const openFilePicker = useCallback(() => {
-    fileRef.current?.click();
+    void (async () => {
+      if (!isTauri()) {
+        fileRef.current?.click();
+        return;
+      }
+      const selected = await pickPath("video");
+      if (!selected) return;
+      const name = selected.split(/[/\\]/).pop() || "video";
+      tokenRef.current += 1;
+      useEditorStore.getState().beginVideoImport(await fileUrl(selected), name, selected);
+    })();
   }, []);
 
   useEffect(() => {

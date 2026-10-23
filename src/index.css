@@ -802,6 +802,9 @@ input:focus-visible {
   color: var(--ink);
   font-size: 12px;
   font-weight: 600;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
 }
 
 .step-action.secondary {
@@ -837,12 +840,22 @@ input:focus-visible {
 
 .mix-row {
   display: grid;
-  grid-template-columns: 52px 1fr 32px;
+  grid-template-columns: 64px 1fr 36px;
   align-items: center;
   gap: 8px;
   margin-top: 8px;
   font-size: 11px;
 }
+
+.loop-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 8px;
+  font-size: 12px;
+}
+
+.loop-row input { accent-color: white; }
 
 .mix-row input[type="range"] { width: 100%; accent-color: white; }
 

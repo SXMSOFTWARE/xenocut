@@ -8,6 +8,7 @@ pub trait ProgressSink {
 #[derive(Debug)]
 pub enum AudioError {
     MissingInput(String),
+    Cancelled,
     Failed(String),
 }
 
@@ -15,6 +16,7 @@ impl std::fmt::Display for AudioError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             Self::MissingInput(path) => write!(f, "input not found: {path}"),
+            Self::Cancelled => write!(f, "Cancelled"),
             Self::Failed(message) => write!(f, "{message}"),
         }
     }
@@ -28,9 +30,10 @@ pub struct StemPaths {
 
 /// On-device vocal / instrumental separation.
 ///
-/// Planned implementation: an ONNX MDX-Net or UVR model loaded with the `ort`
-/// crate, running locally so source audio never leaves the machine.
+/// `OnnxMdxSeparator` runs UVR's MDX-Net Voc_FT model through ONNX Runtime.
+/// The weights download on first use and stay in the app data directory.
 pub trait StemSeparator: Send + Sync {
+    #[allow(dead_code)]
     fn name(&self) -> &'static str;
 
     fn separate(
@@ -41,40 +44,41 @@ pub trait StemSeparator: Send + Sync {
     ) -> Result<StemPaths, AudioError>;
 }
 
-/// Where a music bed comes from.
-///
-/// Suno has no official public API. `Suno` is the planned third-party provider
-/// that will use a key the user supplies. `LocalFile` imports audio the user
-/// already has.
-pub enum MusicRequest {
-    Suno { prompt: String },
-    LocalFile { path: PathBuf },
+/// A song the user already exported from Suno (or any other tool) as a local file.
+/// XenoCut does not call Suno.
+pub struct MusicRequest {
+    pub path: PathBuf,
 }
 
 pub trait MusicProvider: Send + Sync {
+    #[allow(dead_code)]
     fn name(&self) -> &'static str;
 
     fn import(
         &self,
         request: &MusicRequest,
-        output_dir: &Path,
         progress: &dyn ProgressSink,
     ) -> Result<PathBuf, AudioError>;
 }
 
 pub struct RenderJob {
     pub video: PathBuf,
-    pub vocals: Option<PathBuf>,
-    pub music: Option<PathBuf>,
+    pub vocals: PathBuf,
+    pub music: PathBuf,
     pub output: PathBuf,
     pub vocal_gain: f32,
     pub music_gain: f32,
+    /// Seconds from the start of the video before the music begins.
+    pub music_offset: f32,
+    pub loop_music: bool,
+    pub fade_in: f32,
+    pub fade_out: f32,
+    pub duration: f64,
 }
 
-/// Mix stems and write a finished video.
-///
-/// Planned implementation: a bundled FFmpeg sidecar. See `ffmpeg_args`.
+/// Mix stems and write a finished video with the original video stream copied.
 pub trait Renderer: Send + Sync {
+    #[allow(dead_code)]
     fn name(&self) -> &'static str;
 
     fn render(&self, job: &RenderJob, progress: &dyn ProgressSink) -> Result<PathBuf, AudioError>;
