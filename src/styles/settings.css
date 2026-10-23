@@ -1,0 +1,100 @@
+.settings-wrap {
+  max-width: 860px;
+  margin: 0 auto;
+  padding: 28px 24px 48px;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+.settings-group {
+  display: flex;
+  flex-direction: column;
+  background: var(--surface-1);
+  border: 1px solid var(--line);
+  border-radius: var(--r-xl);
+  padding: 6px 20px;
+}
+.settings-group .section-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 14px 0 6px;
+}
+.settings-group .section-title svg {
+  width: 14px;
+  height: 14px;
+  color: var(--accent-1);
+}
+.settings-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 380px);
+  align-items: center;
+  gap: 24px;
+  padding: 14px 0;
+  border-top: 1px solid var(--line);
+}
+.settings-group .section-title + .settings-row {
+  border-top: 0;
+}
+.settings-label {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+.settings-label b {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 600;
+}
+.settings-label b svg {
+  width: 14px;
+  height: 14px;
+  color: var(--text-3);
+}
+.settings-label .muted {
+  font-size: var(--fs-sm);
+}
+.settings-control {
+  display: flex;
+  justify-content: flex-end;
+}
+.settings-control .path-field {
+  width: 100%;
+}
+.row-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.stat {
+  font-weight: 600;
+  color: var(--text-2);
+}
+.status-pill {
+  height: 26px;
+  display: inline-flex;
+  align-items: center;
+  padding: 0 12px;
+  border-radius: var(--r-pill);
+  background: var(--surface-3);
+  color: var(--text-2);
+  font-size: var(--fs-sm);
+  font-weight: 500;
+}
+.status-pill.ok {
+  background: rgba(52, 199, 123, 0.14);
+  color: var(--ok);
+}
+.progress.mini {
+  width: 140px;
+}
+.settings-note {
+  padding: 0 0 14px;
+}
+.settings-group.about {
+  background: transparent;
+  border: 0;
+  align-items: center;
+  font-size: var(--fs-sm);
+}

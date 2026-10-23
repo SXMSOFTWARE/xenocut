@@ -1,0 +1,90 @@
+/* XenoCut design tokens: the single source for colour, radius, type and motion. */
+:root {
+  color-scheme: dark;
+
+  /* surfaces */
+  --bg: #0f0f11;
+  --bg-raised: #131316;
+  --surface-1: #18181b;
+  --surface-2: #1f1f23;
+  --surface-3: #26262b;
+  --surface-4: #2f2f35;
+  --surface-glass: rgba(32, 32, 37, 0.72);
+  --stage: #000;
+
+  /* lines */
+  --line: rgba(255, 255, 255, 0.06);
+  --line-strong: rgba(255, 255, 255, 0.11);
+  --line-focus: rgba(255, 140, 70, 0.55);
+
+  /* text */
+  --text: #f4f4f5;
+  --text-2: #b4b4bb;
+  --text-3: #7c7c85;
+  --text-4: #55555d;
+
+  /* accent */
+  --accent-1: #ffb347;
+  --accent-2: #ff5e3a;
+  --accent-3: #e0283c;
+  --accent: var(--accent-2);
+  --accent-soft: rgba(255, 94, 58, 0.14);
+  --accent-gradient: linear-gradient(135deg, var(--accent-1) 0%, var(--accent-2) 55%, var(--accent-3) 100%);
+  --accent-glow: 0 6px 22px -8px rgba(255, 94, 58, 0.65);
+
+  /* state */
+  --ok: #3ecf8e;
+  --warn: #f5b041;
+  --danger: #f0525f;
+
+  /* clip tints */
+  --clip-video: #3b82f6;
+  --clip-video-deep: #1d3d74;
+  --clip-audio: #8b5cf6;
+  --clip-audio-deep: #3b2a6b;
+  --clip-music: #e9a23b;
+  --clip-music-deep: #5e4114;
+  --clip-image: #e2603f;
+  --clip-image-deep: #642716;
+
+  /* shape */
+  --r-xs: 6px;
+  --r-sm: 8px;
+  --r-md: 12px;
+  --r-lg: 16px;
+  --r-xl: 22px;
+  --r-pill: 999px;
+
+  /* type */
+  --font: "Inter", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --mono: "Inter", ui-monospace, monospace;
+  --fs-xs: 11px;
+  --fs-sm: 12px;
+  --fs-md: 13px;
+  --fs-lg: 15px;
+  --fs-xl: 20px;
+  --fs-2xl: 28px;
+
+  /* depth & motion */
+  --shadow-1: 0 1px 0 rgba(255, 255, 255, 0.03) inset, 0 8px 24px -12px rgba(0, 0, 0, 0.6);
+  --shadow-pop: 0 24px 60px -20px rgba(0, 0, 0, 0.75), 0 0 0 1px var(--line-strong);
+  --blur-small: blur(14px);
+  --ease: cubic-bezier(0.2, 0.7, 0.2, 1);
+  --t-fast: 120ms;
+  --t-med: 200ms;
+
+  /* layout */
+  --topbar-h: 52px;
+  --track-header-w: 168px;
+  --track-h: 58px;
+  --ruler-h: 28px;
+}
+
+/* Performance mode: no translucency, no blur, no glow, minimal motion. */
+.perf {
+  --surface-glass: #202025;
+  --blur-small: none;
+  --accent-glow: none;
+  --shadow-1: none;
+  --t-med: 0ms;
+}
