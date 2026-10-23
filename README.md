@@ -1,78 +1,117 @@
 # XenoCut
 
-XenoCut is a lightweight video editor for Windows, Linux, and Android. The editor shell plays a local video on a timeline. The one-click audio flow extracts that audio, separates vocals from the background on this machine, imports a song you already downloaded, and writes a new video with the original picture and the mixed soundtrack.
+XenoCut is a light desktop video editor (Tauri 2 + React) for Linux and Windows, with Android planned. It has a home screen with projects, a multi-track editor, MP4 export, and one-click tools. The first one-click tool is **Music Swap**: keep the voices in a video and replace the background music with a song file you already have.
 
-Music is a local file (`mp3`, `wav`, or `m4a`). XenoCut does not call Suno, and it does not ask for an API key.
+Everything runs locally. XenoCut never calls Suno or any other music API: you pick a downloaded `mp3`/`wav`/`m4a`/`flac` file.
 
-The empty project opens on **Silent Passage**, a generated still, so the editor looks finished before a file is imported.
+## What is in the app
 
-## Run the UI
+| Page | What it does |
+| --- | --- |
+| **Home** | New project (name, aspect 16:9 / 9:16 / 1:1 / 4:5, 720p–4K, 24/30/60 fps), open an `.xcut` file, recent projects with thumbnails, Quick Tools. |
+| **Editor** | Media bin (import button or drag-drop; video, audio, image; filter chips), preview with transport and timecode, inspector (trim, speed, volume, opacity, fades, split/delete), timeline. Undo/redo, save, autosave. |
+| **Export** | MP4 (H.264 + AAC). Resolution (project, 720p, 1080p, 1440p, 4K), fps, quality (fast/balanced/high). Real progress from FFmpeg, cancel, overwrite warning, file size and time when done, "Open folder". |
+| **Music Swap** | 1) choose a video, 2) separate vocals and music on the device (UVR MDX-Net, ONNX), 3) choose your song, 4) set vocal/music gain, offset, fades, loop, preview the mix, render. The result can be opened as a new project in the editor. |
+| **Settings** | Export and project folders, autosave, language (Türkçe default, English), performance mode (on by default on Linux), cache size/clear, vocal model download/delete, version. |
 
-```bash
-npm install
-npm run dev
-```
+### Timeline
 
-Open [http://127.0.0.1:43123](http://127.0.0.1:43123).
+- Video, audio, and music tracks. Add tracks from the toolbar; drop media on the empty row under the last track to create one.
+- Move clips across tracks, trim either edge, split at the playhead (S), delete (Delete/Backspace).
+- Snapping to clip edges and the playhead (toggle in the toolbar).
+- Zoom slider, Ctrl+wheel zoom around the cursor, zoom to fit.
+- Filmstrips for video, waveforms for audio, colored strips per track kind.
+- The top video track is drawn on top, in both the preview and the export.
 
-`npm run dev` is the fast path for layout and playback. In a browser the file picker is the page’s file input, so Rust never sees a filesystem path. Separate, mix, and render stay in the desktop app and show that when you press them. You can still import a song in the browser and listen to that file.
+### Shortcuts
 
-```bash
-npm run build
-```
+| Key | Action |
+| --- | --- |
+| Space | Play / pause |
+| K / L | Pause / play |
+| J | Pause and step back 1 s |
+| ← / → | One frame (Shift: one second) |
+| ↑ / ↓ | Previous / next clip edge |
+| Home / End | Start / end |
+| Ctrl + / Ctrl − | Zoom the timeline |
+| S | Split at playhead |
+| Delete / Backspace | Delete selected clips |
+| Esc | Clear selection |
+| Ctrl+Z / Ctrl+Shift+Z | Undo / redo |
+| Ctrl+S | Save |
+| Ctrl+E | Export |
 
-Typechecks with `tsc` and writes `dist/`.
+## Project files
 
-## Desktop (Windows and Linux)
+A project is a JSON `.xcut` file with settings, media (absolute paths), tracks, and clips. Thumbnails, filmstrips, and waveforms are cached in the app cache directory and can be cleared in Settings.
 
-Prerequisites:
+## Development
 
-- Node.js 20 or newer
-- Rust (stable), via [rustup](https://rustup.rs)
-- A system webview
-
-Windows 10 and 11 already include WebView2. On Ubuntu 24.04:
+Prerequisites: Node.js 20+, Rust stable ([rustup](https://rustup.rs)), and the system webview. On Ubuntu 24.04:
 
 ```bash
 sudo apt install libwebkit2gtk-4.1-dev libgtk-3-dev librsvg2-dev libayatana-appindicator3-dev patchelf libssl-dev libxdo-dev
 ```
 
-Other distributions: [Tauri prerequisites](https://v2.tauri.app/start/prerequisites/).
-
-Fetch the FFmpeg sidecar once, then start the app:
-
 ```bash
 npm install
-npm run ffmpeg:fetch
-npm run tauri dev
-npm run tauri build
-```
-
-`tauri dev` starts Vite on port 43123 and opens the native window. Import uses the dialog plugin, so the Rust commands receive real paths. The window is a dark canvas; the editor sits centered on it and goes fullscreen when the window is narrow, which is the Android layout.
-
-GitHub Actions (`.github/workflows/build.yml`) builds installers on every push to `main` and on `v*` tags. Ubuntu produces an AppImage and a `.deb`. Windows produces an NSIS `.exe` and an MSI. The workflow downloads the FFmpeg sidecar itself. Pushes upload workflow artifacts. Tags also attach those files to a GitHub release. Android is not built there.
-
-Check the Rust crate:
-
-```bash
+npm run ffmpeg:fetch      # downloads the FFmpeg sidecar into src-tauri/binaries/
+npm run tauri dev         # desktop app with the real backend
+npm run tauri build       # installers
+npm run build             # typecheck + frontend bundle only
 cargo test --manifest-path src-tauri/Cargo.toml
 ```
 
-That runs the filter-graph tests, the chunking tests, the STFT round-trip, and a two-second FFmpeg mix when the sidecar is present. The vocal-model pass is ignored by default (see below).
+GitHub Actions (`.github/workflows/build.yml`) builds an AppImage and `.deb` on Ubuntu and NSIS/MSI installers on Windows for pushes to `main` and `v*` tags.
+
+### Headless harness
+
+`src-tauri/examples/harness.rs` drives the real backend code without a window:
+
+```bash
+export XENOCUT_FFMPEG=$PWD/src-tauri/binaries/ffmpeg-x86_64-unknown-linux-gnu
+# probe files and build thumbnails/filmstrips/waveforms, write a manifest
+cargo run --manifest-path src-tauri/Cargo.toml --example harness -- assets /tmp/xc-cache /tmp/manifest.json a.mp4 b.mp3
+# render a project exactly like the Export dialog
+cargo run --manifest-path src-tauri/Cargo.toml --example harness -- export project.xcut out.mp4 1280 720 30
+```
+
+### Browser mode (development only)
+
+`npm run dev` in a plain browser uses `src/dev/devBackend.ts`, which is loaded only when `import.meta.env.DEV` is true and is not part of production builds. It serves media data produced by the harness (above), so screenshots show real thumbnails and waveforms:
+
+```bash
+XENOCUT_DEV_FS_ALLOW=/tmp:/path/to/media VITE_XENOCUT_FIXTURES=/tmp/manifest.json npx vite
+```
+
+Export, stem separation, and model download need the desktop app and say so in browser mode.
+
+## Architecture
+
+```text
+src/
+  pages/home        Home, New Project dialog
+  pages/editor      TopBar, MediaBin, Preview, Inspector, ExportDialog, timeline/*
+  pages/music       Music Swap wizard
+  pages/settings    Settings
+  engine/           playback clock (rAF; the playhead is moved through refs, not React state)
+  project/          types, pure timeline operations, actions (import, add, save, autosave)
+  store/            zustand stores: project (with undo history), playback, settings, recent, ui
+  i18n/             tr (default) and en dictionaries
+  styles/           tokens, base, ui, per-page CSS (no CSS framework)
+src-tauri/src/
+  app.rs            settings store, projects, media probe/assets, cache, export, model commands
+  media.rs          FFmpeg probe, thumbnails, filmstrips, waveform images
+  project.rs        project model shared with the frontend
+  export.rs         timeline → FFmpeg filter graph, progress, cancel
+  audio/            stem separation (ort + MDX-Net), local music import, mix render
+```
+
+Pages other than Home are lazy-loaded. Performance mode removes blur and glow effects; large `backdrop-filter`s are not used anywhere.
 
 ## FFmpeg sidecar
 
-`src-tauri/tauri.conf.json` lists `binaries/ffmpeg` as an `externalBin`. Tauri looks for `ffmpeg-<target-triple>` next to the binary (`.exe` on Windows). `scripts/fetch-ffmpeg.sh` (`npm run ffmpeg:fetch`) downloads a static build for the host triple, or for a triple you pass:
-
-| Triple | Source |
-| --- | --- |
-| `x86_64-unknown-linux-gnu` | John Van Sickle amd64 static |
-| `aarch64-unknown-linux-gnu` | John Van Sickle arm64 static |
-| `x86_64-pc-windows-msvc` | BtbN `ffmpeg-master-latest-win64-gpl.zip` |
-
-Those builds are GPL-3.0-or-later. Shipping the binary means complying with that license. The files land in `src-tauri/binaries/` and are gitignored.
-
-At runtime the lookup order is `XENOCUT_FFMPEG`, the executable’s directory, `src-tauri/binaries/ffmpeg-<triple>`, then `ffmpeg` on `PATH`.
+`src-tauri/tauri.conf.json` lists `binaries/ffmpeg` as an `externalBin`. `scripts/fetch-ffmpeg.sh` downloads a static GPL build from [BtbN/FFmpeg-Builds](https://github.com/BtbN/FFmpeg-Builds) for Linux x86_64/arm64 or Windows x64. Shipping it means complying with the GPL. At runtime the lookup order is `XENOCUT_FFMPEG`, the executable's directory, `src-tauri/binaries/ffmpeg-<triple>`, then `ffmpeg` on `PATH`.
 
 ### Android
 
@@ -99,73 +138,11 @@ XENOCUT_MODEL=/path/to/UVR-MDX-NET-Voc_FT.onnx \
   cargo test --manifest-path src-tauri/Cargo.toml --lib separates_and_mixes_a_short_clip -- --ignored --nocapture
 ```
 
-## Architecture
-
-```text
-src/
-  components/     EditorShell, IconRail, PreviewArea, PromptPanel,
-                  Timeline, ClipStrip, TransportBar, QuickSettings,
-                  AudioEditingFlow
-  store/          Zustand editor state
-  lib/            thumbnails, clip math, Tauri audio client
-  context/        playback, seek, and the file picker
-src-tauri/src/audio/
-  traits.rs       StemSeparator, MusicProvider, Renderer
-  separator.rs    OnnxMdxSeparator (ort + MDX-Net Voc_FT)
-  stft.rs         reflect-pad STFT used by the separator
-  chunk.rs        window and overlap math
-  model.rs        first-use download and checksum
-  music.rs        local-file MusicProvider
-  graph.rs        FFmpeg filter graph for the mix
-  ffmpeg.rs       sidecar lookup, progress parser, process runner
-  renderer.rs     mix + copy the video stream
-  commands.rs     invoke handlers and audio-progress events
-scripts/fetch-ffmpeg.sh
-```
-
-The preview is a `<video>` element. Transport buttons, the scrubber, and the playhead share one clock. With no file loaded, playback moves the playhead across the demo timeline. Frames for the clip strips are drawn to a canvas in the page.
-
-Rust commands:
-
-| Command | What it does |
-| --- | --- |
-| `audio_separate_stems` | Extract 44.1 kHz stereo wav, download the model if needed, write `vocals.wav` and `instrumental.wav` |
-| `audio_import_music` | Check that the path exists and is mp3, wav, or m4a. No copy, no network |
-| `audio_mix_render` | Mix vocals and the imported song, copy the video stream, write AAC audio |
-| `audio_cancel` | Stop the current job between chunks, or kill FFmpeg |
-
-Events use the name `audio-progress` and the payload `{ step, progress, message, done }`.
-
-The mix filter is `volume`, `atrim`, `afade`, `adelay`, `apad`, and `amix` with `normalize=0`. Looping adds `-stream_loop -1` on the music input. The video map is `-c:v copy`. Output is AAC at 192 kbps with `+faststart`. Progress comes from FFmpeg `-progress pipe:1` (`out_time_us` / `out_time_ms` are both microseconds).
-
-Before render, the panel can play vocals only, the imported song only, or both. Fades are applied at render time. Preview gain is capped at 1 by the audio element; the file uses the slider value up to 1.5.
-
-## Using the editor
-
-- **+** next to the title, the **+** on the timeline, or the **+** in the prompt imports a video. MP4 and WebM are the reliable preview formats.
-- Space plays and pauses. Arrow keys nudge the playhead. Home and End jump to the ends.
-- Drag the white scrubber handle, the ruler, or the clip row to seek. The selected clip’s dark **‹ ›** handles trim its start and end in the timeline. Trimming does not re-encode.
-- The chips set aspect, resolution, a preview grade (Warm, Cool, Mono, Soft), and the selected clip length. The grid button toggles thirds. The hexagon toggles snap-to-clips.
-- The music-note tool opens **Audio**.
-  1. Upload video (or use the file already on the timeline).
-  2. Separate vocals and music.
-  3. Import music (Suno export).
-  4. Set music volume, vocal volume, start offset, loop, and fades, then mix and render.
-- **Open folder** reveals the finished mp4. The job directory also keeps `vocals.wav` and `instrumental.wav`.
-
-## Roadmap
-
-1. Editor shell, local playback, and timeline thumbnails.
-2. One-click audio on the desktop: on-device separation, a local song file, and an FFmpeg sidecar that writes the file. This tree.
-3. Effects and plugins. Transitions, color, text, and a small plugin surface on the tool rail. The rail buttons for those tools already explain that they are later work. Android FFmpeg belongs with that platform pass.
-
 ## Known gaps
 
-- The Dribbble references could not be fetched from this environment, so the layout follows the written shot description rather than the original pixels.
-- `src-tauri/gen/android` is not in the tree until `android init` runs on a machine with the SDK. FFmpeg on Android is stubbed, as described above.
-- The vocal model is downloaded on first use. It is not bundled.
-- Browser-only dev cannot separate or render. `npm run tauri dev` uses the real commands and real paths.
-- Cancel takes effect between separation windows and by killing FFmpeg. A single ONNX window runs to completion.
-- The content security policy allows blob, data, and `asset:` media for local preview.
-- Grades are CSS filters on the preview, not a render pass. Aspect and resolution are project settings, not an export.
-- Demo stills in `public/demo/` are original generated placeholders for the empty state.
+- J steps back one second; there is no reverse shuttle.
+- Preview plays the audio of the top visible video clip and the audio/music tracks; audio from lower, covered video tracks is heard only in the export.
+- Preview volume is capped at 100% (the export honors values above 100%). The same holds for the Music Swap preview.
+- Dragging moves one clip; multi-clip move is not implemented yet.
+- No transitions, text, or color effects yet. Other Quick Tools (auto subtitles, silence cutter, vertical reframe) are marked "Yakında".
+- Android: the FFmpeg library is not linked and `src-tauri/gen/android` is not generated.

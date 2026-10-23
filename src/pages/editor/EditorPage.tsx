@@ -79,6 +79,9 @@ export default function EditorPage() {
         void useProject.getState().save().then((ok) => ok && toast(t("editor.saved"), "success"));
       } else if (mod && (key === "=" || key === "+")) zoomBy(1.25);
       else if (mod && key === "-") zoomBy(0.8);
+      else if (mod && key === "e") {
+        if (useProject.getState().project?.clips.length) useEditorUi.setState({ exportOpen: true });
+      }
       else if (mod) handled = false;
       else if (key === " ") engine.toggle();
       else if (key === "k") engine.pause();
