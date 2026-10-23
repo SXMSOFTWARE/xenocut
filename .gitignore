@@ -26,3 +26,4 @@ dist-ssr
 agent-tools/
 src-tauri/binaries/
 *.tsbuildinfo
+/.android-ffmpeg
