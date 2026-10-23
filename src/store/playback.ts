@@ -4,6 +4,8 @@ import { create } from "zustand";
 interface PlaybackState {
   time: number;
   playing: boolean;
+  /** Last media load/decode failure, shown over the preview. */
+  mediaError: string | null;
 }
 
-export const usePlayback = create<PlaybackState>(() => ({ time: 0, playing: false }));
+export const usePlayback = create<PlaybackState>(() => ({ time: 0, playing: false, mediaError: null }));

@@ -68,6 +68,7 @@ export const tr = {
   "bin.remove": "Kaldır",
   // preview
   "preview.empty": "Önizleme için medyayı zaman çizelgesine sürükle",
+  "preview.mediaError": "Bu medya oynatılamadı",
   "preview.start": "Başa git",
   "preview.prevFrame": "Önceki kare",
   "preview.play": "Oynat / duraklat",

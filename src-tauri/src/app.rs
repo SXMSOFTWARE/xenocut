@@ -19,6 +19,10 @@ fn cache_dir(app: &AppHandle) -> PathBuf {
     app.path().app_cache_dir().unwrap_or_else(|_| std::env::temp_dir().join("xenocut-cache"))
 }
 
+pub fn cache_root(app: &AppHandle) -> PathBuf {
+    cache_dir(app)
+}
+
 /// Working folder of the audio tools (stems and mixes). Kept where the earlier build put it.
 pub fn audio_root(app: &AppHandle) -> PathBuf {
     data_dir(app).join("xenocut")
@@ -102,9 +106,13 @@ pub async fn project_save(path: String, project: Project) -> Result<(), String> 
 
 #[tauri::command]
 pub async fn project_load(path: String) -> Result<Project, String> {
-    tauri::async_runtime::spawn_blocking(move || project::load(Path::new(&path)))
+    let project = tauri::async_runtime::spawn_blocking(move || project::load(Path::new(&path)))
         .await
-        .map_err(|e| e.to_string())?
+        .map_err(|e| e.to_string())??;
+    for item in &project.media {
+        crate::mediaserver::allow(Path::new(&item.path));
+    }
+    Ok(project)
 }
 
 // ---------- media ----------
@@ -129,7 +137,10 @@ pub async fn media_probe(paths: Vec<String>) -> Result<ProbeOutcome, String> {
             }
             for path in expanded {
                 match media::probe(&path) {
-                    Ok(info) => items.push(info),
+                    Ok(info) => {
+                        crate::mediaserver::allow(&path);
+                        items.push(info)
+                    }
                     Err(err) => errors.push(err),
                 }
             }

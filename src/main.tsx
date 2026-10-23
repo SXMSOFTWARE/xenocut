@@ -13,9 +13,16 @@ import "./styles/base.css";
 import "./styles/ui.css";
 import "./styles/app.css";
 import { App } from "./App";
+import { initBackend, log, transport } from "./lib/backend";
 
-ReactDOM.createRoot(document.getElementById("root") as HTMLElement).render(
-  <React.StrictMode>
-    <App />
-  </React.StrictMode>,
-);
+window.addEventListener("error", (e) => log("error", `window error: ${e.message} @ ${e.filename}:${e.lineno}`));
+window.addEventListener("unhandledrejection", (e) => log("error", `unhandled rejection: ${String(e.reason)}`));
+
+void initBackend().then(() => {
+  ReactDOM.createRoot(document.getElementById("root") as HTMLElement).render(
+    <React.StrictMode>
+      <App />
+    </React.StrictMode>,
+  );
+  if (transport.autotest) void import("./lib/autotest").then((m) => m.runAutotest(transport.autotest!));
+});

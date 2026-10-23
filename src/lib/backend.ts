@@ -19,8 +19,34 @@ export async function call<T>(command: string, args?: Record<string, unknown>): 
   return (await dev()).invoke<T>(command, args);
 }
 
+interface MediaTransport {
+  base: string | null;
+  logPath: string | null;
+  autotest: string | null;
+}
+
+/** Filled once at boot by `initBackend()`. */
+export const transport: MediaTransport = { base: null, logPath: null, autotest: null };
+
+export async function initBackend(): Promise<void> {
+  if (!isTauri) return;
+  try {
+    Object.assign(transport, await tauriInvoke<MediaTransport>("media_transport"));
+  } catch (error) {
+    console.error("media_transport failed", error);
+  }
+  log("info", `media transport: ${transport.base ? "http loopback" : "asset protocol"}; ua=${navigator.userAgent}`);
+}
+
+/** Append a line to the app log file (and the console). Never throws. */
+export function log(level: "info" | "warn" | "error" | "autotest", message: string): void {
+  (level === "error" ? console.error : console.log)(`[${level}] ${message}`);
+  if (isTauri) void tauriInvoke("client_log", { level, message }).catch(() => {});
+}
+
+/** Playable URL for a local file. Desktop/Android: the loopback media server (Range-capable). */
 export function fileSrc(path: string): string {
-  if (isTauri) return convertFileSrc(path);
+  if (isTauri) return transport.base ? transport.base + encodeURIComponent(path) : convertFileSrc(path);
   if (import.meta.env.DEV) return `/@fs${path.startsWith("/") ? "" : "/"}${path}`;
   return path;
 }
@@ -117,6 +143,7 @@ export const api = {
   importMusic: (localPath: string) => call<{ musicPath: string; message: string }>("audio_import_music", { localPath }),
   mixRender: (request: MixRequest) => call<{ outputPath: string; message: string }>("audio_mix_render", { request }),
   audioCancel: () => call<void>("audio_cancel"),
+  mediaAllow: (paths: string[]) => (isTauri ? call<void>("media_allow", { paths }) : Promise.resolve()),
 };
 
 export interface MixRequest {

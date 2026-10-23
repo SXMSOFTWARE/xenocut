@@ -1,7 +1,7 @@
 // Timeline preview. One <video>, one <img> and a small pool of <audio> elements are driven
 // from a requestAnimationFrame clock. While a video clip plays, its element is the master
 // clock (smooth A/V); in gaps or audio-only stretches the wall clock takes over.
-import { fileSrc } from "../lib/backend";
+import { fileSrc, log } from "../lib/backend";
 import { clipDuration, clipEnd, projectDuration } from "../project/ops";
 import type { Clip, MediaItem, Project, Track } from "../project/types";
 import { usePlayback } from "../store/playback";
@@ -29,6 +29,31 @@ function sourceTime(clip: Clip, t: number) {
   return clip.in + (t - clip.start) * clip.speed;
 }
 
+const MEDIA_ERRORS = ["", "aborted", "network", "decode", "format not supported"];
+
+function describeError(el: HTMLMediaElement | HTMLImageElement): string {
+  const path = el.dataset.path ?? "";
+  if (el instanceof HTMLImageElement) return `image failed to load: ${path}`;
+  const err = el.error;
+  const code = err?.code ?? 0;
+  return `MediaError ${code} (${MEDIA_ERRORS[code] ?? "unknown"})${err?.message ? `: ${err.message}` : ""} — ${path}`;
+}
+
+function watch(el: HTMLMediaElement | HTMLImageElement) {
+  if (el.dataset.watched) return;
+  el.dataset.watched = "1";
+  el.addEventListener("error", () => {
+    if (!el.dataset.path) return; // src removed on purpose
+    const message = describeError(el);
+    log("error", `playback: ${message}`);
+    usePlayback.setState({ mediaError: message });
+  });
+  const ok = () => {
+    if (usePlayback.getState().mediaError) usePlayback.setState({ mediaError: null });
+  };
+  el.addEventListener(el instanceof HTMLImageElement ? "load" : "loadeddata", ok);
+}
+
 function setSrc(el: HTMLMediaElement | HTMLImageElement, path: string) {
   const src = fileSrc(path);
   if (el.dataset.path !== path) {
@@ -52,6 +77,9 @@ class PlaybackEngine {
     this.image = image;
     video.preload = "auto";
     video.playsInline = true;
+    video.muted = false;
+    watch(video);
+    watch(image);
     this.unsubscribe?.();
     // Re-render the frame when the project changes while paused (trim, move, opacity...).
     this.unsubscribe = useProject.subscribe((s, prev) => {
@@ -66,6 +94,7 @@ class PlaybackEngine {
     this.unsubscribe = null;
     for (const el of this.audio.values()) {
       el.pause();
+      delete el.dataset.path;
       el.removeAttribute("src");
       el.load();
     }
@@ -215,6 +244,7 @@ class PlaybackEngine {
       if (!el) {
         el = new Audio();
         el.preload = "auto";
+        watch(el);
         this.audio.set(active.clip.id, el);
       }
       setSrc(el, active.media.path);
@@ -224,6 +254,7 @@ class PlaybackEngine {
     for (const [id, el] of this.audio) {
       if (wanted.has(id)) continue;
       el.pause();
+      delete el.dataset.path;
       el.removeAttribute("src");
       el.load();
       this.audio.delete(id);
@@ -237,7 +268,12 @@ class PlaybackEngine {
       if (entering || el.paused || Math.abs(el.currentTime - target) > HARD_DRIFT) {
         if (Math.abs(el.currentTime - target) > 0.05) el.currentTime = target;
       }
-      if (el.paused) void el.play().catch(() => {});
+      if (el.paused && !el.error) {
+        void el.play().catch((error: unknown) => {
+          if (error instanceof DOMException && error.name === "AbortError") return;
+          log("warn", `play() rejected: ${String(error)} — ${el.dataset.path ?? ""}`);
+        });
+      }
     } else {
       if (!el.paused) el.pause();
       if (Math.abs(el.currentTime - target) > PAUSED_EPS) el.currentTime = target;

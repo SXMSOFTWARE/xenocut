@@ -16,6 +16,7 @@ export function Preview() {
   const height = useProject((s) => s.project?.settings.height ?? 1080);
   const empty = useProject((s) => (s.project?.clips.length ?? 0) === 0);
   const playing = usePlayback((s) => s.playing);
+  const mediaError = usePlayback((s) => s.mediaError);
   const [box, setBox] = useState({ w: 0, h: 0 });
 
   useEffect(() => {
@@ -44,6 +45,12 @@ export function Preview() {
           <video ref={videoRef} className="stage-media" playsInline />
           <img ref={imageRef} className="stage-media" alt="" draggable={false} />
           {empty && <div className="stage-empty">{t("preview.empty")}</div>}
+          {mediaError && (
+            <div className="stage-error" role="alert">
+              <strong>{t("preview.mediaError")}</strong>
+              <span>{mediaError}</span>
+            </div>
+          )}
         </div>
       </div>
       <div className="transport">

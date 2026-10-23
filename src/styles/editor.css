@@ -859,3 +859,20 @@
 .tl-header:focus-within .tl-track-actions .icon-btn.danger {
   display: inline-grid;
 }
+
+.stage-error {
+  position: absolute;
+  inset: auto 12px 12px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 10px 12px;
+  border-radius: 12px;
+  background: rgba(40, 12, 12, 0.88);
+  border: 1px solid rgba(255, 110, 90, 0.45);
+  color: #ffd9d2;
+  font-size: 12px;
+  line-height: 1.4;
+  word-break: break-all;
+  z-index: 3;
+}

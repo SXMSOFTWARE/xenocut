@@ -63,6 +63,7 @@ export const en: Record<keyof typeof tr, string> = {
   "bin.addAtPlayhead": "Add at playhead",
   "bin.remove": "Remove",
   "preview.empty": "Drag media onto the timeline to preview it",
+  "preview.mediaError": "This media could not be played",
   "preview.start": "Go to start",
   "preview.prevFrame": "Previous frame",
   "preview.play": "Play / pause",
