@@ -46,10 +46,17 @@ pub fn app_info(app: AppHandle) -> AppInfo {
     let home = app.path().home_dir().unwrap_or_else(|_| std::env::temp_dir());
     let videos = app.path().video_dir().unwrap_or_else(|_| home.join("Videos"));
     let docs = app.path().document_dir().unwrap_or_else(|_| home.join("Documents"));
+    let mut output = videos.join("XenoCut");
+    if cfg!(target_os = "android") {
+        // Android 11+ lets apps add their own files to the shared Movies collection without a
+        // permission, so exports show up in the gallery. Fall back to app storage otherwise.
+        let shared = PathBuf::from("/storage/emulated/0/Movies/XenoCut");
+        output = if std::fs::create_dir_all(&shared).is_ok() { shared } else { data_dir(&app).join("exports") };
+    }
     AppInfo {
         os: std::env::consts::OS,
         version: app.package_info().version.to_string(),
-        default_output_dir: videos.join("XenoCut").display().to_string(),
+        default_output_dir: output.display().to_string(),
         default_project_dir: docs.join("XenoCut").display().to_string(),
     }
 }
