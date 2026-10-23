@@ -1,5 +1,6 @@
 pub mod app;
 pub mod audio;
+pub mod content_import;
 pub mod diag;
 pub mod grade;
 pub mod export;
@@ -12,6 +13,7 @@ pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_opener::init())
+        .plugin(tauri_plugin_fs::init())
         .setup(|app| {
             let handle = app.handle();
             diag::init_log(handle);
@@ -25,6 +27,7 @@ pub fn run() {
         })
         .invoke_handler(tauri::generate_handler![
             app::app_info,
+            content_import::import_content_uris,
             diag::client_log,
             diag::media_transport,
             diag::media_allow,

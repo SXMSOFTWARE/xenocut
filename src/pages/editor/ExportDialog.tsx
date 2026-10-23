@@ -3,7 +3,7 @@ import { CheckCircle2, Download, FolderOpen, XCircle } from "lucide-react";
 import { Segmented } from "../../components/controls";
 import { Modal } from "../../components/Modal";
 import { useT } from "../../i18n";
-import { api, listen, pickSavePath, revealInFolder, type ExportOptions, type ProgressEvent } from "../../lib/backend";
+import { api, isAndroid, listen, pickSavePath, revealInFolder, type ExportOptions, type ProgressEvent } from "../../lib/backend";
 import { bytes, joinPath, messageOf, timecode } from "../../lib/format";
 import { dimensions, projectDuration } from "../../project/ops";
 import type { Resolution } from "../../project/types";
@@ -120,9 +120,11 @@ export function ExportDialog() {
               <span className="path" title={path}>
                 <bdi>{path}</bdi>
               </span>
-              <button className="btn btn-sm" onClick={() => void choose()}>
-                {t("common.change")}
-              </button>
+              {!isAndroid && (
+                <button className="btn btn-sm" onClick={() => void choose()}>
+                  {t("common.change")}
+                </button>
+              )}
             </div>
             {exists && <small className="warn-text">{t("export.overwrite")}</small>}
           </div>

@@ -5,7 +5,7 @@ import { useT, type Key } from "../../i18n";
 import { useRecent, type RecentEntry } from "../../store/recent";
 import { useRouter } from "../../store/router";
 import { useSettings } from "../../store/settings";
-import { fileSrc } from "../../lib/backend";
+import { fileSrc, isAndroid } from "../../lib/backend";
 import { shortTime } from "../../lib/format";
 import { openProjectDialog, openProjectPath } from "../../project/actions";
 import { NewProjectDialog } from "./NewProjectDialog";
@@ -82,15 +82,17 @@ export function HomePage() {
 
         <aside className="home-side">
           <h3 className="section-title">{t("home.quickTools")}</h3>
-          <button className="tool-card live" onClick={() => go("music")}>
+          <button className={`tool-card${isAndroid ? "" : " live"}`} disabled={isAndroid} onClick={() => go("music")}>
             <span className="tool-icon">
               <AudioLines />
             </span>
             <span className="tool-text">
-              <b>{t("tools.musicSwap")}</b>
+              <b>
+                {t("tools.musicSwap")} {isAndroid && <span className="soon">{t("common.soon")}</span>}
+              </b>
               <small>{t("tools.musicSwapText")}</small>
             </span>
-            <Sparkles className="tool-spark" />
+            {!isAndroid && <Sparkles className="tool-spark" />}
           </button>
           {SOON_TOOLS.map(({ icon: Icon, title, text }) => (
             <div className="tool-card" key={title} aria-disabled="true">

@@ -8,9 +8,7 @@ use super::traits::{AudioError, ProgressSink};
 
 pub fn ffmpeg_binary() -> Result<PathBuf, AudioError> {
     if cfg!(target_os = "android") {
-        return Err(AudioError::Failed(
-            "Android does not use the desktop FFmpeg sidecar. The plan is a prebuilt FFmpeg (an ffmpeg-kit successor or an NDK static library) called from Rust. That library is not linked in this build.".into(),
-        ));
+        return android_ffmpeg();
     }
 
     if let Ok(path) = std::env::var("XENOCUT_FFMPEG") {
@@ -45,6 +43,27 @@ pub fn ffmpeg_binary() -> Result<PathBuf, AudioError> {
     Err(AudioError::Failed(format!(
         "FFmpeg sidecar {name} was not found. Run scripts/fetch-ffmpeg.sh, or set XENOCUT_FFMPEG."
     )))
+}
+
+/// On Android the FFmpeg executable ships as `jniLibs/arm64-v8a/libffmpeg.so`. The package manager
+/// extracts it next to our own library into the app's nativeLibraryDir, the only app-owned
+/// location Android lets us exec from. We find that directory through /proc/self/maps.
+fn android_ffmpeg() -> Result<PathBuf, AudioError> {
+    let maps = std::fs::read_to_string("/proc/self/maps").unwrap_or_default();
+    for line in maps.lines() {
+        if let Some(idx) = line.find('/') {
+            let path = Path::new(line[idx..].trim());
+            if path.file_name().is_some_and(|name| name == "libxenocut_lib.so") {
+                if let Some(dir) = path.parent() {
+                    let candidate = dir.join("libffmpeg.so");
+                    if candidate.is_file() {
+                        return Ok(candidate);
+                    }
+                }
+            }
+        }
+    }
+    Err(AudioError::Failed("FFmpeg is not bundled in this Android build.".into()))
 }
 
 fn sidecar_name() -> String {

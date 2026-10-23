@@ -5,6 +5,7 @@ import { convertFileSrc, invoke as tauriInvoke } from "@tauri-apps/api/core";
 import type { MediaAssets, MediaKind, ProbeInfo, Project } from "../project/types";
 
 export const isTauri = typeof window !== "undefined" && "__TAURI_INTERNALS__" in window;
+export const isAndroid = typeof navigator !== "undefined" && /Android/i.test(navigator.userAgent);
 
 type DevBackend = typeof import("../dev/devBackend");
 let devBackend: Promise<DevBackend> | null = null;
@@ -73,11 +74,15 @@ export async function pickFiles(filters: FileFilter[], multiple = true): Promise
   const { open } = await import("@tauri-apps/plugin-dialog");
   const picked = await open({ multiple, directory: false, filters });
   if (!picked) return [];
-  return Array.isArray(picked) ? picked : [picked];
+  const list = Array.isArray(picked) ? picked : [picked];
+  // Android pickers return content:// URIs; copy them into app storage so FFmpeg and playback can read them.
+  if (list.some((p) => p.startsWith("content://"))) return tauriInvoke<string[]>("import_content_uris", { uris: list });
+  return list;
 }
 
 export async function pickFolder(defaultPath?: string): Promise<string | null> {
   if (!isTauri) return (await dev()).pickFolder();
+  if (isAndroid) return null;
   const { open } = await import("@tauri-apps/plugin-dialog");
   const picked = await open({ directory: true, multiple: false, defaultPath });
   return typeof picked === "string" ? picked : null;
@@ -85,6 +90,8 @@ export async function pickFolder(defaultPath?: string): Promise<string | null> {
 
 export async function pickSavePath(defaultPath: string, filters: FileFilter[]): Promise<string | null> {
   if (!isTauri) return (await dev()).pickSavePath(defaultPath);
+  // Android's save dialog yields content:// targets FFmpeg cannot write; exports go to the app's Movies folder.
+  if (isAndroid) return defaultPath;
   const { save } = await import("@tauri-apps/plugin-dialog");
   return save({ defaultPath, filters });
 }

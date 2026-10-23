@@ -6,6 +6,10 @@ pub mod graph;
 pub mod model;
 pub mod music;
 pub mod renderer;
+#[cfg(not(target_os = "android"))]
+pub mod separator;
+#[cfg(target_os = "android")]
+#[path = "separator_android.rs"]
 pub mod separator;
 pub mod stft;
 pub mod traits;
