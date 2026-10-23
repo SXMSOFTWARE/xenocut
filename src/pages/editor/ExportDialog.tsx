@@ -118,7 +118,7 @@ export function ExportDialog() {
             <span className="label">{t("export.output")}</span>
             <div className="path-field">
               <span className="path" title={path}>
-                {path}
+                <bdi>{path}</bdi>
               </span>
               <button className="btn btn-sm" onClick={() => void choose()}>
                 {t("common.change")}

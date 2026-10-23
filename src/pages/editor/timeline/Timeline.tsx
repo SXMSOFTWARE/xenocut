@@ -11,7 +11,7 @@ import { Playhead, SnapLine } from "./Playhead";
 import { Ruler } from "./Ruler";
 import { lanePointerDown, TrackRow } from "./TrackRow";
 
-const HEADER_W = 168;
+const HEADER_W = 184;
 const TRACK_H = 62;
 const MUSIC_H = 50;
 

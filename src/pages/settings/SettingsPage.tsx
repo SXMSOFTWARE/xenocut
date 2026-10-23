@@ -204,7 +204,7 @@ function PathPicker({ path, onPick }: { path: string; onPick: () => void }) {
   return (
     <div className="path-field">
       <span className="path" title={path}>
-        {path}
+        <bdi>{path}</bdi>
       </span>
       <button className="btn btn-sm" onClick={onPick}>
         {t("common.change")}

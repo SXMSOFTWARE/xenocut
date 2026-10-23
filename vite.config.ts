@@ -4,6 +4,8 @@ import react from "@vitejs/plugin-react";
 import process from "node:process";
 
 const host = process.env.TAURI_DEV_HOST;
+// Dev-only: extra folders the browser fallback may read media fixtures from (colon separated).
+const devFsAllow: string[] = (process.env.XENOCUT_DEV_FS_ALLOW ?? "").split(":").filter(Boolean);
 
 export default defineConfig(() => ({
   plugins: [react()],
@@ -24,6 +26,7 @@ export default defineConfig(() => ({
           port: 43124,
         }
       : undefined,
+    fs: devFsAllow.length ? { allow: [".", ...devFsAllow] } : undefined,
     watch: {
       ignored: ["**/src-tauri/**"],
     },

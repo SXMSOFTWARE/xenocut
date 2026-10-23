@@ -850,3 +850,12 @@
   color: var(--accent-1);
 }
 
+
+/* Track removal is rare: reveal it on hover so the track name keeps its room. */
+.tl-track-actions .icon-btn.danger {
+  display: none;
+}
+.tl-header:hover .tl-track-actions .icon-btn.danger,
+.tl-header:focus-within .tl-track-actions .icon-btn.danger {
+  display: inline-grid;
+}

@@ -161,7 +161,7 @@ pub fn build(project: &Project, options: &ExportOptions) -> Result<ExportPlan, S
             }];
             chain.push(format!("fps={fps}"));
             chain.push(format!(
-                "scale={width}:{height}:force_original_aspect_ratio=decrease,pad={width}:{height}:(ow-iw)/2:(oh-ih)/2:color=black@0"
+                "scale={width}:{height}:force_original_aspect_ratio=decrease:out_range=tv,pad={width}:{height}:(ow-iw)/2:(oh-ih)/2:color=black@0"
             ));
             chain.push("setsar=1".into());
             chain.push("format=yuva420p".into());
@@ -237,6 +237,13 @@ pub fn build(project: &Project, options: &ExportOptions) -> Result<ExportPlan, S
         "aac".into(),
         "-b:a".into(),
         "192k".into(),
+        "-color_range".into(),
+        "tv".into(),
+        // Inputs may carry chapters/timecode tracks; the output is just picture + sound.
+        "-map_metadata".into(),
+        "-1".into(),
+        "-map_chapters".into(),
+        "-1".into(),
         "-movflags".into(),
         "+faststart".into(),
         "-t".into(),
