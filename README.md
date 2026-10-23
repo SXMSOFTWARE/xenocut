@@ -50,6 +50,8 @@ npm run tauri build
 
 `tauri dev` starts Vite on port 43123 and opens the native window. Import uses the dialog plugin, so the Rust commands receive real paths. The window is a dark canvas; the editor sits centered on it and goes fullscreen when the window is narrow, which is the Android layout.
 
+GitHub Actions (`.github/workflows/build.yml`) builds installers on every push to `main` and on `v*` tags. Ubuntu produces an AppImage and a `.deb`. Windows produces an NSIS `.exe` and an MSI. The workflow downloads the FFmpeg sidecar itself. Pushes upload workflow artifacts. Tags also attach those files to a GitHub release. Android is not built there.
+
 Check the Rust crate:
 
 ```bash

@@ -42,7 +42,11 @@ case "$triple" in
     url="https://github.com/BtbN/FFmpeg-Builds/releases/download/latest/ffmpeg-master-latest-win64-gpl.zip"
     archive="$work/ffmpeg.zip"
     curl -fL --retry 3 -o "$archive" "$url"
-    unzip -q "$archive" -d "$work"
+    if command -v unzip >/dev/null 2>&1; then
+      unzip -q "$archive" -d "$work"
+    else
+      tar -xf "$archive" -C "$work"
+    fi
     bin="$(find "$work" -type f -name ffmpeg.exe | head -1)"
     out="$dest/ffmpeg-$triple.exe"
     ;;
