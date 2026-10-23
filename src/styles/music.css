@@ -268,3 +268,31 @@
     grid-template-columns: minmax(0, 1fr);
   }
 }
+
+@media (max-width: 760px) {
+  .music-body {
+    grid-template-columns: minmax(0, 1fr);
+    padding: 14px;
+    gap: 14px;
+  }
+  .steps {
+    position: static;
+    flex-direction: row;
+    overflow-x: auto;
+    gap: 6px;
+  }
+  .step {
+    width: auto;
+    flex: none;
+    padding: 8px;
+  }
+  .step-text,
+  .steps-note {
+    display: none;
+  }
+  .music-video,
+  .mix-grid,
+  .stem-row {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}

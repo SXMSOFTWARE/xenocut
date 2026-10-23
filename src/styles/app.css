@@ -402,3 +402,36 @@
     grid-template-columns: minmax(0, 1fr) 270px;
   }
 }
+
+/* Phones: one column, the page scrolls as a whole. */
+@media (max-width: 760px) {
+  .home-top {
+    height: 56px;
+    padding: 0 16px;
+  }
+  .home-main {
+    display: flex;
+    flex-direction: column;
+    overflow: auto;
+    gap: 22px;
+    padding: 4px 16px 24px;
+  }
+  .home-col {
+    overflow: visible;
+    padding-right: 0;
+    flex: none;
+  }
+  .home-hero h1 {
+    font-size: var(--fs-xl);
+  }
+  .home-hero p {
+    font-size: var(--fs-md);
+  }
+  .home-actions {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 10px;
+  }
+  .aspect-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
