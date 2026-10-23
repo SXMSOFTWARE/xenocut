@@ -1,10 +1,12 @@
 import { memo, useMemo } from "react";
-import { Eye, EyeOff, Film, Music2, Trash2, Volume2, VolumeX, AudioLines } from "lucide-react";
+import { Eye, EyeOff, Film, Music2, Plus, Trash2, Volume2, VolumeX, AudioLines } from "lucide-react";
 import { engine } from "../../../engine/playback";
 import { useT } from "../../../i18n";
 import type { Clip, MediaItem, Track } from "../../../project/types";
 import { useEditorUi } from "../../../store/editorUi";
 import { useProject } from "../../../store/project";
+import { importDialog, addToTimeline } from "../../../project/actions";
+import { clipDuration } from "../../../project/ops";
 import { removeTrack, toggleTrack } from "../commands";
 import { ClipView } from "./ClipView";
 
@@ -17,43 +19,61 @@ interface Props {
   pps: number;
   height: number;
   canRemove: boolean;
+  /** Render the round "+" after the last clip (main video track). */
+  showAdd?: boolean;
 }
 
-export const TrackRow = memo(function TrackRow({ track, clips, media, pps, height, canRemove }: Props) {
+const TINTS = ["blue", "gold", "lavender", "copper"] as const;
+
+export const TrackRow = memo(function TrackRow({ track, clips, media, pps, height, canRemove, showAdd }: Props) {
   const t = useT();
   const selection = useProject((s) => s.selection);
   const hint = useEditorUi((s) => (s.dropHint?.trackId === track.id ? s.dropHint : null));
   const selected = useMemo(() => new Set(selection), [selection]);
   const Icon = ICON[track.kind];
+  const end = clips.reduce((max, c) => Math.max(max, c.start + clipDuration(c)), 0);
 
   return (
     <div className={`tl-row kind-${track.kind}${track.muted ? " muted" : ""}${track.hidden ? " hidden" : ""}`} style={{ height }}>
       <div className="tl-header">
-        <span className={`tl-track-icon kind-${track.kind}`}>
+        <span className={`tl-track-icon kind-${track.kind}`} title={track.name}>
           <Icon />
         </span>
-        <span className="tl-track-name">{track.name}</span>
         <div className="tl-track-actions">
+          <span className="tl-track-name">{track.name}</span>
           {track.kind === "video" && (
-            <button className="icon-btn xs flat" onClick={() => toggleTrack(track.id, "hidden")} title={t(track.hidden ? "track.show" : "track.hide")} aria-label={t(track.hidden ? "track.show" : "track.hide")}>
+            <button className="mini-btn" onClick={() => toggleTrack(track.id, "hidden")} title={t(track.hidden ? "track.show" : "track.hide")} aria-label={t(track.hidden ? "track.show" : "track.hide")}>
               {track.hidden ? <EyeOff /> : <Eye />}
             </button>
           )}
-          <button className="icon-btn xs flat" onClick={() => toggleTrack(track.id, "muted")} title={t(track.muted ? "track.unmute" : "track.mute")} aria-label={t(track.muted ? "track.unmute" : "track.mute")}>
+          <button className="mini-btn" onClick={() => toggleTrack(track.id, "muted")} title={t(track.muted ? "track.unmute" : "track.mute")} aria-label={t(track.muted ? "track.unmute" : "track.mute")}>
             {track.muted ? <VolumeX /> : <Volume2 />}
           </button>
           {canRemove && (
-            <button className="icon-btn xs flat danger" onClick={() => removeTrack(track.id)} title={t("track.remove")} aria-label={t("track.remove")}>
+            <button className="mini-btn danger" onClick={() => removeTrack(track.id)} title={t("track.remove")} aria-label={t("track.remove")}>
               <Trash2 />
             </button>
           )}
         </div>
       </div>
       <div className="tl-lane" data-lane="" data-track-id={track.id} onPointerDown={lanePointerDown}>
-        {clips.map((clip) => {
+        {clips.map((clip, i) => {
           const m = media.get(clip.mediaId);
-          return m ? <ClipView key={clip.id} clip={clip} media={m} trackKind={track.kind} pps={pps} selected={selected.has(clip.id)} laneHeight={height} /> : null;
+          const tint = track.kind === "video" ? TINTS[i % TINTS.length] : track.kind === "music" ? "gold" : "lavender";
+          return m ? <ClipView key={clip.id} clip={clip} media={m} trackKind={track.kind} tint={tint} pps={pps} selected={selected.has(clip.id)} laneHeight={height} /> : null;
         })}
+        {showAdd && (
+          <button
+            className="tl-add-clip"
+            style={{ transform: `translateX(${end * pps + 8}px)` }}
+            onPointerDown={(e) => e.stopPropagation()}
+            onClick={() => void appendMedia(track.id, end)}
+            title={t("editor.addClip")}
+            aria-label={t("editor.addClip")}
+          >
+            <Plus size={14} strokeWidth={2} />
+          </button>
+        )}
         {hint && (
           <div
             className={`drop-hint${hint.start < 0 ? " invalid" : ""}`}
@@ -86,4 +106,14 @@ export function scrubFrom(el: HTMLElement, startX: number) {
   };
   window.addEventListener("pointermove", move);
   window.addEventListener("pointerup", up);
+}
+
+/** The "+" after the clips: import files and lay them end to end from `at`. */
+async function appendMedia(trackId: string, at: number) {
+  const items = await importDialog();
+  for (const m of items) {
+    const id = addToTimeline(m, at, trackId);
+    const clip = useProject.getState().project?.clips.find((c) => c.id === id);
+    if (clip) at = clip.start + clipDuration(clip);
+  }
 }

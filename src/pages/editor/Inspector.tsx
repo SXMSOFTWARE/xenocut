@@ -22,10 +22,7 @@ export function Inspector() {
       : undefined;
 
   return (
-    <aside className="inspector panel">
-      <div className="panel-head">
-        <h2>{t("inspector.title")}</h2>
-      </div>
+    <div className="inspector">
       <div className="inspector-body">
         {clip && media ? (
           <ClipInspector project={project} clip={clip} media={media} />
@@ -43,7 +40,7 @@ export function Inspector() {
           <ProjectInfo project={project} />
         )}
       </div>
-    </aside>
+    </div>
   );
 }
 

@@ -1,6 +1,7 @@
 pub mod app;
 pub mod audio;
 pub mod diag;
+pub mod grade;
 pub mod export;
 pub mod media;
 pub mod mediaserver;

@@ -13,14 +13,15 @@ export function Ruler({ pps, scroller, contentWidth }: { pps: number; scroller: 
     const canvas = canvasRef.current;
     if (!canvas || !scroller) return;
     const ctx = canvas.getContext("2d")!;
-    const headerW = parseFloat(getComputedStyle(scroller).getPropertyValue("--track-header-w")) || 168;
+    const raw = parseFloat(getComputedStyle(scroller).getPropertyValue("--track-header-w"));
+    const headerW = Number.isFinite(raw) ? raw : 44;
     let frame = 0;
 
     const draw = () => {
       frame = 0;
       const dpr = window.devicePixelRatio || 1;
       const w = Math.max(1, scroller.clientWidth - headerW);
-      const h = canvas.clientHeight || 28;
+      const h = canvas.clientHeight || 20;
       if (canvas.width !== Math.round(w * dpr) || canvas.height !== Math.round(h * dpr)) {
         canvas.width = Math.round(w * dpr);
         canvas.height = Math.round(h * dpr);
@@ -34,15 +35,21 @@ export function Ruler({ pps, scroller, contentWidth }: { pps: number; scroller: 
       const t0 = Math.floor(left / pps / minor) * minor;
       const t1 = (left + w) / pps;
       ctx.font = "500 10px Inter, system-ui, sans-serif";
-      ctx.textBaseline = "top";
+      ctx.textBaseline = "middle";
+      ctx.textAlign = "center";
+      const mid = Math.round(h / 2);
       for (let i = 0, t = t0; t <= t1 + minor; i++, t = t0 + i * minor) {
         const x = Math.round(t * pps - left) + 0.5;
         const major = Math.abs(t / step - Math.round(t / step)) < 1e-6;
-        ctx.fillStyle = major ? "rgba(255,255,255,0.32)" : "rgba(255,255,255,0.12)";
-        ctx.fillRect(x, major ? h - 10 : h - 5, 1, major ? 10 : 5);
         if (major) {
-          ctx.fillStyle = "rgba(255,255,255,0.5)";
-          ctx.fillText(rulerLabel(Math.max(0, t)), x + 4, 6);
+          ctx.fillStyle = "rgba(255,255,255,0.62)";
+          ctx.fillText(rulerLabel(Math.max(0, t)), Math.max(12, x), mid);
+        } else {
+          // the reference's dotted ruler
+          ctx.fillStyle = "rgba(255,255,255,0.32)";
+          ctx.beginPath();
+          ctx.arc(x, mid, 1, 0, Math.PI * 2);
+          ctx.fill();
         }
       }
     };

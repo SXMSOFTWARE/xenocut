@@ -208,7 +208,11 @@ pub fn build(project: &Project, options: &ExportOptions) -> Result<ExportPlan, S
         }
     }
 
-    graph.push(format!("[{current}]format=yuv420p[vout]"));
+    let grade = project.settings.grade.as_deref().and_then(crate::grade::ffmpeg_chain);
+    match grade {
+        Some(chain) => graph.push(format!("[{current}]{chain},format=yuv420p[vout]")),
+        None => graph.push(format!("[{current}]format=yuv420p[vout]")),
+    }
     graph.push(format!(
         "{}amix=inputs={}:normalize=0:duration=first:dropout_transition=0[aout]",
         audio_labels.join(""),
@@ -322,7 +326,7 @@ mod tests {
             name: "Test".into(),
             created: String::new(),
             modified: String::new(),
-            settings: ProjectSettings { aspect: "16:9".into(), resolution: "720p".into(), width: 1280, height: 720, fps: 30 },
+            settings: ProjectSettings { aspect: "16:9".into(), resolution: "720p".into(), width: 1280, height: 720, fps: 30, grade: None },
             media,
             tracks: vec![
                 Track { id: "v2".into(), kind: TrackKind::Video, name: "Video 2".into(), muted: false, hidden: false },

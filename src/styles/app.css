@@ -63,7 +63,7 @@
   display: flex;
   flex-direction: column;
   background:
-    radial-gradient(900px 420px at 0% -10%, rgba(255, 110, 60, 0.09), transparent 70%),
+    radial-gradient(900px 460px at 0% -10%, rgba(140, 80, 56, 0.22), transparent 70%),
     var(--bg);
 }
 .perf .home {
@@ -127,11 +127,12 @@
   transform: translateY(1px);
 }
 .action-card.primary {
-  background: linear-gradient(135deg, rgba(255, 179, 71, 0.16), rgba(224, 40, 60, 0.12)), var(--surface-1);
-  border-color: rgba(255, 120, 70, 0.28);
+  background: var(--glass-warm);
+  border-color: var(--glass-warm-border);
+  box-shadow: var(--glass-warm-hi);
 }
 .action-card.primary:hover {
-  border-color: rgba(255, 120, 70, 0.5);
+  border-color: rgba(255, 255, 255, 0.32);
 }
 .action-icon {
   width: 48px;
@@ -144,9 +145,8 @@
   color: var(--text);
 }
 .action-card.primary .action-icon {
-  background: var(--accent-gradient);
-  color: #fff;
-  box-shadow: var(--accent-glow);
+  background: #fff;
+  color: var(--ink);
 }
 .action-icon svg {
   width: 22px;
@@ -310,7 +310,7 @@
 }
 .tool-card.live:hover {
   background: var(--surface-2);
-  border-color: rgba(255, 120, 70, 0.4);
+  border-color: rgba(255, 255, 255, 0.2);
 }
 .tool-icon {
   width: 40px;
@@ -323,8 +323,8 @@
   color: var(--text-2);
 }
 .tool-card.live .tool-icon {
-  background: var(--accent-soft);
-  color: var(--accent-1);
+  background: #fff;
+  color: var(--ink);
 }
 .tool-icon svg {
   width: 18px;
@@ -352,7 +352,7 @@
   right: 12px;
   width: 14px;
   height: 14px;
-  color: var(--accent-1);
+  color: rgba(255, 255, 255, 0.7);
 }
 
 /* new project dialog */
@@ -376,8 +376,8 @@
   background: var(--surface-3);
 }
 .aspect-card.active {
-  border-color: rgba(255, 120, 70, 0.6);
-  background: var(--accent-soft);
+  border-color: #fff;
+  background: rgba(255, 255, 255, 0.06);
 }
 .aspect-shape {
   display: block;
@@ -386,8 +386,8 @@
   border: 2px solid var(--text-3);
 }
 .aspect-card.active .aspect-shape {
-  border-color: var(--accent-1);
-  background: rgba(255, 179, 71, 0.12);
+  border-color: #fff;
+  background: rgba(255, 255, 255, 0.12);
 }
 .aspect-card b {
   font-size: var(--fs-md);

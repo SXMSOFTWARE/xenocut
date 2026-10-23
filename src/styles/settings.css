@@ -23,7 +23,7 @@
 .settings-group .section-title svg {
   width: 14px;
   height: 14px;
-  color: var(--accent-1);
+  color: var(--text-2);
 }
 .settings-row {
   display: grid;

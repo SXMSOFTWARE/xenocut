@@ -12,11 +12,13 @@ import { useRouter } from "../../store/router";
 import { toast } from "../../store/toast";
 import { deleteSelection, jumpToEdge, splitAtPlayhead, zoomBy } from "./commands";
 import { ExportDialog } from "./ExportDialog";
-import { Inspector } from "./Inspector";
-import { MediaBin } from "./MediaBin";
+import { Ambient } from "./Ambient";
+import { BottomBar } from "./BottomBar";
 import { MediaDragGhost } from "./MediaDragGhost";
 import { Preview } from "./Preview";
-import { TopBar } from "./TopBar";
+import { Rail } from "./Rail";
+import { SidePanel } from "./SidePanel";
+import { TitleBar } from "./TitleBar";
 import { Timeline } from "./timeline/Timeline";
 import { laneAtPoint } from "./timeline/geometry";
 
@@ -24,6 +26,7 @@ export default function EditorPage() {
   const t = useT();
   const hasProject = useProject((s) => !!s.project);
   const exportOpen = useEditorUi((s) => s.exportOpen);
+  const panelOpen = useEditorUi((s) => s.panel !== null);
   const [dropping, setDropping] = useState(false);
   const rootRef = useRef<HTMLDivElement>(null);
 
@@ -122,14 +125,16 @@ export default function EditorPage() {
   if (!hasProject) return null;
 
   return (
-    <div className="editor" ref={rootRef}>
-      <TopBar />
-      <div className="editor-upper">
-        <MediaBin />
+    <div className={`editor${panelOpen ? " panel-open" : ""}`} ref={rootRef}>
+      <div className="hero">
+        <Ambient />
         <Preview />
-        <Inspector />
+        <Rail />
+        <TitleBar />
+        <SidePanel />
+        <Timeline />
       </div>
-      <Timeline />
+      <BottomBar />
       <MediaDragGhost />
       {dropping && (
         <div className="drop-overlay">

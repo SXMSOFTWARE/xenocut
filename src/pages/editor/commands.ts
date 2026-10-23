@@ -1,10 +1,11 @@
 // Editor commands shared by shortcuts, toolbar buttons and the inspector.
 import { engine } from "../../engine/playback";
-import { clipEnd, clipsAt, makeTrack, sortTracks, splitClip } from "../../project/ops";
+import { clipEnd, clipsAt, makeTrack, projectDuration, sortTracks, splitClip } from "../../project/ops";
 import type { TrackKind } from "../../project/types";
 import { usePlayback } from "../../store/playback";
 import { useProject } from "../../store/project";
 import { useEditorUi } from "../../store/editorUi";
+import { useRouter } from "../../store/router";
 
 export function splitAtPlayhead() {
   const { project, selection, commit, select } = useProject.getState();
@@ -73,4 +74,23 @@ export function jumpToEdge(direction: -1 | 1) {
   const sorted = [...edges].sort((a, b) => a - b);
   const target = direction > 0 ? sorted.find((e) => e > time + 1e-3) : [...sorted].reverse().find((e) => e < time - 1e-3);
   if (target !== undefined) engine.seek(target);
+}
+
+export async function leaveEditor() {
+  const s = useProject.getState();
+  if (s.saveState === "dirty") await s.save();
+  s.close();
+  useRouter.getState().go("home");
+}
+
+/** Zoom so the whole project fits the visible lane width. */
+export function fitTimeline() {
+  const { project } = useProject.getState();
+  const scroller = document.querySelector<HTMLElement>(".tl-scroll");
+  if (!project || !scroller) return;
+  const header = parseFloat(getComputedStyle(scroller).getPropertyValue("--track-header-w")) || 0;
+  const duration = projectDuration(project);
+  const view = scroller.clientWidth - header - 56;
+  useEditorUi.getState().setZoom(duration > 0 ? view / duration : 40);
+  scroller.scrollLeft = 0;
 }

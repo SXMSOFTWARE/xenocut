@@ -3,6 +3,7 @@ import { fileSrc } from "../../../lib/backend";
 import { clipDuration } from "../../../project/ops";
 import type { Clip, MediaAssets, MediaItem, TrackKind } from "../../../project/types";
 import { useAssets } from "../../../store/assets";
+import { ChevronLeft, ChevronRight } from "lucide-react";
 import { beginClipDrag } from "./clipDrag";
 
 const MAX_TILES = 48;
@@ -14,9 +15,10 @@ interface Props {
   pps: number;
   selected: boolean;
   laneHeight: number;
+  tint: string;
 }
 
-export const ClipView = memo(function ClipView({ clip, media, trackKind, pps, selected, laneHeight }: Props) {
+export const ClipView = memo(function ClipView({ clip, media, trackKind, pps, selected, laneHeight, tint }: Props) {
   const assets = useAssets((s) => s.assets[media.path]);
   const duration = clipDuration(clip);
   const width = Math.max(2, duration * pps);
@@ -24,23 +26,41 @@ export const ClipView = memo(function ClipView({ clip, media, trackKind, pps, se
   const visual = trackKind === "video";
   const showWave = !!assets?.wave && (trackKind !== "video" || media.hasAudio);
 
+  const pillH = laneHeight - 8;
   return (
     <div
-      className={`clip tone-${tone}${selected ? " selected" : ""}${width < 36 ? " tiny" : ""}`}
+      className={`clip tone-${tone} tint-${tint}${selected ? " selected" : ""}${width < 36 ? " tiny" : ""}`}
       style={{ transform: `translateX(${clip.start * pps}px)`, width }}
       data-clip-id={clip.id}
+      title={media.name}
       onPointerDown={(e) => beginClipDrag(e, clip.id, "move")}
     >
-      {visual && assets && <Film clip={clip} media={media} assets={assets} width={width} pps={pps} height={laneHeight - (showWave ? 22 : 18)} />}
-      {showWave && assets?.wave && <Wave clip={clip} media={media} wave={assets.wave} width={width} pps={pps} compact={visual} />}
-      <div className="clip-label">
-        <span>{media.name}</span>
-        {clip.speed !== 1 && <em>{clip.speed.toFixed(2)}×</em>}
+      <div className="clip-body">
+        {visual && assets && <Film clip={clip} media={media} assets={assets} width={width} pps={pps} height={pillH} />}
+        {showWave && assets?.wave && !visual && <Wave clip={clip} media={media} wave={assets.wave} width={width} pps={pps} compact={false} />}
+        <span className="clip-tint" />
+        {!visual && (
+          <div className="clip-label">
+            <span>{media.name}</span>
+            {clip.speed !== 1 && <em>{clip.speed.toFixed(2)}×</em>}
+          </div>
+        )}
+        {visual && clip.speed !== 1 && <em className="clip-speed">{clip.speed.toFixed(2)}×</em>}
+        {clip.fadeIn > 0 && <span className="clip-fade in" style={{ width: Math.min(width / 2, clip.fadeIn * pps) }} />}
+        {clip.fadeOut > 0 && <span className="clip-fade out" style={{ width: Math.min(width / 2, clip.fadeOut * pps) }} />}
       </div>
-      {clip.fadeIn > 0 && <span className="clip-fade in" style={{ width: Math.min(width / 2, clip.fadeIn * pps) }} />}
-      {clip.fadeOut > 0 && <span className="clip-fade out" style={{ width: Math.min(width / 2, clip.fadeOut * pps) }} />}
       <span className="clip-handle start" onPointerDown={(e) => beginClipDrag(e, clip.id, "trim-start")} />
       <span className="clip-handle end" onPointerDown={(e) => beginClipDrag(e, clip.id, "trim-end")} />
+      {selected && width >= 52 && (
+        <>
+          <span className="trim-btn start" onPointerDown={(e) => beginClipDrag(e, clip.id, "trim-start")}>
+            <ChevronLeft size={12} strokeWidth={2.4} />
+          </span>
+          <span className="trim-btn end" onPointerDown={(e) => beginClipDrag(e, clip.id, "trim-end")}>
+            <ChevronRight size={12} strokeWidth={2.4} />
+          </span>
+        </>
+      )}
     </div>
   );
 });

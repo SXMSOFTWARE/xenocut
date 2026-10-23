@@ -3,19 +3,27 @@
   color-scheme: dark;
 
   /* surfaces */
-  --bg: #0f0f11;
-  --bg-raised: #131316;
-  --surface-1: #18181b;
-  --surface-2: #1f1f23;
-  --surface-3: #26262b;
-  --surface-4: #2f2f35;
-  --surface-glass: rgba(32, 32, 37, 0.72);
-  --stage: #000;
+  --bg: #1c1c1c;
+  --bg-raised: #202020;
+  --surface-1: #232323;
+  --surface-2: #2a2a2a;
+  --surface-3: #333333;
+  --surface-4: #3e3e3e;
+  --surface-glass: rgba(32, 32, 32, 0.72);
+  /* the reference's warm frosted surfaces, faked without backdrop-filter */
+  --glass-warm: linear-gradient(165deg, rgba(104, 66, 50, 0.9), rgba(40, 25, 19, 0.92));
+  --glass-warm-border: rgba(255, 255, 255, 0.18);
+  --glass-warm-hi: inset 0 1px 0 rgba(255, 255, 255, 0.2);
+  --glass-btn: rgba(255, 255, 255, 0.14);
+  --glass-btn-hover: rgba(255, 255, 255, 0.26);
+  --glass-btn-border: rgba(255, 255, 255, 0.22);
+  --ink: #141414;
+  --stage: #111;
 
   /* lines */
   --line: rgba(255, 255, 255, 0.06);
   --line-strong: rgba(255, 255, 255, 0.11);
-  --line-focus: rgba(255, 140, 70, 0.55);
+  --line-focus: rgba(255, 255, 255, 0.7);
 
   /* text */
   --text: #f4f4f5;
@@ -27,10 +35,11 @@
   --accent-1: #ffb347;
   --accent-2: #ff5e3a;
   --accent-3: #e0283c;
-  --accent: var(--accent-2);
-  --accent-soft: rgba(255, 94, 58, 0.14);
+  --accent: #ffffff;
+  --brand: var(--accent-2);
+  --accent-soft: rgba(255, 255, 255, 0.12);
   --accent-gradient: linear-gradient(135deg, var(--accent-1) 0%, var(--accent-2) 55%, var(--accent-3) 100%);
-  --accent-glow: 0 6px 22px -8px rgba(255, 94, 58, 0.65);
+  --accent-glow: 0 6px 16px rgba(0, 0, 0, 0.25);
 
   /* state */
   --ok: #3ecf8e;
@@ -38,13 +47,13 @@
   --danger: #f0525f;
 
   /* clip tints */
-  --clip-video: #3b82f6;
+  --clip-video: #2f4fb8;
   --clip-video-deep: #1d3d74;
-  --clip-audio: #8b5cf6;
+  --clip-audio: #8a7cf0;
   --clip-audio-deep: #3b2a6b;
-  --clip-music: #e9a23b;
+  --clip-music: #e09a2a;
   --clip-music-deep: #5e4114;
-  --clip-image: #e2603f;
+  --clip-image: #c4533a;
   --clip-image-deep: #642716;
 
   /* shape */
@@ -52,7 +61,7 @@
   --r-sm: 8px;
   --r-md: 12px;
   --r-lg: 16px;
-  --r-xl: 22px;
+  --r-xl: 20px;
   --r-pill: 999px;
 
   /* type */
@@ -82,7 +91,8 @@
 
 /* Performance mode: no translucency, no blur, no glow, minimal motion. */
 .perf {
-  --surface-glass: #202025;
+  --surface-glass: #202020;
+  --glass-warm: linear-gradient(165deg, #5a3a2c, #2a1b15);
   --blur-small: none;
   --accent-glow: none;
   --shadow-1: none;

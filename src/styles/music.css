@@ -4,8 +4,8 @@
   border-radius: 50%;
   display: grid;
   place-items: center;
-  background: var(--accent-gradient);
-  color: #fff;
+  background: #fff;
+  color: var(--ink);
 }
 .tool-badge svg {
   width: 16px;
@@ -66,8 +66,8 @@
   font-size: var(--fs-sm);
 }
 .step.active .step-num {
-  background: var(--accent-gradient);
-  color: #fff;
+  background: #fff;
+  color: var(--ink);
 }
 .step.done .step-num {
   background: rgba(52, 199, 123, 0.18);
@@ -128,8 +128,8 @@
   border-radius: 50%;
   display: grid;
   place-items: center;
-  background: var(--accent-soft);
-  color: var(--accent-1);
+  background: #fff;
+  color: var(--ink);
 }
 .pane-icon svg {
   width: 19px;
@@ -154,7 +154,7 @@
 .pane-hero svg {
   width: 28px;
   height: 28px;
-  color: var(--accent-1);
+  color: #fff;
 }
 .dropzone {
   display: flex;
@@ -167,13 +167,13 @@
   transition: border-color var(--t-fast), background var(--t-fast);
 }
 .dropzone:hover {
-  border-color: rgba(255, 120, 70, 0.6);
-  background: rgba(255, 94, 58, 0.04);
+  border-color: rgba(255, 255, 255, 0.45);
+  background: rgba(255, 255, 255, 0.03);
 }
 .dropzone svg {
   width: 30px;
   height: 30px;
-  color: var(--accent-1);
+  color: #fff;
 }
 .dropzone b {
   font-size: var(--fs-lg);

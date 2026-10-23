@@ -56,7 +56,19 @@ export default function MusicSwapPage() {
 
   const chooseVideo = async () => {
     const [path] = await pickFiles([{ name: "Video", extensions: VIDEO_EXT }], false);
-    if (!path) return;
+    if (path) await loadVideo(path);
+  };
+
+  // Opened from the editor with a clip's source video: skip straight to separation.
+  useEffect(() => {
+    const preset = useRouter.getState().musicSource;
+    if (!preset) return;
+    useRouter.setState({ musicSource: null });
+    void loadVideo(preset);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  async function loadVideo(path: string) {
     try {
       const { items, errors } = await api.mediaProbe([path]);
       const info = items[0];
@@ -69,7 +81,7 @@ export default function MusicSwapPage() {
     } catch (error) {
       toast(messageOf(error), "error");
     }
-  };
+  }
 
   const separate = async () => {
     if (!video) return;

@@ -32,22 +32,17 @@ export function MediaBin() {
   };
 
   return (
-    <section className="bin panel">
-      <div className="panel-head">
-        <h2>{t("bin.title")}</h2>
-        <span className="muted tnum">{media?.length || ""}</span>
-        <div className="spacer" />
-        <button className="btn btn-sm" onClick={() => void doImport()} disabled={busy}>
-          <Upload />
-          {t("bin.import")}
-        </button>
-      </div>
+    <section className="bin">
       <div className="bin-filters">
         {(["all", "video", "audio", "image"] as Filter[]).map((f) => (
           <button key={f} className={`chip${filter === f ? " active" : ""}`} onClick={() => setFilter(f)}>
             {t(`bin.filter.${f}`)}
           </button>
         ))}
+        <div className="spacer" />
+        <button className="mini-btn" onClick={() => void doImport()} disabled={busy} title={t("bin.import")} aria-label={t("bin.import")}>
+          <Upload />
+        </button>
       </div>
       {list.length === 0 ? (
         <button className="bin-empty empty" onClick={() => void doImport()}>

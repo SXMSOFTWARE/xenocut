@@ -1,3 +1,5 @@
+import type { Grade } from "./grade";
+
 // The .xcut project model. Mirrored by `src-tauri/src/project.rs` (serde, camelCase).
 
 export type Aspect = "16:9" | "9:16" | "1:1" | "4:5";
@@ -11,6 +13,8 @@ export interface ProjectSettings {
   width: number;
   height: number;
   fps: number;
+  /** Colour grade id from `project/grade.ts`; absent = none. */
+  grade?: Grade;
 }
 
 export interface MediaItem {
