@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Download a static FFmpeg build and place it where Tauri expects an externalBin sidecar.
-# The binary is GPL-3.0-or-later (John Van Sickle static builds, or the BtbN Windows build)
+# The binary is GPL-3.0-or-later (BtbN static builds)
 # and is not committed. Run this before `cargo check`, `npm run tauri dev`, or `npm run tauri build`.
 set -euo pipefail
 
@@ -22,16 +22,10 @@ work="$(mktemp -d)"
 trap 'rm -rf "$work"' EXIT
 
 case "$triple" in
-  x86_64-unknown-linux-gnu)
-    url="https://johnvansickle.com/ffmpeg/releases/ffmpeg-release-amd64-static.tar.xz"
-    archive="$work/ffmpeg.tar.xz"
-    curl -fL --retry 3 -o "$archive" "$url"
-    tar -xJf "$archive" -C "$work"
-    bin="$(find "$work" -type f -name ffmpeg -perm -111 | head -1)"
-    out="$dest/ffmpeg-$triple"
-    ;;
-  aarch64-unknown-linux-gnu)
-    url="https://johnvansickle.com/ffmpeg/releases/ffmpeg-release-arm64-static.tar.xz"
+  x86_64-unknown-linux-gnu|aarch64-unknown-linux-gnu)
+    # BtbN static GPL builds. (johnvansickle.com now serves a bot-check page to scripts.)
+    if [[ "$triple" == x86_64-* ]]; then flavor=linux64; else flavor=linuxarm64; fi
+    url="https://github.com/BtbN/FFmpeg-Builds/releases/download/latest/ffmpeg-master-latest-${flavor}-gpl.tar.xz"
     archive="$work/ffmpeg.tar.xz"
     curl -fL --retry 3 -o "$archive" "$url"
     tar -xJf "$archive" -C "$work"

@@ -52,6 +52,9 @@ pub struct RenderRequest {
     pub fade_in: f32,
     pub fade_out: f32,
     pub video_duration: f64,
+    /// Where to write the result. Defaults to the job folder in app data.
+    #[serde(default)]
+    pub output_path: Option<String>,
 }
 
 struct EmitProgress {
@@ -156,7 +159,10 @@ pub async fn audio_mix_render(app: AppHandle, request: RenderRequest) -> Result<
         return Err("Choose a video before rendering.".into());
     }
     cancel::begin();
-    let output = job_dir(&root_dir(&app), &video).join("xenocut-mix.mp4");
+    let output = match request.output_path.as_deref().map(str::trim) {
+        Some(path) if !path.is_empty() => PathBuf::from(path),
+        _ => job_dir(&root_dir(&app), &video).join("xenocut-mix.mp4"),
+    };
     tauri::async_runtime::spawn_blocking(move || {
         let job = RenderJob {
             video,
