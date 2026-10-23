@@ -104,10 +104,10 @@ export function Timeline() {
             <span className="scrub-dot right" />
             <div
               className="scrub-handle"
-              style={{ left: `clamp(22px, ${ratio * 100}%, calc(100% - 22px))` }}
+              style={{ left: `clamp(19px, ${ratio * 100}%, calc(100% - 19px))` }}
             >
-              <ChevronLeft size={13} strokeWidth={2.5} />
-              <ChevronRight size={13} strokeWidth={2.5} style={{ marginLeft: -4 }} />
+              <ChevronLeft size={12} strokeWidth={2.4} />
+              <ChevronRight size={12} strokeWidth={2.4} style={{ marginLeft: -4 }} />
             </div>
           </div>
           <div className="ruler" aria-hidden="true">

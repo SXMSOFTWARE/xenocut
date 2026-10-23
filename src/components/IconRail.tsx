@@ -41,28 +41,28 @@ export function IconRail() {
         aria-label="Back to video"
         onClick={() => setTool("video")}
       >
-        <ArrowLeft size={16} strokeWidth={1.75} />
+        <ArrowLeft size={14} strokeWidth={1.75} />
       </button>
       <RailButton label="Video" active={tool === "video"} onClick={() => select("video")}>
-        <Clapperboard size={16} strokeWidth={1.75} />
+        <Clapperboard size={14} strokeWidth={1.75} />
       </RailButton>
       <RailButton label="Microphone" onClick={() => select("mic")}>
-        <Mic size={16} strokeWidth={1.75} />
+        <Mic size={14} strokeWidth={1.75} />
       </RailButton>
       <RailButton label="Audio editing" active={tool === "music"} onClick={() => select("music")}>
-        <Music size={16} strokeWidth={1.75} />
+        <Music size={14} strokeWidth={1.75} />
       </RailButton>
       <RailButton label="Transitions" onClick={() => select("effects")}>
-        <TransitionsIcon />
+        <TransitionsIcon size={14} />
       </RailButton>
       <RailButton label="Waveform" onClick={() => select("waveform")}>
-        <AudioWaveform size={16} strokeWidth={1.75} />
+        <AudioWaveform size={14} strokeWidth={1.75} />
       </RailButton>
       <RailButton label="Color" onClick={() => select("color")}>
-        <ThreeCirclesIcon />
+        <ThreeCirclesIcon size={14} />
       </RailButton>
       <RailButton label="Text" onClick={() => select("text")}>
-        <Type size={16} strokeWidth={1.75} />
+        <Type size={14} strokeWidth={1.75} />
       </RailButton>
     </nav>
   );

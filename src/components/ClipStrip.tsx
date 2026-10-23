@@ -17,7 +17,7 @@ export function ClipStrip({ clip, duration, selected, onSelect, onTrimStart }: C
 
   return (
     <div
-      className={`clip-strip${selected ? " is-selected" : ""}`}
+      className={`clip-strip tint-${clip.tint}${selected ? " is-selected" : ""}`}
       style={{
         left: `calc(${(clip.start / length) * 100}% + 3px)`,
         width: `max(16px, calc(${((clip.end - clip.start) / length) * 100}% - 6px))`,
@@ -30,7 +30,7 @@ export function ClipStrip({ clip, duration, selected, onSelect, onTrimStart }: C
           <div key={`${src}-${index}`} className="clip-thumb" style={{ backgroundImage: `url("${src}")` }} />
         ))}
       </div>
-      <div className={`clip-tint tint-${clip.tint}`} />
+      <div className="clip-tint" />
       {selected && (
         <>
           <button

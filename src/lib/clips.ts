@@ -4,6 +4,7 @@ import { clamp } from "./time";
 
 const WEIGHTS = [12, 10, 18, 18];
 const COUNTS = [3, 2, 3, 3];
+/** Reference palette, repeated when an import produces more strips than colors. */
 const TINTS: Tint[] = ["blue", "gold", "purple", "red"];
 
 export function clipsFromMedia(duration: number, frames: string[]): Clip[] {
@@ -23,7 +24,7 @@ export function clipsFromMedia(duration: number, frames: string[]): Clip[] {
       id: `clip-${TINTS[index]}-${index}`,
       start,
       end,
-      tint: TINTS[index],
+      tint: TINTS[index % TINTS.length],
       thumbnails,
     };
   });
