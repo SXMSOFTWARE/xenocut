@@ -9,6 +9,7 @@ import { perfCounters } from "./perfHook";
 import { useProject } from "../store/project";
 import { useSettings } from "../store/settings";
 import { useEditorUi } from "../store/editorUi";
+import { useRouter, type Page } from "../store/router";
 import { useAssets } from "../store/assets";
 import type { Grade } from "../project/grade";
 import { addTextClip, projectDuration, updateClip } from "../project/ops";
@@ -54,6 +55,7 @@ export async function runAutotest(file: string) {
   setSilent(true);
   log("autotest", `start ${file}`);
   await sleep(800);
+  if (await pageProbe()) return;
   const ok = await openMediaAsProject(file, "Autotest");
   log("autotest", `project opened: ${ok}`);
   for (let i = 0; i < 50 && !document.querySelector("video.stage-media"); i++) await sleep(200);
@@ -99,6 +101,20 @@ async function fxProbe() {
   log("autotest", "fx-ready");
   await sleep(800);
   await exportProbe(o.export);
+}
+
+/** page=settings[,scroll=bottom][,click=.selector]: shows a page instead of the editor run; logs "page-ready". */
+async function pageProbe(): Promise<boolean> {
+  const o = opts();
+  if (!o.page) return false;
+  useRouter.getState().go(o.page as Page);
+  await sleep(1200);
+  if (o.click) (document.querySelector(o.click) as HTMLElement | null)?.click();
+  await sleep(300);
+  if (o.scroll === "bottom") document.querySelectorAll("*").forEach((el) => el.scrollHeight > el.clientHeight + 4 && (el.scrollTop = el.scrollHeight));
+  await sleep(600);
+  log("autotest", "page-ready");
+  return true;
 }
 
 async function rafRate(ms: number): Promise<number> {
