@@ -70,6 +70,9 @@ pub struct Track {
     pub muted: bool,
     #[serde(default)]
     pub hidden: bool,
+    /// Locked tracks can't be edited on the timeline (UI only; the export ignores it).
+    #[serde(default, skip_serializing_if = "std::ops::Not::not")]
+    pub locked: bool,
     /// What the track is for beyond its kind, e.g. `"subtitles"` for generated captions.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub role: Option<String>,
@@ -119,6 +122,9 @@ pub struct Clip {
     /// Transition into the next adjacent clip on the track (see `transitions.rs`).
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub transition: Option<crate::transitions::ClipTransition>,
+    /// User label shown on the timeline (defaults to the media name).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub name: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
@@ -157,6 +163,12 @@ pub struct Project {
     pub media: Vec<MediaItem>,
     pub tracks: Vec<Track>,
     pub clips: Vec<Clip>,
+    /// Timeline markers (editor only; kept verbatim).
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub markers: Vec<serde_json::Value>,
+    /// In / Out marks `{ "in": s, "out": s }` (editor only; kept verbatim).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub range: Option<serde_json::Value>,
 }
 
 impl Project {
@@ -257,9 +269,12 @@ mod tests {
                 name: "Video 1".into(),
                 muted: false,
                 hidden: false,
+                locked: false,
                 role: None,
             }],
             clips: vec![],
+            markers: vec![],
+            range: None,
         }
     }
 
@@ -283,6 +298,7 @@ mod tests {
             anim: None,
             lut: None,
             transition: None,
+            name: None,
         });
         let text = serde_json::to_string(&project).unwrap();
         assert!(text.contains("\"trackId\":\"v1\""));

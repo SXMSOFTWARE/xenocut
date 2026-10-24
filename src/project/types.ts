@@ -41,6 +41,8 @@ export interface Track {
   name: string;
   muted: boolean;
   hidden: boolean;
+  /** Locked tracks can't be edited on the timeline. */
+  locked?: boolean;
   /** Purpose beyond the kind: the track generated captions ("subtitles") or song lyrics live on. */
   role?: "subtitles" | "lyrics";
 }
@@ -70,6 +72,8 @@ export interface Clip {
   lut?: ClipLut;
   /** Transition into the next adjacent clip on the same track (see transitions/index.ts). */
   transition?: ClipTransition;
+  /** User label on the timeline (defaults to the media name). */
+  name?: string;
 }
 
 export interface ClipTransition {
@@ -102,6 +106,17 @@ export interface Project {
   media: MediaItem[];
   tracks: Track[];
   clips: Clip[];
+  /** Timeline markers (M). */
+  markers?: Marker[];
+  /** In / Out marks (I / O): the export can be limited to this range. */
+  range?: { in: number; out: number };
+}
+
+export interface Marker {
+  id: string;
+  time: number;
+  label?: string;
+  color?: string;
 }
 
 export interface ProbeInfo {

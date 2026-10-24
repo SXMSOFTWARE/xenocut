@@ -880,6 +880,7 @@ pub(crate) mod tests {
             anim: None,
             lut: None,
             transition: None,
+            name: None,
         }
     }
 
@@ -906,6 +907,7 @@ pub(crate) mod tests {
                     name: "Video 2".into(),
                     muted: false,
                     hidden: false,
+                    locked: false,
                     role: None,
                 },
                 Track {
@@ -914,6 +916,7 @@ pub(crate) mod tests {
                     name: "Video 1".into(),
                     muted: false,
                     hidden: false,
+                    locked: false,
                     role: None,
                 },
                 Track {
@@ -922,6 +925,7 @@ pub(crate) mod tests {
                     name: "Audio 1".into(),
                     muted: false,
                     hidden: false,
+                    locked: false,
                     role: None,
                 },
                 Track {
@@ -930,10 +934,13 @@ pub(crate) mod tests {
                     name: "Music 1".into(),
                     muted: false,
                     hidden: false,
+                    locked: false,
                     role: None,
                 },
             ],
             clips,
+            markers: vec![],
+            range: None,
         }
     }
 
@@ -1275,6 +1282,7 @@ pub(crate) mod tests {
             name: "Text 1".into(),
             muted: false,
             hidden: false,
+            locked: false,
             role: None,
         });
         c.track_id = "x1".into();
@@ -1592,6 +1600,7 @@ pub(crate) mod tests {
                 name: "FX".into(),
                 muted: false,
                 hidden: false,
+                locked: false,
                 role: None,
             },
         );
@@ -1658,6 +1667,7 @@ pub(crate) mod tests {
                 name: "FX".into(),
                 muted: false,
                 hidden: false,
+                locked: false,
                 role: None,
             },
         );
