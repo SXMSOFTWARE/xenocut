@@ -60,7 +60,7 @@
   min-height: 60px;
   display: grid;
   place-items: center;
-  transition: right var(--t-med) var(--ease);
+  transition: right var(--t-med) var(--ease), left var(--t-med) var(--ease);
 }
 .panel-open .stage-area {
   right: calc(var(--panel-w) + var(--hero-gap) * 2);
@@ -1519,6 +1519,109 @@
 }
 
 
+/* ---------- switchable / user-sized layouts (desktop only; phones keep the bottom sheet) ---------- */
+.sp-resize,
+.tl-resize {
+  display: none;
+}
+.layout-menu > .menu {
+  left: auto;
+  right: -8px;
+  transform: none;
+  min-width: 210px;
+}
+.menu-hint {
+  max-width: 210px;
+  padding: 6px 10px 4px;
+  font-size: 10.5px;
+  line-height: 1.4;
+  color: var(--text-3);
+}
+.round-btn.open {
+  background: #363636;
+}
+body.is-resizing,
+body.is-resizing * {
+  user-select: none;
+}
+body.is-resizing .stage-area,
+body.is-resizing .title-row {
+  transition: none;
+}
+@media (min-width: 861px) and (min-height: 601px) {
+  .editor.panel-sized {
+    --panel-w: min(var(--panel-w-user), 42%);
+  }
+  .panel-left .side-panel {
+    right: auto;
+    left: var(--rail-w);
+  }
+  .panel-left.panel-open .stage-area {
+    left: calc(var(--rail-w) + var(--panel-w) + var(--hero-gap));
+    right: var(--hero-gap);
+  }
+  .panel-left.panel-open .title-row {
+    left: calc((100% + var(--rail-w) + var(--panel-w)) / 2);
+  }
+  .timeline.sized {
+    height: calc(var(--tl-frac) * 100%);
+    max-height: none;
+  }
+  .sp-resize {
+    display: block;
+    position: absolute;
+    z-index: 5;
+    top: 18px;
+    bottom: 18px;
+    left: 0;
+    width: 7px;
+    cursor: ew-resize;
+  }
+  .panel-left .sp-resize {
+    left: auto;
+    right: 0;
+  }
+  .tl-resize {
+    display: block;
+    position: absolute;
+    z-index: 5;
+    top: -4px;
+    left: 0;
+    right: 0;
+    height: 9px;
+    cursor: ns-resize;
+  }
+  .sp-resize::after,
+  .tl-resize::after {
+    content: "";
+    position: absolute;
+    border-radius: 3px;
+    background: rgba(255, 255, 255, 0.45);
+    opacity: 0;
+    transition: opacity var(--t-fast);
+  }
+  .sp-resize::after {
+    top: 50%;
+    left: 2px;
+    width: 3px;
+    height: 36px;
+    margin-top: -18px;
+  }
+  .tl-resize::after {
+    left: 50%;
+    top: 3px;
+    width: 40px;
+    height: 3px;
+    margin-left: -20px;
+  }
+  .sp-resize:hover::after,
+  .tl-resize:hover::after,
+  body.is-resizing .sp-resize::after,
+  body.is-resizing .tl-resize::after {
+    opacity: 1;
+  }
+}
+
 /* ---------- narrow / short windows and phones ---------- */
 @media (max-width: 1100px) {
   .editor {
@@ -1619,7 +1722,8 @@
   .bar-chip .chev {
     display: none;
   }
-  .bb-right .round-btn:not(:last-of-type) {
+  .bb-right .round-btn:not(:last-of-type),
+  .bb-right .layout-menu {
     display: none;
   }
   .export-btn span {

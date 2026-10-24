@@ -9,6 +9,7 @@ import { useEditorUi } from "../../store/editorUi";
 import { usePlayback } from "../../store/playback";
 import { useProject } from "../../store/project";
 import { useRouter } from "../../store/router";
+import { useSettings } from "../../store/settings";
 import { toast } from "../../store/toast";
 import { deleteSelection, jumpToEdge, splitAtPlayhead, zoomBy } from "./commands";
 import { ExportDialog } from "./ExportDialog";
@@ -21,8 +22,11 @@ import { SidePanel } from "./SidePanel";
 import { TitleBar } from "./TitleBar";
 import { Timeline } from "./timeline/Timeline";
 import { laneAtPoint } from "./timeline/geometry";
+import { layoutVars } from "./layout";
 
 export default function EditorPage() {
+  const panelSide = useSettings((s) => s.panelSide);
+  const panelWidth = useSettings((s) => s.panelWidth);
   const t = useT();
   const hasProject = useProject((s) => !!s.project);
   const exportOpen = useEditorUi((s) => s.exportOpen);
@@ -125,7 +129,7 @@ export default function EditorPage() {
   if (!hasProject) return null;
 
   return (
-    <div className={`editor${panelOpen ? " panel-open" : ""}`} ref={rootRef}>
+    <div className={`editor${panelOpen ? " panel-open" : ""}${panelSide === "left" ? " panel-left" : ""}${panelWidth ? " panel-sized" : ""}`} style={layoutVars(panelWidth)} ref={rootRef}>
       <div className="hero">
         <Ambient />
         <Preview />

@@ -1,4 +1,4 @@
-import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState, type CSSProperties } from "react";
 import { AudioLines, Film, Magnet, Maximize2, Music2, Plus, Scissors, Trash2, Type, ZoomIn, ZoomOut } from "lucide-react";
 import { useT } from "../../../i18n";
 import { NEW_TRACK } from "../../../project/actions";
@@ -6,6 +6,8 @@ import { projectDuration } from "../../../project/ops";
 import type { Clip } from "../../../project/types";
 import { useEditorUi } from "../../../store/editorUi";
 import { useProject } from "../../../store/project";
+import { useSettings } from "../../../store/settings";
+import { timelineResizeDown } from "../layout";
 import { addTrack, deleteSelection, fitTimeline, splitAtPlayhead, zoomBy } from "../commands";
 import { Playhead, SnapLine } from "./Playhead";
 import { Ruler } from "./Ruler";
@@ -42,6 +44,7 @@ export function Timeline() {
   const pps = useEditorUi((s) => s.pxPerSec);
   const snapping = useEditorUi((s) => s.snapping);
   const collapsed = useEditorUi((s) => s.timelineCollapsed);
+  const tlFrac = useSettings((s) => s.timelineFrac);
   const dragging = useEditorUi((s) => !!s.dragMedia);
   const newHint = useEditorUi((s) => (s.dropHint?.trackId === NEW_TRACK ? s.dropHint : null));
   const [scroller, setScroller] = useState<HTMLDivElement | null>(null);
@@ -118,7 +121,8 @@ export function Timeline() {
   const mainVideo = tracks.find((tr) => tr.kind === "video")?.id;
 
   return (
-    <section ref={rootRef} className={`timeline${headerW ? "" : " no-headers"}${dragging ? " is-dragging" : ""}${collapsed ? " collapsed" : ""}`}>
+    <section ref={rootRef} className={`timeline${headerW ? "" : " no-headers"}${dragging ? " is-dragging" : ""}${collapsed ? " collapsed" : ""}${tlFrac && !collapsed ? " sized" : ""}`} style={tlFrac && !collapsed ? ({ "--tl-frac": tlFrac } as CSSProperties) : undefined}>
+      {!collapsed && <div className="tl-resize" onPointerDown={timelineResizeDown} onDoubleClick={() => useSettings.getState().update({ timelineFrac: 0 })} title={t("layout.resizeTimeline")} aria-hidden />}
       <div className="tl-bar">
         <div className="tl-tools">
           <button className="tl-btn" onClick={splitAtPlayhead} title={`${t("inspector.split")} (S)`} aria-label={t("inspector.split")}>

@@ -11,7 +11,8 @@ import { log, transport } from "./backend";
 import { perfCounters } from "./perfHook";
 import { useProject } from "../store/project";
 import { useSettings } from "../store/settings";
-import { useEditorUi } from "../store/editorUi";
+import { useEditorUi, type PanelId } from "../store/editorUi";
+import { applyPreset, type LayoutPreset } from "../pages/editor/layout";
 import { useRouter, type Page } from "../store/router";
 import { useAssets } from "../store/assets";
 import type { Grade } from "../project/grade";
@@ -82,6 +83,7 @@ export async function runAutotest(file: string) {
   await subsProbe();
   await lyricsProbe();
   await amvProbe();
+  await layoutProbe();
   await fxProbe();
   await perfProbe();
 }
@@ -415,4 +417,32 @@ async function exportProbe(path: string | undefined) {
   } catch (error) {
     log("autotest", `EXPORT failed ${String(error)}`);
   }
+}
+
+/**
+ * layout=classic|left|studio|focus[,pw=380][,tf=0.4][,panel=media][,menu=1][,hold=6]: applies a layout,
+ * logs the editor geometry, keeps the window up for `hold` s (for a real mouse drag), then logs it again.
+ */
+async function layoutProbe() {
+  const o = opts();
+  if (!o.layout) return;
+  if (o.panel) useEditorUi.setState({ panel: o.panel as PanelId });
+  applyPreset(o.layout as LayoutPreset);
+  if (o.pw || o.tf) useSettings.getState().update({ ...(o.pw ? { panelWidth: Number(o.pw) } : {}), ...(o.tf ? { timelineFrac: Number(o.tf) } : {}) });
+  await sleep(800);
+  const geo = (tag: string) => {
+    const r = (sel: string) => {
+      const b = document.querySelector(sel)?.getBoundingClientRect();
+      return b ? [Math.round(b.left), Math.round(b.top), Math.round(b.width), Math.round(b.height)] : null;
+    };
+    const st = useSettings.getState();
+    log("autotest", `LAYOUT ${tag} ${JSON.stringify({ editor: document.querySelector(".editor")?.className, stage: r(".stage"), area: r(".stage-area"), panel: r(".side-panel"), timeline: r(".timeline"), title: r(".title-row"), side: st.panelSide, pw: st.panelWidth, tf: st.timelineFrac })}`);
+  };
+  geo("applied");
+  if (o.menu) (document.querySelector(".layout-menu .round-btn") as HTMLElement | null)?.click();
+  await sleep(500);
+  log("autotest", "layout-ready");
+  await sleep(Number(o.hold ?? 0) * 1000);
+  geo("after");
+  log("autotest", "layout-done");
 }

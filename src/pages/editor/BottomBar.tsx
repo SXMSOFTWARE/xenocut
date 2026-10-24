@@ -12,6 +12,8 @@ import { useProject } from "../../store/project";
 import { useRouter } from "../../store/router";
 import { toast } from "../../store/toast";
 import { fitTimeline } from "./commands";
+import { applyPreset, currentPreset, LAYOUT_PRESETS, resetSizes } from "./layout";
+import { useSettings } from "../../store/settings";
 import { setGrade } from "./SidePanel";
 
 const ASPECTS: Aspect[] = ["16:9", "9:16", "1:1", "4:5"];
@@ -27,7 +29,6 @@ export function BottomBar() {
   const canUndo = useProject((s) => s.past.length > 0);
   const canRedo = useProject((s) => s.future.length > 0);
   const hasClips = useProject((s) => (s.project?.clips.length ?? 0) > 0);
-  const collapsed = useEditorUi((s) => s.timelineCollapsed);
   const grade = settings.grade ?? "none";
 
   const setFormat = (aspect: Aspect, resolution: Resolution) =>
@@ -90,9 +91,7 @@ export function BottomBar() {
         <button className="round-btn hide-narrow" disabled={!canRedo} onClick={() => useProject.getState().redo()} title={`${t("editor.redo")} (Ctrl+Shift+Z)`} aria-label={t("editor.redo")}>
           <Redo2 size={14} strokeWidth={1.9} />
         </button>
-        <button className="round-btn" onClick={() => useEditorUi.setState({ timelineCollapsed: !collapsed })} title={t("editor.layout")} aria-label={t("editor.layout")} aria-pressed={collapsed}>
-          {collapsed ? <PanelBottomOpen size={14} strokeWidth={1.9} /> : <PanelBottomClose size={14} strokeWidth={1.9} />}
-        </button>
+        <LayoutMenu />
         <button className="round-btn" onClick={() => useRouter.getState().go("settings")} title={t("editor.settings")} aria-label={t("editor.settings")}>
           <Settings2 size={14} strokeWidth={1.9} />
         </button>
@@ -139,7 +138,40 @@ function DurationMenu({ close }: { close: () => void }) {
   );
 }
 
-function ChipMenu({ icon: Icon, label, title, className, children }: { icon: ComponentType<{ size?: number; strokeWidth?: number }>; label: string; title: string; className?: string; children: (close: () => void) => ReactNode }) {
+/** Layout presets, timeline toggle and size reset behind the reference's layout button. */
+function LayoutMenu() {
+  const t = useT();
+  const panelSide = useSettings((s) => s.panelSide);
+  const timelineFrac = useSettings((s) => s.timelineFrac);
+  const panelWidth = useSettings((s) => s.panelWidth);
+  const panel = useEditorUi((s) => s.panel);
+  const collapsed = useEditorUi((s) => s.timelineCollapsed);
+  const active = currentPreset({ panelSide, timelineFrac }, { panel, timelineCollapsed: collapsed });
+  return (
+    <ChipMenu round icon={collapsed ? PanelBottomOpen : PanelBottomClose} label="" title={t("editor.layout")} className="layout-menu">
+      {(close) => (
+        <>
+          <div className="menu-label">{t("editor.layout")}</div>
+          {LAYOUT_PRESETS.map((p) => (
+            <MenuItem key={p} active={p === active} onClick={() => (applyPreset(p), close())}>
+              {t(`layout.${p}` as const)}
+            </MenuItem>
+          ))}
+          <div className="menu-sep" />
+          <MenuItem active={!collapsed} onClick={() => (useEditorUi.setState({ timelineCollapsed: !collapsed }), close())}>
+            {t("layout.showTimeline")}
+          </MenuItem>
+          <MenuItem disabled={!panelWidth && !timelineFrac} onClick={() => (resetSizes(), close())}>
+            {t("layout.resetSizes")}
+          </MenuItem>
+          <div className="menu-hint">{t("layout.hint")}</div>
+        </>
+      )}
+    </ChipMenu>
+  );
+}
+
+function ChipMenu({ icon: Icon, label, title, className, round, children }: { icon: ComponentType<{ size?: number; strokeWidth?: number }>; label: string; title: string; className?: string; round?: boolean; children: (close: () => void) => ReactNode }) {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
   useEffect(() => {
@@ -155,11 +187,17 @@ function ChipMenu({ icon: Icon, label, title, className, children }: { icon: Com
   }, [open]);
   return (
     <div className={`chip-menu${className ? ` ${className}` : ""}`} ref={ref}>
-      <button className={`bar-chip${open ? " open" : ""}`} onClick={() => setOpen(!open)} title={title} aria-haspopup="menu" aria-expanded={open}>
-        <Icon size={13} strokeWidth={1.9} />
-        <span className="tnum">{label}</span>
-        <ChevronDown className="chev" size={10} strokeWidth={2} />
-      </button>
+      {round ? (
+        <button className={`round-btn${open ? " open" : ""}`} onClick={() => setOpen(!open)} title={title} aria-label={title} aria-haspopup="menu" aria-expanded={open}>
+          <Icon size={14} strokeWidth={1.9} />
+        </button>
+      ) : (
+        <button className={`bar-chip${open ? " open" : ""}`} onClick={() => setOpen(!open)} title={title} aria-haspopup="menu" aria-expanded={open}>
+          <Icon size={13} strokeWidth={1.9} />
+          <span className="tnum">{label}</span>
+          <ChevronDown className="chev" size={10} strokeWidth={2} />
+        </button>
+      )}
       {open && (
         <div className="menu" role="menu">
           {children(() => setOpen(false))}

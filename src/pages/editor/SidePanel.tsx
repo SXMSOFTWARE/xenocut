@@ -20,6 +20,8 @@ import { LyricsPanel } from "./LyricsPanel";
 import { AmvPanel } from "./AmvPanel";
 import { SubtitlesPanel } from "./SubtitlesPanel";
 import { MediaBin } from "./MediaBin";
+import { useSettings } from "../../store/settings";
+import { panelResizeDown } from "./layout";
 
 const TITLES: Record<PanelId, Key> = {
   media: "rail.media",
@@ -41,6 +43,7 @@ export function SidePanel() {
   if (!panel) return null;
   return (
     <aside className="side-panel" aria-label={t(TITLES[panel])}>
+      <div className="sp-resize" onPointerDown={panelResizeDown} onDoubleClick={() => useSettings.getState().update({ panelWidth: 0 })} title={t("layout.resizePanel")} aria-hidden />
       <div className="sp-head">
         <h2>{t(TITLES[panel])}</h2>
         <button className="sp-close" onClick={() => useEditorUi.setState({ panel: null })} title={t("rail.close")} aria-label={t("rail.close")}>

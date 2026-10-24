@@ -17,17 +17,36 @@ export interface Settings {
   subtitleLanguage: string;
   /** Text preset new subtitles get. */
   subtitleStyle: string;
+  /** Editor layout: which side the tool panel floats on. */
+  panelSide: "right" | "left";
+  /** Tool panel width in px; 0 = the reference width. */
+  panelWidth: number;
+  /** Timeline height as a fraction of the editor hero; 0 = fit the tracks. */
+  timelineFrac: number;
 }
 
 export type SubtitleModel = "tiny" | "base" | "small";
 
-const KEYS: (keyof Settings)[] = ["language", "outputDir", "projectDir", "performanceMode", "previewProxy", "autosave", "subtitleModel", "subtitleLanguage", "subtitleStyle"];
+const KEYS: (keyof Settings)[] = ["language", "outputDir", "projectDir", "performanceMode", "previewProxy", "autosave", "subtitleModel", "subtitleLanguage", "subtitleStyle", "panelSide", "panelWidth", "timelineFrac"];
 
 interface SettingsState extends Settings {
   ready: boolean;
   info: AppInfo | null;
   load: () => Promise<void>;
   update: (patch: Partial<Settings>) => void;
+}
+
+export const PANEL_W = { min: 260, max: 520 };
+export const TIMELINE_FRAC = { min: 0.18, max: 0.7 };
+
+export function clampPanelWidth(w: unknown): number {
+  const n = typeof w === "number" && Number.isFinite(w) ? Math.round(w) : 0;
+  return n <= 0 ? 0 : Math.min(PANEL_W.max, Math.max(PANEL_W.min, n));
+}
+
+export function clampTimelineFrac(f: unknown): number {
+  const n = typeof f === "number" && Number.isFinite(f) ? f : 0;
+  return n <= 0 ? 0 : Math.min(TIMELINE_FRAC.max, Math.max(TIMELINE_FRAC.min, +n.toFixed(3)));
 }
 
 function apply(settings: Settings) {
@@ -46,6 +65,9 @@ export const useSettings = create<SettingsState>((set, get) => ({
   subtitleModel: "base",
   subtitleLanguage: "auto",
   subtitleStyle: "subtitle",
+  panelSide: "right",
+  panelWidth: 0,
+  timelineFrac: 0,
   ready: false,
   info: null,
   load: async () => {
@@ -63,6 +85,9 @@ export const useSettings = create<SettingsState>((set, get) => ({
       subtitleModel: saved.subtitleModel === "tiny" || saved.subtitleModel === "small" ? saved.subtitleModel : "base",
       subtitleLanguage: typeof saved.subtitleLanguage === "string" ? saved.subtitleLanguage : "auto",
       subtitleStyle: typeof saved.subtitleStyle === "string" ? saved.subtitleStyle : "subtitle",
+      panelSide: saved.panelSide === "left" ? "left" : "right",
+      panelWidth: clampPanelWidth(saved.panelWidth),
+      timelineFrac: clampTimelineFrac(saved.timelineFrac),
     };
     apply(settings);
     set({ ...settings, info, ready: true });
