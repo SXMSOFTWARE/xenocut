@@ -24,6 +24,7 @@ interface MediaTransport {
   base: string | null;
   logPath: string | null;
   autotest: string | null;
+  autotestOpts?: string | null;
 }
 
 /** Filled once at boot by `initBackend()`. */
@@ -100,6 +101,16 @@ export async function revealInFolder(path: string): Promise<void> {
   if (!isTauri) return;
   const { revealItemInDir } = await import("@tauri-apps/plugin-opener");
   await revealItemInDir(path);
+}
+
+/** Open an http(s) link in the system browser, never inside the webview. */
+export async function openExternal(url: string): Promise<void> {
+  if (!isTauri) {
+    window.open(url, "_blank", "noopener");
+    return;
+  }
+  const { openUrl } = await import("@tauri-apps/plugin-opener");
+  await openUrl(url);
 }
 
 /** Native file drops onto the window (desktop only). */

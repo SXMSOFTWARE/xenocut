@@ -256,4 +256,10 @@ export const en: Record<keyof typeof tr, string> = {
   "text.title": "Text",
   "text.soon": "Text and title layers are not available yet. This version does not add text to exports.",
   "effects.title": "Clip",
+  "about.title": "About",
+  "about.by": "XenoCut is made by SXMWARE",
+  "about.version": "Version",
+  "about.projects": "Our other projects",
+  "about.support": "Support",
+  "about.supportText": "XenoCut is free. If you like it, you can support its development.",
 };

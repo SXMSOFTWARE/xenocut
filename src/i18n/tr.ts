@@ -266,4 +266,10 @@ export const tr = {
   "text.title": "Metin",
   "text.soon": "Metin ve başlık katmanları henüz yok. Bu sürümde dışa aktarıma metin eklenmez.",
   "effects.title": "Klip",
+  "about.title": "Hakkında",
+  "about.by": "XenoCut, SXMWARE tarafından hazırlandı",
+  "about.version": "Sürüm",
+  "about.projects": "Diğer projelerimiz",
+  "about.support": "Destek ol",
+  "about.supportText": "XenoCut ücretsiz. Beğendiysen geliştirmeye destek olabilirsin.",
 };

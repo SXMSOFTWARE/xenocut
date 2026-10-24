@@ -92,11 +92,67 @@
 .settings-note {
   padding: 0 0 14px;
 }
-.settings-group.about {
-  background: transparent;
-  border: 0;
+.about-head {
+  display: flex;
   align-items: center;
+  gap: 14px;
+  padding: 8px 0 16px;
+}
+.about-mark {
+  width: 44px;
+  height: 44px;
+  flex: none;
+  display: grid;
+  place-items: center;
+  border-radius: var(--r-lg);
+  background: var(--accent-gradient);
+  color: #fff;
+  font-weight: 700;
+  font-size: 20px;
+}
+.about-id {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+.about-id b {
+  font-weight: 600;
+}
+.about-id .muted {
   font-size: var(--fs-sm);
+}
+.row-actions.wrap {
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+.row-actions .btn svg {
+  width: 13px;
+  height: 13px;
+}
+.donate-pill {
+  height: 30px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0 16px;
+  border-radius: var(--r-pill);
+  font-size: var(--fs-sm);
+  font-weight: 600;
+  color: #fff;
+  transition: filter var(--t-fast) var(--ease);
+}
+.donate-pill:hover {
+  filter: brightness(1.1);
+}
+.donate-pill svg {
+  width: 14px;
+  height: 14px;
+}
+.donate-pill.paypal {
+  background: #0070ba;
+}
+.donate-pill.kofi {
+  background: #ff5e5b;
 }
 
 @media (max-width: 760px) {

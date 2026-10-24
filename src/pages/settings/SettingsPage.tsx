@@ -1,8 +1,8 @@
 import { useCallback, useEffect, useState } from "react";
-import { ArrowLeft, Cpu, Download, FolderOpen, Gauge, HardDrive, Languages, Save, Trash2 } from "lucide-react";
+import { ArrowLeft, ArrowUpRight, Coffee, Heart, Info, Cpu, Download, FolderOpen, Gauge, HardDrive, Languages, Save, Trash2 } from "lucide-react";
 import { Segmented, Switch } from "../../components/controls";
 import { useT } from "../../i18n";
-import { api, listen, pickFolder, revealInFolder, type ProgressEvent } from "../../lib/backend";
+import { api, listen, openExternal, pickFolder, revealInFolder, type ProgressEvent } from "../../lib/backend";
 import { bytes, messageOf } from "../../lib/format";
 import { useRouter } from "../../store/router";
 import { useSettings, type Language } from "../../store/settings";
@@ -173,16 +173,50 @@ export default function SettingsPage() {
             {model && <p className="path-note settings-note">{model.name} · {model.path}</p>}
           </section>
 
-          <section className="settings-group about">
-            <span className="muted">
-              XenoCut {s.info?.version ?? ""} · {s.info?.os ?? ""}
-            </span>
+          <section className="settings-group about-card">
+            <h2 className="section-title">
+              <Info /> {t("about.title")}
+            </h2>
+            <div className="about-head">
+              <div className="about-mark" aria-hidden="true">X</div>
+              <div className="about-id">
+                <b>{t("about.by")}</b>
+                <span className="muted tnum">
+                  {t("about.version")} {s.info?.version ?? ""} · {s.info?.os ?? ""}
+                </span>
+              </div>
+            </div>
+            <Row title={t("about.projects")} text="sxmusic.lol · sxmtools.cc · sxreaper.xyz">
+              <div className="row-actions wrap">
+                {PROJECTS.map((p) => (
+                  <button key={p.url} className="btn btn-sm" onClick={() => void openExternal(p.url)}>
+                    {p.name} <ArrowUpRight />
+                  </button>
+                ))}
+              </div>
+            </Row>
+            <Row title={t("about.support")} text={t("about.supportText")} icon={<Heart />}>
+              <div className="row-actions wrap">
+                <button className="donate-pill paypal" onClick={() => void openExternal("https://www.paypal.com/paypalme/enes930")}>
+                  PayPal
+                </button>
+                <button className="donate-pill kofi" onClick={() => void openExternal("https://ko-fi.com/ensxm")}>
+                  <Coffee /> Ko-fi
+                </button>
+              </div>
+            </Row>
           </section>
         </div>
       </div>
     </div>
   );
 }
+
+const PROJECTS = [
+  { name: "SXMusic", url: "https://sxmusic.lol" },
+  { name: "SXMTools", url: "https://sxmtools.cc" },
+  { name: "SXReaper", url: "https://sxreaper.xyz" },
+];
 
 function Row({ title, text, icon, children }: { title: string; text: string; icon?: React.ReactNode; children: React.ReactNode }) {
   return (
