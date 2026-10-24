@@ -9,7 +9,11 @@ impl MusicProvider for LocalMusicProvider {
         "local-file"
     }
 
-    fn import(&self, request: &MusicRequest, progress: &dyn ProgressSink) -> Result<std::path::PathBuf, AudioError> {
+    fn import(
+        &self,
+        request: &MusicRequest,
+        progress: &dyn ProgressSink,
+    ) -> Result<std::path::PathBuf, AudioError> {
         cancel::check()?;
         let path = &request.path;
         if !path.is_file() {

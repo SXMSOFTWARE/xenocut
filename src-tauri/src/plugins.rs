@@ -104,11 +104,16 @@ pub fn valid_id(id: &str) -> bool {
     let b = id.as_bytes();
     (2..=64).contains(&b.len())
         && b[0].is_ascii_alphanumeric()
-        && b.iter().all(|c| c.is_ascii_lowercase() || c.is_ascii_digit() || b"._-".contains(c))
+        && b.iter()
+            .all(|c| c.is_ascii_lowercase() || c.is_ascii_digit() || b"._-".contains(c))
 }
 
 fn entry_id(id: &str) -> bool {
-    !id.is_empty() && id.len() <= 48 && id.bytes().all(|c| c.is_ascii_alphanumeric() || b"_-".contains(&c))
+    !id.is_empty()
+        && id.len() <= 48
+        && id
+            .bytes()
+            .all(|c| c.is_ascii_alphanumeric() || b"_-".contains(&c))
 }
 
 /// A relative asset path inside the pack: no absolute paths, `..`, or odd extensions.
@@ -132,10 +137,16 @@ fn safe_rel(path: &str) -> Option<PathBuf> {
 /// Checks everything in a manifest; `dir` (when given) must hold the referenced files.
 pub fn validate(m: &Manifest, dir: Option<&Path>) -> Result<(), String> {
     if m.format != FORMAT {
-        return Err(format!("unsupported pack format \"{}\" (expected {FORMAT})", m.format));
+        return Err(format!(
+            "unsupported pack format \"{}\" (expected {FORMAT})",
+            m.format
+        ));
     }
     if !valid_id(&m.id) {
-        return Err(format!("invalid pack id \"{}\" (use a-z, 0-9, . _ -)", m.id));
+        return Err(format!(
+            "invalid pack id \"{}\" (use a-z, 0-9, . _ -)",
+            m.id
+        ));
     }
     let short = |s: &str, n: usize| !s.trim().is_empty() && s.chars().count() <= n;
     if !short(&m.name, 64) || !short(&m.version, 32) || !short(&m.license, 64) {
@@ -169,10 +180,14 @@ pub fn validate(m: &Manifest, dir: Option<&Path>) -> Result<(), String> {
             return Err(format!("effect {}: 1 to 12 layers", e.id));
         }
         for (kind, amount) in &e.stack {
-            let signed = ["brightness", "contrast", "saturation", "temperature"].contains(&kind.as_str());
+            let signed =
+                ["brightness", "contrast", "saturation", "temperature"].contains(&kind.as_str());
             let range = if signed { -1.0..=1.0 } else { 0.0..=1.0 };
             if !crate::effects::is_primitive(kind) || !range.contains(amount) {
-                return Err(format!("effect {}: unknown kind {kind} or amount out of range", e.id));
+                return Err(format!(
+                    "effect {}: unknown kind {kind} or amount out of range",
+                    e.id
+                ));
             }
         }
     }
@@ -184,24 +199,42 @@ pub fn validate(m: &Manifest, dir: Option<&Path>) -> Result<(), String> {
         if a.duration.is_some_and(|d| !(0.1..=10.0).contains(&d)) {
             return Err(format!("animation {}: duration out of 0.1..10", a.id));
         }
-        let keys: &[&str] = if a.slot == "combo" { &["terms", "fx"] } else { &["s", "tx", "ty", "rot", "alpha", "alphaSpan", "curve", "fx"] };
-        if let Some(bad) = a.spec.as_object().ok_or(format!("animation {}: spec must be an object", a.id))?.keys().find(|k| !keys.contains(&k.as_str())) {
+        let keys: &[&str] = if a.slot == "combo" {
+            &["terms", "fx"]
+        } else {
+            &["s", "tx", "ty", "rot", "alpha", "alphaSpan", "curve", "fx"]
+        };
+        if let Some(bad) = a
+            .spec
+            .as_object()
+            .ok_or(format!("animation {}: spec must be an object", a.id))?
+            .keys()
+            .find(|k| !keys.contains(&k.as_str()))
+        {
             return Err(format!("animation {}: unknown spec field {bad}", a.id));
         }
-        crate::anims::validate_spec(a.slot == "combo", &a.spec).map_err(|e| format!("animation {}: {e}", a.id))?;
+        crate::anims::validate_spec(a.slot == "combo", &a.spec)
+            .map_err(|e| format!("animation {}: {e}", a.id))?;
     }
     for l in &m.luts {
         fresh("lut", &l.id)?;
-        let rel = safe_rel(&l.file).filter(|p| p.extension().is_some_and(|e| e.eq_ignore_ascii_case("cube")));
+        let rel = safe_rel(&l.file).filter(|p| {
+            p.extension()
+                .is_some_and(|e| e.eq_ignore_ascii_case("cube"))
+        });
         let rel = rel.ok_or_else(|| format!("lut {}: bad file path", l.id))?;
         if let Some(dir) = dir {
-            let text = std::fs::read_to_string(dir.join(&rel)).map_err(|e| format!("lut {}: {e}", l.id))?;
+            let text = std::fs::read_to_string(dir.join(&rel))
+                .map_err(|e| format!("lut {}: {e}", l.id))?;
             parse_cube(&text).map_err(|e| format!("lut {}: {e}", l.id))?;
         }
     }
     for t in &m.text_presets {
         fresh("text", &t.id)?;
-        if t.style.is_empty() || t.style.len() > 40 || t.style.values().any(|v| v.is_object() || v.is_array()) {
+        if t.style.is_empty()
+            || t.style.len() > 40
+            || t.style.values().any(|v| v.is_object() || v.is_array())
+        {
             return Err(format!("text preset {}: style must be a flat object", t.id));
         }
     }
@@ -211,8 +244,16 @@ pub fn validate(m: &Manifest, dir: Option<&Path>) -> Result<(), String> {
             return Err("thumbnail file missing".into());
         }
     }
-    let names = m.effects.iter().map(|e| &e.name).chain(m.animations.iter().map(|a| &a.name));
-    if names.chain(m.luts.iter().map(|l| &l.name)).chain(m.text_presets.iter().map(|t| &t.name)).any(|n| !short(n, 48)) {
+    let names = m
+        .effects
+        .iter()
+        .map(|e| &e.name)
+        .chain(m.animations.iter().map(|a| &a.name));
+    if names
+        .chain(m.luts.iter().map(|l| &l.name))
+        .chain(m.text_presets.iter().map(|t| &t.name))
+        .any(|n| !short(n, 48))
+    {
         return Err("every entry needs a name (max 48 chars)".into());
     }
     Ok(())
@@ -253,7 +294,10 @@ pub fn parse_cube(text: &str) -> Result<Cube, String> {
         match parts[0] {
             "TITLE" => {}
             "LUT_3D_SIZE" => {
-                size = parts.get(1).and_then(|s| s.parse().ok()).ok_or("bad LUT_3D_SIZE")?;
+                size = parts
+                    .get(1)
+                    .and_then(|s| s.parse().ok())
+                    .ok_or("bad LUT_3D_SIZE")?;
                 if !(2..=MAX_LUT_SIZE).contains(&size) {
                     return Err(format!("LUT size {size} not in 2..{MAX_LUT_SIZE}"));
                 }
@@ -275,24 +319,42 @@ pub fn parse_cube(text: &str) -> Result<Cube, String> {
         return Err("missing LUT_3D_SIZE".into());
     }
     if data.len() != size * size * size * 3 {
-        return Err(format!("expected {} entries, found {}", size * size * size, data.len() / 3));
+        return Err(format!(
+            "expected {} entries, found {}",
+            size * size * size,
+            data.len() / 3
+        ));
     }
     if (0..3).any(|i| max[i] <= min[i]) {
         return Err("bad DOMAIN".into());
     }
-    Ok(Cube { size, domain_min: min, domain_max: max, data })
+    Ok(Cube {
+        size,
+        domain_min: min,
+        domain_max: max,
+        data,
+    })
 }
 
 /// The LUT mixed with identity by `amount`, as `.cube` text (for FFmpeg's `lut3d`).
 pub fn bake_cube(c: &Cube, amount: f64) -> String {
     let a = amount.clamp(0.0, 1.0) as f32;
     let n = c.size;
-    let mut out = format!("LUT_3D_SIZE {n}\nDOMAIN_MIN {} {} {}\nDOMAIN_MAX {} {} {}\n", c.domain_min[0], c.domain_min[1], c.domain_min[2], c.domain_max[0], c.domain_max[1], c.domain_max[2]);
+    let mut out = format!(
+        "LUT_3D_SIZE {n}\nDOMAIN_MIN {} {} {}\nDOMAIN_MAX {} {} {}\n",
+        c.domain_min[0],
+        c.domain_min[1],
+        c.domain_min[2],
+        c.domain_max[0],
+        c.domain_max[1],
+        c.domain_max[2]
+    );
     for i in 0..n * n * n {
         let idx = [i % n, (i / n) % n, i / (n * n)];
         let v: Vec<String> = (0..3)
             .map(|ch| {
-                let ident = c.domain_min[ch] + (c.domain_max[ch] - c.domain_min[ch]) * idx[ch] as f32 / (n - 1) as f32;
+                let ident = c.domain_min[ch]
+                    + (c.domain_max[ch] - c.domain_min[ch]) * idx[ch] as f32 / (n - 1) as f32;
                 format!("{:.6}", ident + (c.data[i * 3 + ch] - ident) * a)
             })
             .collect();
@@ -311,7 +373,11 @@ pub fn lut_filter(path: &str, amount: f64) -> Result<Option<String>, String> {
     let text = std::fs::read_to_string(path).map_err(|e| format!("LUT {path}: {e}"))?;
     let cube = parse_cube(&text).map_err(|e| format!("LUT {path}: {e}"))?;
     let baked = bake_cube(&cube, amount);
-    let digest: String = Sha256::digest(baked.as_bytes()).iter().take(10).map(|b| format!("{b:02x}")).collect();
+    let digest: String = Sha256::digest(baked.as_bytes())
+        .iter()
+        .take(10)
+        .map(|b| format!("{b:02x}"))
+        .collect();
     let dir = std::env::temp_dir().join("xenocut-luts");
     std::fs::create_dir_all(&dir).map_err(|e| e.to_string())?;
     let file = dir.join(format!("{digest}.cube"));
@@ -322,7 +388,10 @@ pub fn lut_filter(path: &str, amount: f64) -> Result<Option<String>, String> {
     if p.contains('\'') {
         return Err("temp folder path contains a quote".into());
     }
-    Ok(Some(format!("lut3d=file='{}':interp=tetrahedral", p.replace(':', "\\:"))))
+    Ok(Some(format!(
+        "lut3d=file='{}':interp=tetrahedral",
+        p.replace(':', "\\:")
+    )))
 }
 
 // ---------------------------------------------------------------- store
@@ -337,12 +406,19 @@ impl Store {
     }
 
     fn state(&self) -> State {
-        std::fs::read(self.root.join("state.json")).ok().and_then(|b| serde_json::from_slice(&b).ok()).unwrap_or_default()
+        std::fs::read(self.root.join("state.json"))
+            .ok()
+            .and_then(|b| serde_json::from_slice(&b).ok())
+            .unwrap_or_default()
     }
 
     fn save_state(&self, s: &State) -> Result<(), String> {
         std::fs::create_dir_all(&self.root).map_err(|e| e.to_string())?;
-        std::fs::write(self.root.join("state.json"), serde_json::to_vec_pretty(s).unwrap()).map_err(|e| e.to_string())
+        std::fs::write(
+            self.root.join("state.json"),
+            serde_json::to_vec_pretty(s).unwrap(),
+        )
+        .map_err(|e| e.to_string())
     }
 
     pub fn list(&self) -> Vec<Installed> {
@@ -354,28 +430,48 @@ impl Store {
             .filter(|e| e.path().is_dir())
             .filter_map(|e| {
                 let dir = e.path();
-                let m: Manifest = serde_json::from_slice(&std::fs::read(dir.join("manifest.json")).ok()?).ok()?;
-                if Some(m.id.as_str()) != dir.file_name()?.to_str() || validate(&m, Some(&dir)).is_err() {
+                let m: Manifest =
+                    serde_json::from_slice(&std::fs::read(dir.join("manifest.json")).ok()?).ok()?;
+                if Some(m.id.as_str()) != dir.file_name()?.to_str()
+                    || validate(&m, Some(&dir)).is_err()
+                {
                     return None;
                 }
-                Some(Installed { enabled: !disabled.contains(&m.id), bytes: dir_bytes(&dir), dir: dir.to_string_lossy().into(), manifest: m })
+                Some(Installed {
+                    enabled: !disabled.contains(&m.id),
+                    bytes: dir_bytes(&dir),
+                    dir: dir.to_string_lossy().into(),
+                    manifest: m,
+                })
             })
             .collect();
-        out.sort_by(|a, b| a.manifest.name.to_lowercase().cmp(&b.manifest.name.to_lowercase()));
+        out.sort_by(|a, b| {
+            a.manifest
+                .name
+                .to_lowercase()
+                .cmp(&b.manifest.name.to_lowercase())
+        });
         out
     }
 
     /// Installs (or replaces) a pack from a staged folder that holds `manifest.json`.
     fn install_dir(&self, staged: &Path) -> Result<Installed, String> {
-        let m: Manifest = serde_json::from_slice(&std::fs::read(staged.join("manifest.json")).map_err(|_| "manifest.json not found in the pack".to_string())?)
-            .map_err(|e| format!("manifest.json: {e}"))?;
+        let m: Manifest = serde_json::from_slice(
+            &std::fs::read(staged.join("manifest.json"))
+                .map_err(|_| "manifest.json not found in the pack".to_string())?,
+        )
+        .map_err(|e| format!("manifest.json: {e}"))?;
         validate(&m, Some(staged))?;
         let mut files = 0usize;
         let mut total = 0u64;
         walk(staged, &mut |p, len| {
             files += 1;
             total += len;
-            let rel = p.strip_prefix(staged).unwrap().to_string_lossy().replace('\\', "/");
+            let rel = p
+                .strip_prefix(staged)
+                .unwrap()
+                .to_string_lossy()
+                .replace('\\', "/");
             if safe_rel(&rel).is_none() {
                 return Err(format!("file type not allowed in a pack: {rel}"));
             }
@@ -394,7 +490,12 @@ impl Store {
         let mut s = self.state();
         s.disabled.retain(|d| d != &m.id);
         self.save_state(&s)?;
-        Ok(Installed { enabled: true, bytes: dir_bytes(&dest), dir: dest.to_string_lossy().into(), manifest: m })
+        Ok(Installed {
+            enabled: true,
+            bytes: dir_bytes(&dest),
+            dir: dest.to_string_lossy().into(),
+            manifest: m,
+        })
     }
 
     /// `.xcpack` / `.zip`, a folder with `manifest.json`, or a `.cube` file.
@@ -402,9 +503,16 @@ impl Store {
         let staging = self.root.join(".staging");
         let _ = std::fs::remove_dir_all(&staging);
         std::fs::create_dir_all(&staging).map_err(|e| e.to_string())?;
-        let ext = match path.extension().and_then(|e| e.to_str()).unwrap_or("").to_ascii_lowercase() {
+        let ext = match path
+            .extension()
+            .and_then(|e| e.to_str())
+            .unwrap_or("")
+            .to_ascii_lowercase()
+        {
             // Android pickers can hand over files without their name: look at the bytes.
-            e if !matches!(e.as_str(), "cube" | "xcpack" | "zip") && path.is_file() => sniff(path).unwrap_or(e),
+            e if !matches!(e.as_str(), "cube" | "xcpack" | "zip") && path.is_file() => {
+                sniff(path).unwrap_or(e)
+            }
             e => e,
         };
         let result = if path.is_dir() {
@@ -450,9 +558,18 @@ impl Store {
 
     /// Parsed LUT for preview; only files inside the plugins folder.
     pub fn lut(&self, path: &Path) -> Result<Cube, String> {
-        let root = self.root.canonicalize().map_err(|_| "no plugins installed".to_string())?;
-        let file = path.canonicalize().map_err(|_| "LUT file not found".to_string())?;
-        if !file.starts_with(&root) || !file.extension().is_some_and(|e| e.eq_ignore_ascii_case("cube")) {
+        let root = self
+            .root
+            .canonicalize()
+            .map_err(|_| "no plugins installed".to_string())?;
+        let file = path
+            .canonicalize()
+            .map_err(|_| "LUT file not found".to_string())?;
+        if !file.starts_with(&root)
+            || !file
+                .extension()
+                .is_some_and(|e| e.eq_ignore_ascii_case("cube"))
+        {
             return Err("not a plugin LUT".into());
         }
         parse_cube(&std::fs::read_to_string(&file).map_err(|e| e.to_string())?)
@@ -486,7 +603,9 @@ fn copy_dir(from: &Path, to: &Path) -> Result<(), String> {
     walk(from, &mut |p, _| {
         let dest = to.join(p.strip_prefix(from).unwrap());
         std::fs::create_dir_all(dest.parent().unwrap()).map_err(|e| e.to_string())?;
-        std::fs::copy(p, &dest).map(|_| ()).map_err(|e| e.to_string())
+        std::fs::copy(p, &dest)
+            .map(|_| ())
+            .map_err(|e| e.to_string())
     })
 }
 
@@ -494,7 +613,8 @@ fn copy_dir(from: &Path, to: &Path) -> Result<(), String> {
 /// top-level folder). Rejects traversal, links, odd file types and zip bombs.
 fn unzip(path: &Path, staging: &Path) -> Result<PathBuf, String> {
     let file = std::fs::File::open(path).map_err(|e| e.to_string())?;
-    let mut zip = zip::ZipArchive::new(file).map_err(|e| format!("not a valid pack archive: {e}"))?;
+    let mut zip =
+        zip::ZipArchive::new(file).map_err(|e| format!("not a valid pack archive: {e}"))?;
     if zip.len() > MAX_FILES * 2 {
         return Err("the pack is too large".into());
     }
@@ -508,7 +628,9 @@ fn unzip(path: &Path, staging: &Path) -> Result<PathBuf, String> {
         if entry.is_symlink() {
             return Err("packs can't contain links".into());
         }
-        let rel = entry.enclosed_name().and_then(|p| safe_rel(&p.to_string_lossy().replace('\\', "/")).map(|_| p));
+        let rel = entry
+            .enclosed_name()
+            .and_then(|p| safe_rel(&p.to_string_lossy().replace('\\', "/")).map(|_| p));
         let rel = rel.ok_or_else(|| format!("file not allowed in a pack: {name}"))?;
         if entry.size() > MAX_FILE_BYTES {
             return Err("the pack is too large".into());
@@ -526,7 +648,11 @@ fn unzip(path: &Path, staging: &Path) -> Result<PathBuf, String> {
     if staging.join("manifest.json").is_file() {
         return Ok(staging.to_path_buf());
     }
-    let dirs: Vec<PathBuf> = std::fs::read_dir(staging).map_err(|e| e.to_string())?.flatten().map(|e| e.path()).collect();
+    let dirs: Vec<PathBuf> = std::fs::read_dir(staging)
+        .map_err(|e| e.to_string())?
+        .flatten()
+        .map(|e| e.path())
+        .collect();
     match dirs.as_slice() {
         [only] if only.join("manifest.json").is_file() => Ok(only.clone()),
         _ => Err("manifest.json not found in the pack".into()),
@@ -542,7 +668,11 @@ fn slug(s: &str) -> String {
             out.push('-');
         }
     }
-    let out = out.trim_end_matches('-').chars().take(40).collect::<String>();
+    let out = out
+        .trim_end_matches('-')
+        .chars()
+        .take(40)
+        .collect::<String>();
     if out.len() < 2 { "lut".into() } else { out }
 }
 
@@ -551,8 +681,19 @@ fn wrap_cube(path: &Path, staging: &Path) -> Result<(), String> {
     let text = std::fs::read_to_string(path).map_err(|e| e.to_string())?;
     parse_cube(&text)?;
     let stem = path.file_stem().and_then(|s| s.to_str()).unwrap_or("LUT");
-    let title = text.lines().find_map(|l| l.trim().strip_prefix("TITLE").map(|t| t.trim().trim_matches('"').to_string())).filter(|t| !t.is_empty());
-    let name: String = title.unwrap_or_else(|| stem.to_string()).chars().take(48).collect();
+    let title = text
+        .lines()
+        .find_map(|l| {
+            l.trim()
+                .strip_prefix("TITLE")
+                .map(|t| t.trim().trim_matches('"').to_string())
+        })
+        .filter(|t| !t.is_empty());
+    let name: String = title
+        .unwrap_or_else(|| stem.to_string())
+        .chars()
+        .take(48)
+        .collect();
     let id = slug(stem);
     std::fs::write(staging.join(format!("{id}.cube")), &text).map_err(|e| e.to_string())?;
     let m = Manifest {
@@ -567,10 +708,18 @@ fn wrap_cube(path: &Path, staging: &Path) -> Result<(), String> {
         thumbnail: None,
         effects: vec![],
         animations: vec![],
-        luts: vec![LutEntry { id: id.replace('.', "-"), name, file: format!("{id}.cube") }],
+        luts: vec![LutEntry {
+            id: id.replace('.', "-"),
+            name,
+            file: format!("{id}.cube"),
+        }],
         text_presets: vec![],
     };
-    std::fs::write(staging.join("manifest.json"), serde_json::to_vec_pretty(&m).unwrap()).map_err(|e| e.to_string())
+    std::fs::write(
+        staging.join("manifest.json"),
+        serde_json::to_vec_pretty(&m).unwrap(),
+    )
+    .map_err(|e| e.to_string())
 }
 
 /// The kind of an unnamed file from its first bytes: "zip" or "cube".
@@ -586,43 +735,77 @@ fn sniff(path: &Path) -> Option<String> {
     text.contains("LUT_3D_SIZE").then(|| "cube".into())
 }
 
-pub const CATALOG_URL: &str = "https://raw.githubusercontent.com/sxmsoft/xenocut/main/catalog/index.json";
+pub const CATALOG_URL: &str =
+    "https://raw.githubusercontent.com/sxmsoft/xenocut/main/catalog/index.json";
 
 /// The catalog that ships inside the app: the same index, packs and card images as `catalog/`,
 /// so the Catalog page works offline and while the remote one is unreachable.
 const BUNDLED_INDEX: &str = include_str!("../../catalog/index.json");
 const BUNDLED_PACKS: &[(&str, &[u8])] = &[
-    ("xenocut.creative-color-1.0.0.xcpack", include_bytes!("../../catalog/packs/xenocut.creative-color-1.0.0.xcpack")),
-    ("xenocut.film-looks-1.0.0.xcpack", include_bytes!("../../catalog/packs/xenocut.film-looks-1.0.0.xcpack")),
-    ("xenocut.motion-essentials-1.0.0.xcpack", include_bytes!("../../catalog/packs/xenocut.motion-essentials-1.0.0.xcpack")),
-    ("xenocut.social-looks-1.0.0.xcpack", include_bytes!("../../catalog/packs/xenocut.social-looks-1.0.0.xcpack")),
-    ("xenocut.title-styles-1.0.0.xcpack", include_bytes!("../../catalog/packs/xenocut.title-styles-1.0.0.xcpack")),
+    (
+        "xenocut.creative-color-1.0.0.xcpack",
+        include_bytes!("../../catalog/packs/xenocut.creative-color-1.0.0.xcpack"),
+    ),
+    (
+        "xenocut.film-looks-1.0.0.xcpack",
+        include_bytes!("../../catalog/packs/xenocut.film-looks-1.0.0.xcpack"),
+    ),
+    (
+        "xenocut.motion-essentials-1.0.0.xcpack",
+        include_bytes!("../../catalog/packs/xenocut.motion-essentials-1.0.0.xcpack"),
+    ),
+    (
+        "xenocut.social-looks-1.0.0.xcpack",
+        include_bytes!("../../catalog/packs/xenocut.social-looks-1.0.0.xcpack"),
+    ),
+    (
+        "xenocut.title-styles-1.0.0.xcpack",
+        include_bytes!("../../catalog/packs/xenocut.title-styles-1.0.0.xcpack"),
+    ),
 ];
 const BUNDLED_THUMBS: &[(&str, &[u8])] = &[
-    ("xenocut.creative-color", include_bytes!("../../catalog/thumbs/xenocut.creative-color.jpg")),
-    ("xenocut.film-looks", include_bytes!("../../catalog/thumbs/xenocut.film-looks.jpg")),
+    (
+        "xenocut.creative-color",
+        include_bytes!("../../catalog/thumbs/xenocut.creative-color.jpg"),
+    ),
+    (
+        "xenocut.film-looks",
+        include_bytes!("../../catalog/thumbs/xenocut.film-looks.jpg"),
+    ),
 ];
 
 fn base64(data: &[u8]) -> String {
     const T: &[u8; 64] = b"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
     let mut out = String::with_capacity(data.len().div_ceil(3) * 4);
     for c in data.chunks(3) {
-        let n = (c[0] as u32) << 16 | (*c.get(1).unwrap_or(&0) as u32) << 8 | *c.get(2).unwrap_or(&0) as u32;
+        let n = (c[0] as u32) << 16
+            | (*c.get(1).unwrap_or(&0) as u32) << 8
+            | *c.get(2).unwrap_or(&0) as u32;
         for i in 0..4 {
-            out.push(if i <= c.len() { T[(n >> (18 - 6 * i) & 63) as usize] as char } else { '=' });
+            out.push(if i <= c.len() {
+                T[(n >> (18 - 6 * i) & 63) as usize] as char
+            } else {
+                '='
+            });
         }
     }
     out
 }
 
 fn sha_hex(data: &[u8]) -> String {
-    Sha256::digest(data).iter().map(|b| format!("{b:02x}")).collect()
+    Sha256::digest(data)
+        .iter()
+        .map(|b| format!("{b:02x}"))
+        .collect()
 }
 
 /// A bundled pack whose file name and checksum match a catalog entry.
 fn bundled_pack(url: &str, sha256: &str) -> Option<&'static [u8]> {
     let name = url.rsplit('/').next()?;
-    BUNDLED_PACKS.iter().find(|(n, d)| *n == name && sha_hex(d).eq_ignore_ascii_case(sha256)).map(|(_, d)| *d)
+    BUNDLED_PACKS
+        .iter()
+        .find(|(n, d)| *n == name && sha_hex(d).eq_ignore_ascii_case(sha256))
+        .map(|(_, d)| *d)
 }
 
 fn parse_catalog(text: &str) -> Result<Value, String> {
@@ -637,8 +820,15 @@ fn parse_catalog(text: &str) -> Result<Value, String> {
 }
 
 fn fetch_remote(source: &str) -> Result<String, String> {
-    let client = reqwest::blocking::Client::builder().user_agent("xenocut").timeout(std::time::Duration::from_secs(15)).build().map_err(|e| e.to_string())?;
-    let resp = client.get(source).send().map_err(|e| format!("catalog unreachable: {e}"))?;
+    let client = reqwest::blocking::Client::builder()
+        .user_agent("xenocut")
+        .timeout(std::time::Duration::from_secs(15))
+        .build()
+        .map_err(|e| e.to_string())?;
+    let resp = client
+        .get(source)
+        .send()
+        .map_err(|e| format!("catalog unreachable: {e}"))?;
     if !resp.status().is_success() {
         return Err(format!("catalog returned {}", resp.status()));
     }
@@ -649,9 +839,13 @@ fn fetch_remote(source: &str) -> Result<String, String> {
 /// Card images that ship in the app are inlined so they show offline. `XENOCUT_CATALOG`
 /// (an https URL or a local file) overrides the source for tests.
 pub fn fetch_catalog() -> Result<Value, String> {
-    let custom = std::env::var("XENOCUT_CATALOG").ok().filter(|s| !s.is_empty());
+    let custom = std::env::var("XENOCUT_CATALOG")
+        .ok()
+        .filter(|s| !s.is_empty());
     let mut v = match &custom {
-        Some(source) if !source.starts_with("https://") => parse_catalog(&std::fs::read_to_string(source).map_err(|e| format!("catalog {source}: {e}"))?)?,
+        Some(source) if !source.starts_with("https://") => parse_catalog(
+            &std::fs::read_to_string(source).map_err(|e| format!("catalog {source}: {e}"))?,
+        )?,
         Some(source) => parse_catalog(&fetch_remote(source)?)?,
         None => match fetch_remote(CATALOG_URL).and_then(|t| parse_catalog(&t)) {
             Ok(mut v) => {
@@ -668,7 +862,11 @@ pub fn fetch_catalog() -> Result<Value, String> {
     };
     if let Some(packs) = v.get_mut("packs").and_then(|p| p.as_array_mut()) {
         for p in packs {
-            let id = p.get("id").and_then(|i| i.as_str()).unwrap_or("").to_string();
+            let id = p
+                .get("id")
+                .and_then(|i| i.as_str())
+                .unwrap_or("")
+                .to_string();
             if let Some((_, jpg)) = BUNDLED_THUMBS.iter().find(|(n, _)| *n == id) {
                 p["thumbnail"] = Value::from(format!("data:image/jpeg;base64,{}", base64(jpg)));
             }
@@ -680,9 +878,14 @@ pub fn fetch_catalog() -> Result<Value, String> {
 /// Downloads a catalog pack (https only, sha256 required) and installs it.
 pub fn install_url(store: &Store, url: &str, sha256: &str) -> Result<Installed, String> {
     // Test catalogs (XENOCUT_CATALOG pointing at a file) may list local packs.
-    if !url.starts_with("https://") && std::env::var("XENOCUT_CATALOG").is_ok_and(|c| !c.starts_with("https://")) {
+    if !url.starts_with("https://")
+        && std::env::var("XENOCUT_CATALOG").is_ok_and(|c| !c.starts_with("https://"))
+    {
         let path = Path::new(url);
-        let digest: String = Sha256::digest(std::fs::read(path).map_err(|e| e.to_string())?).iter().map(|b| format!("{b:02x}")).collect();
+        let digest: String = Sha256::digest(std::fs::read(path).map_err(|e| e.to_string())?)
+            .iter()
+            .map(|b| format!("{b:02x}"))
+            .collect();
         if !digest.eq_ignore_ascii_case(sha256) {
             return Err("the download did not match the catalog checksum".into());
         }
@@ -709,7 +912,10 @@ pub fn install_url(store: &Store, url: &str, sha256: &str) -> Result<Installed, 
         .timeout(std::time::Duration::from_secs(120))
         .build()
         .map_err(|e| e.to_string())?;
-    let mut resp = client.get(url).send().map_err(|e| format!("download failed: {e}"))?;
+    let mut resp = client
+        .get(url)
+        .send()
+        .map_err(|e| format!("download failed: {e}"))?;
     if !resp.status().is_success() {
         return Err(format!("download returned {}", resp.status()));
     }
@@ -733,7 +939,11 @@ pub fn install_url(store: &Store, url: &str, sha256: &str) -> Result<Installed, 
         file.write_all(&buf[..n]).map_err(|e| e.to_string())?;
     }
     drop(file);
-    let digest: String = hasher.finalize().iter().map(|b| format!("{b:02x}")).collect();
+    let digest: String = hasher
+        .finalize()
+        .iter()
+        .map(|b| format!("{b:02x}"))
+        .collect();
     if !digest.eq_ignore_ascii_case(sha256) {
         let _ = std::fs::remove_file(&tmp);
         return Err("the download did not match the catalog checksum".into());
@@ -788,7 +998,14 @@ mod tests {
         assert!(valid_id("xenocut.film-luts"));
         assert!(!valid_id("Bad Id") && !valid_id("../x") && !valid_id("x"));
         assert!(safe_rel("luts/a.cube").is_some());
-        for bad in ["../a.cube", "/etc/a.cube", "a.so", "a.js", "C:\\a.cube", "a/b/c/d/e.png"] {
+        for bad in [
+            "../a.cube",
+            "/etc/a.cube",
+            "a.so",
+            "a.js",
+            "C:\\a.cube",
+            "a/b/c/d/e.png",
+        ] {
             assert!(safe_rel(bad).is_none(), "{bad}");
         }
     }
@@ -835,9 +1052,14 @@ mod tests {
         assert_eq!(store.list().len(), 1);
         store.set_enabled("test.pack", false).unwrap();
         assert!(!store.list()[0].enabled);
-        let lut = store.lut(&store.root.join("test.pack/luts/ident.cube")).unwrap();
+        let lut = store
+            .lut(&store.root.join("test.pack/luts/ident.cube"))
+            .unwrap();
         assert_eq!(lut.size, 2);
-        assert!(store.lut(&src.join("luts/ident.cube")).is_err(), "only plugin-folder LUTs");
+        assert!(
+            store.lut(&src.join("luts/ident.cube")).is_err(),
+            "only plugin-folder LUTs"
+        );
         store.remove("test.pack").unwrap();
         assert!(store.list().is_empty());
     }
@@ -849,7 +1071,8 @@ mod tests {
         let make = |path: &Path, files: &[(&str, &[u8])]| {
             let mut z = zip::ZipWriter::new(std::fs::File::create(path).unwrap());
             for (name, data) in files {
-                z.start_file(*name, zip::write::SimpleFileOptions::default()).unwrap();
+                z.start_file(*name, zip::write::SimpleFileOptions::default())
+                    .unwrap();
                 z.write_all(data).unwrap();
             }
             z.finish().unwrap();
@@ -857,14 +1080,33 @@ mod tests {
         let good = base.join("good.xcpack");
         let man = serde_json::to_vec(&manifest()).unwrap();
         let cube = identity_cube(2);
-        make(&good, &[("pack/manifest.json", &man), ("pack/luts/ident.cube", cube.as_bytes())]);
+        make(
+            &good,
+            &[
+                ("pack/manifest.json", &man),
+                ("pack/luts/ident.cube", cube.as_bytes()),
+            ],
+        );
         assert_eq!(store.install_path(&good).unwrap().manifest.id, "test.pack");
         let evil = base.join("evil.xcpack");
-        make(&evil, &[("manifest.json", &man), ("../../escape.cube", cube.as_bytes())]);
+        make(
+            &evil,
+            &[
+                ("manifest.json", &man),
+                ("../../escape.cube", cube.as_bytes()),
+            ],
+        );
         assert!(store.install_path(&evil).is_err());
         assert!(!base.join("escape.cube").exists());
         let code = base.join("code.xcpack");
-        make(&code, &[("manifest.json", &man), ("luts/ident.cube", cube.as_bytes()), ("run.sh", b"rm -rf /")]);
+        make(
+            &code,
+            &[
+                ("manifest.json", &man),
+                ("luts/ident.cube", cube.as_bytes()),
+                ("run.sh", b"rm -rf /"),
+            ],
+        );
         assert!(store.install_path(&code).is_err());
     }
 
@@ -911,7 +1153,9 @@ mod tests {
     #[test]
     fn catalog_packs_install() {
         let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../catalog");
-        let index: Value = serde_json::from_str(&std::fs::read_to_string(root.join("index.json")).unwrap()).unwrap();
+        let index: Value =
+            serde_json::from_str(&std::fs::read_to_string(root.join("index.json")).unwrap())
+                .unwrap();
         let store = Store::new(tmp("catalog").join("plugins"));
         let packs = index["packs"].as_array().unwrap();
         assert!(packs.len() >= 5);
@@ -919,10 +1163,15 @@ mod tests {
             let name = e["url"].as_str().unwrap().rsplit('/').next().unwrap();
             let file = root.join("packs").join(name);
             let data = std::fs::read(&file).unwrap();
-            let digest: String = Sha256::digest(&data).iter().map(|b| format!("{b:02x}")).collect();
+            let digest: String = Sha256::digest(&data)
+                .iter()
+                .map(|b| format!("{b:02x}"))
+                .collect();
             assert_eq!(digest, e["sha256"].as_str().unwrap(), "{name}");
             assert_eq!(data.len() as u64, e["bytes"].as_u64().unwrap());
-            let p = store.install_path(&file).unwrap_or_else(|err| panic!("{name}: {err}"));
+            let p = store
+                .install_path(&file)
+                .unwrap_or_else(|err| panic!("{name}: {err}"));
             assert_eq!(p.manifest.id, e["id"].as_str().unwrap());
             assert_eq!(p.manifest.license, "CC0-1.0");
             for lut in &p.manifest.luts {
@@ -937,14 +1186,20 @@ mod tests {
     #[test]
     fn bundled_catalog_matches_and_installs() {
         let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../catalog");
-        assert_eq!(BUNDLED_INDEX, std::fs::read_to_string(root.join("index.json")).unwrap());
+        assert_eq!(
+            BUNDLED_INDEX,
+            std::fs::read_to_string(root.join("index.json")).unwrap()
+        );
         let index = parse_catalog(BUNDLED_INDEX).unwrap();
         let packs = index["packs"].as_array().unwrap();
         assert_eq!(packs.len(), BUNDLED_PACKS.len());
         let store = Store::new(tmp("bundled").join("plugins"));
         for e in packs {
             let url = e["url"].as_str().unwrap();
-            assert!(bundled_pack(url, e["sha256"].as_str().unwrap()).is_some(), "{url}");
+            assert!(
+                bundled_pack(url, e["sha256"].as_str().unwrap()).is_some(),
+                "{url}"
+            );
             install_url(&store, url, e["sha256"].as_str().unwrap()).unwrap();
         }
         assert!(bundled_pack(packs[0]["url"].as_str().unwrap(), &"0".repeat(64)).is_none());

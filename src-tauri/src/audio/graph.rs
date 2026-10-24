@@ -100,7 +100,11 @@ mod tests {
     #[test]
     fn graph_copies_video_and_mixes_with_the_requested_controls() {
         let args = render_args(&job(false));
-        let filter = args.iter().find(|arg| arg.contains("amix")).cloned().unwrap();
+        let filter = args
+            .iter()
+            .find(|arg| arg.contains("amix"))
+            .cloned()
+            .unwrap();
         assert!(filter.contains("volume=1.0000"));
         assert!(filter.contains("volume=0.8000"));
         assert!(filter.contains("adelay=1500|1500"));
@@ -108,8 +112,14 @@ mod tests {
         assert!(filter.contains("afade=t=out"));
         assert!(filter.contains("atrim=0:10.500"));
         assert!(filter.contains("normalize=0"));
-        assert!(args.windows(2).any(|pair| pair[0] == "-c:v" && pair[1] == "copy"));
-        assert!(args.windows(2).any(|pair| pair[0] == "-map" && pair[1] == "0:v:0"));
+        assert!(
+            args.windows(2)
+                .any(|pair| pair[0] == "-c:v" && pair[1] == "copy")
+        );
+        assert!(
+            args.windows(2)
+                .any(|pair| pair[0] == "-map" && pair[1] == "0:v:0")
+        );
         assert!(!args.iter().any(|arg| arg == "-stream_loop"));
         assert_eq!(args.last().unwrap(), "out.mp4");
     }

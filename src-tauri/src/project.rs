@@ -116,6 +116,9 @@ pub struct Clip {
     /// Colour LUT from a plugin pack (a `.cube` file), mixed in by `amount`.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub lut: Option<ClipLut>,
+    /// Transition into the next adjacent clip on the track (see `transitions.rs`).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub transition: Option<crate::transitions::ClipTransition>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
@@ -183,7 +186,8 @@ pub fn save(path: &Path, project: &Project) -> Result<(), String> {
 
 pub fn load(path: &Path) -> Result<Project, String> {
     let text = std::fs::read_to_string(path).map_err(|err| format!("{}: {err}", path.display()))?;
-    let project: Project = serde_json::from_str(&text).map_err(|err| format!("Not a valid .xcut project: {err}"))?;
+    let project: Project =
+        serde_json::from_str(&text).map_err(|err| format!("Not a valid .xcut project: {err}"))?;
     if project.version > PROJECT_VERSION {
         return Err(format!(
             "This project was saved by a newer XenoCut (format {}).",
@@ -209,11 +213,22 @@ pub fn safe_file_name(name: &str) -> String {
     let cleaned: String = name
         .trim()
         .chars()
-        .map(|ch| if matches!(ch, '/' | '\\' | ':' | '*' | '?' | '"' | '<' | '>' | '|') || ch.is_control() { '_' } else { ch })
+        .map(|ch| {
+            if matches!(ch, '/' | '\\' | ':' | '*' | '?' | '"' | '<' | '>' | '|') || ch.is_control()
+            {
+                '_'
+            } else {
+                ch
+            }
+        })
         .take(80)
         .collect();
     let cleaned = cleaned.trim().trim_matches('.').to_string();
-    if cleaned.is_empty() { "Untitled".into() } else { cleaned }
+    if cleaned.is_empty() {
+        "Untitled".into()
+    } else {
+        cleaned
+    }
 }
 
 #[cfg(test)]
@@ -227,9 +242,23 @@ mod tests {
             name: "Demo".into(),
             created: "2026-10-23T00:00:00Z".into(),
             modified: "2026-10-23T00:00:00Z".into(),
-            settings: ProjectSettings { aspect: "16:9".into(), resolution: "1080p".into(), width: 1920, height: 1080, fps: 30, grade: None },
+            settings: ProjectSettings {
+                aspect: "16:9".into(),
+                resolution: "1080p".into(),
+                width: 1920,
+                height: 1080,
+                fps: 30,
+                grade: None,
+            },
             media: vec![],
-            tracks: vec![Track { id: "v1".into(), kind: TrackKind::Video, name: "Video 1".into(), muted: false, hidden: false, role: None }],
+            tracks: vec![Track {
+                id: "v1".into(),
+                kind: TrackKind::Video,
+                name: "Video 1".into(),
+                muted: false,
+                hidden: false,
+                role: None,
+            }],
             clips: vec![],
         }
     }
@@ -253,6 +282,7 @@ mod tests {
             effects: vec![],
             anim: None,
             lut: None,
+            transition: None,
         });
         let text = serde_json::to_string(&project).unwrap();
         assert!(text.contains("\"trackId\":\"v1\""));

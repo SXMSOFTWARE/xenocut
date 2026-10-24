@@ -9,8 +9,7 @@ use super::traits::{AudioError, ProgressSink};
 
 /// UVR-MDX-NET-Voc_FT. Public weights from the UVR model repo.
 /// Not bundled. Downloaded on first separation into the app data directory.
-pub const MODEL_URL: &str =
-    "https://github.com/TRvlvr/model_repo/releases/download/all_public_uvr_models/UVR-MDX-NET-Voc_FT.onnx";
+pub const MODEL_URL: &str = "https://github.com/TRvlvr/model_repo/releases/download/all_public_uvr_models/UVR-MDX-NET-Voc_FT.onnx";
 pub const MODEL_FILE: &str = "UVR-MDX-NET-Voc_FT.onnx";
 pub const MODEL_SHA256: &str = "534b2070fcc7df514b13ef660dc8cbb328679c2374d04354a5c42bb14ecce111";
 
@@ -120,13 +119,18 @@ fn hash_matches(path: &Path) -> Result<bool, AudioError> {
     let mut hasher = Sha256::new();
     let mut buffer = [0u8; 64 * 1024];
     loop {
-        let read = file.read(&mut buffer).map_err(|err| AudioError::Failed(err.to_string()))?;
+        let read = file
+            .read(&mut buffer)
+            .map_err(|err| AudioError::Failed(err.to_string()))?;
         if read == 0 {
             break;
         }
         hasher.update(&buffer[..read]);
     }
     let digest = hasher.finalize();
-    let encoded = digest.iter().map(|byte| format!("{byte:02x}")).collect::<String>();
+    let encoded = digest
+        .iter()
+        .map(|byte| format!("{byte:02x}"))
+        .collect::<String>();
     Ok(encoded == MODEL_SHA256)
 }

@@ -32,7 +32,10 @@ fn percent_decode(text: &str) -> String {
 pub fn name_hint(uri: &str) -> Option<String> {
     let decoded = percent_decode(uri.rsplit('/').next()?);
     let name = decoded.rsplit(['/', ':']).next()?.trim().to_string();
-    let sane: String = name.chars().filter(|c| !matches!(c, '\\' | '/' | ':' | '*' | '?' | '"' | '<' | '>' | '|')).collect();
+    let sane: String = name
+        .chars()
+        .filter(|c| !matches!(c, '\\' | '/' | ':' | '*' | '?' | '"' | '<' | '>' | '|'))
+        .collect();
     (!sane.is_empty()).then_some(sane)
 }
 
@@ -40,24 +43,66 @@ pub fn name_hint(uri: &str) -> Option<String> {
 pub fn sniff_ext(head: &[u8]) -> Option<&'static str> {
     let at = |o: usize, s: &[u8]| head.len() >= o + s.len() && &head[o..o + s.len()] == s;
     if at(4, b"ftyp") {
-        return Some(if at(8, b"M4A ") || at(8, b"M4B ") { "m4a" } else if at(8, b"qt  ") { "mov" } else if at(8, b"3gp") { "3gp" } else { "mp4" });
+        return Some(if at(8, b"M4A ") || at(8, b"M4B ") {
+            "m4a"
+        } else if at(8, b"qt  ") {
+            "mov"
+        } else if at(8, b"3gp") {
+            "3gp"
+        } else {
+            "mp4"
+        });
     }
     if at(0, &[0x1A, 0x45, 0xDF, 0xA3]) {
-        return Some(if head.windows(4).any(|w| w == b"webm") { "webm" } else { "mkv" });
+        return Some(if head.windows(4).any(|w| w == b"webm") {
+            "webm"
+        } else {
+            "mkv"
+        });
     }
-    if at(0, b"RIFF") && at(8, b"WAVE") { return Some("wav"); }
-    if at(0, b"RIFF") && at(8, b"WEBP") { return Some("webp"); }
-    if at(0, b"RIFF") && at(8, b"AVI ") { return Some("avi"); }
-    if at(0, b"ID3") || (head.len() > 1 && head[0] == 0xFF && head[1] & 0xE0 == 0xE0 && head[1] & 0x06 != 0) {
-        return Some(if head.len() > 1 && head[1] & 0x06 == 0 { "aac" } else { "mp3" });
+    if at(0, b"RIFF") && at(8, b"WAVE") {
+        return Some("wav");
     }
-    if head.len() > 1 && head[0] == 0xFF && (head[1] & 0xF6) == 0xF0 { return Some("aac"); }
-    if at(0, b"fLaC") { return Some("flac"); }
-    if at(0, b"OggS") { return Some(if head.windows(4).any(|w| w == b"Opus") { "opus" } else { "ogg" }); }
-    if at(0, &[0x89, b'P', b'N', b'G']) { return Some("png"); }
-    if at(0, &[0xFF, 0xD8, 0xFF]) { return Some("jpg"); }
-    if at(0, b"GIF8") { return Some("gif"); }
-    if at(0, b"BM") { return Some("bmp"); }
+    if at(0, b"RIFF") && at(8, b"WEBP") {
+        return Some("webp");
+    }
+    if at(0, b"RIFF") && at(8, b"AVI ") {
+        return Some("avi");
+    }
+    if at(0, b"ID3")
+        || (head.len() > 1 && head[0] == 0xFF && head[1] & 0xE0 == 0xE0 && head[1] & 0x06 != 0)
+    {
+        return Some(if head.len() > 1 && head[1] & 0x06 == 0 {
+            "aac"
+        } else {
+            "mp3"
+        });
+    }
+    if head.len() > 1 && head[0] == 0xFF && (head[1] & 0xF6) == 0xF0 {
+        return Some("aac");
+    }
+    if at(0, b"fLaC") {
+        return Some("flac");
+    }
+    if at(0, b"OggS") {
+        return Some(if head.windows(4).any(|w| w == b"Opus") {
+            "opus"
+        } else {
+            "ogg"
+        });
+    }
+    if at(0, &[0x89, b'P', b'N', b'G']) {
+        return Some("png");
+    }
+    if at(0, &[0xFF, 0xD8, 0xFF]) {
+        return Some("jpg");
+    }
+    if at(0, b"GIF8") {
+        return Some("gif");
+    }
+    if at(0, b"BM") {
+        return Some("bmp");
+    }
     None
 }
 
@@ -65,21 +110,33 @@ fn import_one(app: &AppHandle, uri: &str, dir: &Path) -> Result<PathBuf, String>
     let path = FilePath::from_str(uri).map_err(|e| e.to_string())?;
     let mut opts = OpenOptions::new();
     opts.read(true);
-    let mut file = app.fs().open(path, opts).map_err(|e| format!("open {uri}: {e}"))?;
+    let mut file = app
+        .fs()
+        .open(path, opts)
+        .map_err(|e| format!("open {uri}: {e}"))?;
     let mut head = vec![0u8; 64];
     let mut got = 0;
     while got < head.len() {
         let n = file.read(&mut head[got..]).map_err(|e| e.to_string())?;
-        if n == 0 { break; }
+        if n == 0 {
+            break;
+        }
         got += n;
     }
     head.truncate(got);
 
     let hint = name_hint(uri).unwrap_or_else(|| "media".into());
     let has_ext = Path::new(&hint).extension().is_some();
-    let stem = Path::new(&hint).file_stem().map(|s| s.to_string_lossy().into_owned()).unwrap_or_else(|| "media".into());
+    let stem = Path::new(&hint)
+        .file_stem()
+        .map(|s| s.to_string_lossy().into_owned())
+        .unwrap_or_else(|| "media".into());
     let ext = if has_ext {
-        Path::new(&hint).extension().unwrap().to_string_lossy().to_lowercase()
+        Path::new(&hint)
+            .extension()
+            .unwrap()
+            .to_string_lossy()
+            .to_lowercase()
     } else {
         sniff_ext(&head).unwrap_or("bin").to_string()
     };
@@ -140,7 +197,10 @@ mod tests {
     #[test]
     fn names_and_sniffing() {
         assert_eq!(name_hint("content://com.android.externalstorage.documents/document/primary%3AMovies%2Fclip.mp4").as_deref(), Some("clip.mp4"));
-        assert_eq!(name_hint("content://media/external/video/media/42").as_deref(), Some("42"));
+        assert_eq!(
+            name_hint("content://media/external/video/media/42").as_deref(),
+            Some("42")
+        );
         assert_eq!(sniff_ext(b"\0\0\0\x20ftypisom\0\0"), Some("mp4"));
         assert_eq!(sniff_ext(b"\0\0\0\x20ftypM4A \0\0"), Some("m4a"));
         assert_eq!(sniff_ext(b"ID3\x04"), Some("mp3"));

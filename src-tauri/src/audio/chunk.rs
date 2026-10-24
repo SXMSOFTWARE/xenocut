@@ -95,9 +95,21 @@ mod tests {
         assert_eq!(
             chunks,
             vec![
-                Chunk { start: 0, end: 400, pad: 0 },
-                Chunk { start: 400, end: 800, pad: 0 },
-                Chunk { start: 800, end: 1_000, pad: 200 },
+                Chunk {
+                    start: 0,
+                    end: 400,
+                    pad: 0
+                },
+                Chunk {
+                    start: 400,
+                    end: 800,
+                    pad: 0
+                },
+                Chunk {
+                    start: 800,
+                    end: 1_000,
+                    pad: 200
+                },
             ]
         );
 

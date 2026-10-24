@@ -61,9 +61,16 @@ impl StemSeparator for OnnxMdxSeparator {
                 config.sample_rate
             )));
         }
-        let (vocals_l, vocals_r) = separate_channels(&mut session, &left, &right, &config, progress)?;
-        if vocals_l.iter().chain(vocals_r.iter()).any(|sample| !sample.is_finite()) {
-            return Err(AudioError::Failed("Separation produced invalid audio.".into()));
+        let (vocals_l, vocals_r) =
+            separate_channels(&mut session, &left, &right, &config, progress)?;
+        if vocals_l
+            .iter()
+            .chain(vocals_r.iter())
+            .any(|sample| !sample.is_finite())
+        {
+            return Err(AudioError::Failed(
+                "Separation produced invalid audio.".into(),
+            ));
         }
 
         let compensate = config.compensate;
@@ -85,7 +92,10 @@ impl StemSeparator for OnnxMdxSeparator {
         wav::write_stereo(&instrumental, rate, &inst_l, &inst_r)?;
         let _ = std::fs::remove_file(&extracted);
         progress.report(1.0, "Stems ready");
-        Ok(StemPaths { vocals, instrumental })
+        Ok(StemPaths {
+            vocals,
+            instrumental,
+        })
     }
 }
 
@@ -93,7 +103,9 @@ impl StemSeparator for OnnxMdxSeparator {
 /// separating, so use up to four cores (the big cluster on most arm64 SoCs).
 fn intra_threads() -> usize {
     if cfg!(target_os = "android") {
-        std::thread::available_parallelism().map(|n| n.get().min(4)).unwrap_or(2)
+        std::thread::available_parallelism()
+            .map(|n| n.get().min(4))
+            .unwrap_or(2)
     } else {
         2
     }
@@ -106,7 +118,8 @@ fn onnx_env() -> Result<&'static ort::environment::Environment, AudioError> {
     }
     // Android loads libonnxruntime.so (onnxruntime-android AAR, packaged as a jniLib) at run time.
     #[cfg(target_os = "android")]
-    let builder = ort::init_from("libonnxruntime.so").map_err(|err| AudioError::Failed(format!("ONNX Runtime: {err}")))?;
+    let builder = ort::init_from("libonnxruntime.so")
+        .map_err(|err| AudioError::Failed(format!("ONNX Runtime: {err}")))?;
     #[cfg(not(target_os = "android"))]
     let builder = ort::init();
     let env = builder
@@ -115,7 +128,8 @@ fn onnx_env() -> Result<&'static ort::environment::Environment, AudioError> {
         .build()
         .map_err(|err| AudioError::Failed(err.to_string()))?;
     let _ = ENV.set(env);
-    ENV.get().ok_or_else(|| AudioError::Failed("ONNX Runtime did not start".into()))
+    ENV.get()
+        .ok_or_else(|| AudioError::Failed("ONNX Runtime did not start".into()))
 }
 
 fn separate_channels(
@@ -161,7 +175,11 @@ fn separate_channels(
         let (out_l, out_r) = infer_chunk(session, &stft, &part_l, &part_r, config)?;
         let window = hanning(len);
         for offset in 0..len {
-            let weight = if config.overlap > 0.0 { window[offset] } else { 1.0 };
+            let weight = if config.overlap > 0.0 {
+                window[offset]
+            } else {
+                1.0
+            };
             acc_l[chunk.start + offset] += out_l[offset] * weight;
             acc_r[chunk.start + offset] += out_r[offset] * weight;
             divider[chunk.start + offset] += weight;
@@ -174,7 +192,11 @@ fn separate_channels(
     let mut vocals_r = vec![0.0f32; n];
     for index in 0..n {
         let at = trim + index;
-        let scale = if divider[at] > 1e-6 { norm / divider[at] } else { 0.0 };
+        let scale = if divider[at] > 1e-6 {
+            norm / divider[at]
+        } else {
+            0.0
+        };
         vocals_l[index] = acc_l[at] * scale;
         vocals_r[index] = acc_r[at] * scale;
     }
@@ -211,7 +233,8 @@ fn infer_chunk(
         }
     }
 
-    let tensor = TensorRef::from_array_view(&input).map_err(|err| AudioError::Failed(err.to_string()))?;
+    let tensor =
+        TensorRef::from_array_view(&input).map_err(|err| AudioError::Failed(err.to_string()))?;
     let options = RunOptions::new().map_err(|err| AudioError::Failed(err.to_string()))?;
     let outputs = session
         .run_with_options(ort::inputs!["input" => tensor], &options)
@@ -235,14 +258,17 @@ fn infer_chunk(
             pred_r[time].push(C::new(view[[0, 2, bin, time]], view[[0, 3, bin, time]]));
         }
     }
-    Ok((stft.inverse(&pred_l, left.len()), stft.inverse(&pred_r, right.len())))
+    Ok((
+        stft.inverse(&pred_l, left.len()),
+        stft.inverse(&pred_r, right.len()),
+    ))
 }
 
 #[cfg(test)]
 mod e2e {
     use super::super::renderer::FfmpegRenderer;
     use super::super::traits::{RenderJob, Renderer, StemSeparator};
-    use super::{cancel, ffmpeg, model, wav, OnnxMdxSeparator, ProgressSink};
+    use super::{OnnxMdxSeparator, ProgressSink, cancel, ffmpeg, model, wav};
     use std::os::unix::fs::symlink;
     use std::path::Path;
     use std::time::Instant;
@@ -259,7 +285,8 @@ mod e2e {
     #[test]
     #[ignore = "loads the 64MB UVR model; run with --ignored and XENOCUT_MODEL"]
     fn separates_and_mixes_a_short_clip() {
-        let model = std::env::var("XENOCUT_MODEL").expect("set XENOCUT_MODEL to UVR-MDX-NET-Voc_FT.onnx");
+        let model =
+            std::env::var("XENOCUT_MODEL").expect("set XENOCUT_MODEL to UVR-MDX-NET-Voc_FT.onnx");
         assert!(Path::new(&model).is_file(), "model missing at {model}");
         ffmpeg::ffmpeg_binary().expect("ffmpeg sidecar");
         cancel::begin();
@@ -349,7 +376,10 @@ mod e2e {
             .fold(0.0f32, f32::max);
         assert!(peak.is_finite() && inst_peak.is_finite(), "non-finite stem");
         // The fixture is two sine tones, not a voice, so the vocal stem should stay quiet.
-        assert!(inst_peak > peak * 20.0, "instrumental {inst_peak} vocals {peak}");
+        assert!(
+            inst_peak > peak * 20.0,
+            "instrumental {inst_peak} vocals {peak}"
+        );
 
         let render_started = Instant::now();
         let job = RenderJob {

@@ -10,7 +10,11 @@ impl Renderer for FfmpegRenderer {
         "ffmpeg-sidecar"
     }
 
-    fn render(&self, job: &RenderJob, progress: &dyn ProgressSink) -> Result<std::path::PathBuf, AudioError> {
+    fn render(
+        &self,
+        job: &RenderJob,
+        progress: &dyn ProgressSink,
+    ) -> Result<std::path::PathBuf, AudioError> {
         cancel::check()?;
         if !job.video.is_file() {
             return Err(AudioError::MissingInput(job.video.display().to_string()));
@@ -44,9 +48,21 @@ impl Renderer for FfmpegRenderer {
 
         progress.report(0.04, "Preparing mix");
         let mut args = graph::render_args(&job);
-        let output = args.pop().ok_or_else(|| AudioError::Failed("missing output path".into()))?;
-        args.extend(["-progress".into(), "pipe:1".into(), "-nostats".into(), output]);
-        ffmpeg::run(&args, Some(job.duration), Some(progress), "Mixing and writing video")?;
+        let output = args
+            .pop()
+            .ok_or_else(|| AudioError::Failed("missing output path".into()))?;
+        args.extend([
+            "-progress".into(),
+            "pipe:1".into(),
+            "-nostats".into(),
+            output,
+        ]);
+        ffmpeg::run(
+            &args,
+            Some(job.duration),
+            Some(progress),
+            "Mixing and writing video",
+        )?;
         progress.report(1.0, "Render complete");
         Ok(job.output)
     }

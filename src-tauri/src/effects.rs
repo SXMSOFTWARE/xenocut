@@ -11,7 +11,7 @@
 //! RGB split → blur → vignette → grain → scanlines → flash → dip to black → letterbox → (pad to the
 //! canvas) → zoom / shake. Effect layers run the same chain on the composited canvas.
 
-use crate::grade::{ops_chain, Op};
+use crate::grade::{Op, ops_chain};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::sync::OnceLock;
@@ -58,19 +58,60 @@ pub const SHAKE_X: [(f64, f64, f64); 2] = [(0.6, 7.3, 0.0), (0.4, 11.1, 1.3)];
 pub const SHAKE_Y: [(f64, f64, f64); 2] = [(0.6, 8.7, 0.7), (0.4, 13.3, 2.1)];
 
 const PRIMITIVES: [&str; 24] = [
-    "brightness", "contrast", "saturation", "temperature", "bw", "sepia", "invert", "sharpen", "blur", "rgbSplit", "vignette",
-    "grain", "scanlines", "letterbox", "mirror", "flip", "zoomIn", "zoomOut", "shake", "flash", "punch", "hitShake", "fadeIn",
+    "brightness",
+    "contrast",
+    "saturation",
+    "temperature",
+    "bw",
+    "sepia",
+    "invert",
+    "sharpen",
+    "blur",
+    "rgbSplit",
+    "vignette",
+    "grain",
+    "scanlines",
+    "letterbox",
+    "mirror",
+    "flip",
+    "zoomIn",
+    "zoomOut",
+    "shake",
+    "flash",
+    "punch",
+    "hitShake",
+    "fadeIn",
     "fadeOut",
 ];
-const COLOR: [&str; 7] = ["brightness", "contrast", "saturation", "temperature", "bw", "sepia", "invert"];
+const COLOR: [&str; 7] = [
+    "brightness",
+    "contrast",
+    "saturation",
+    "temperature",
+    "bw",
+    "sepia",
+    "invert",
+];
 /// Kinds that add up while active instead of the last one winning.
-const STACKING: [&str; 10] = ["brightness", "contrast", "saturation", "temperature", "bw", "sepia", "invert", "flash", "fadeIn", "fadeOut"];
+const STACKING: [&str; 10] = [
+    "brightness",
+    "contrast",
+    "saturation",
+    "temperature",
+    "bw",
+    "sepia",
+    "invert",
+    "flash",
+    "fadeIn",
+    "fadeOut",
+];
 
 fn packs() -> &'static HashMap<String, Vec<(String, f64)>> {
     static PACKS: OnceLock<HashMap<String, Vec<(String, f64)>>> = OnceLock::new();
     PACKS.get_or_init(|| {
         let raw: HashMap<String, serde_json::Value> =
-            serde_json::from_str(include_str!("../../src/project/fx-packs.json")).expect("fx-packs.json");
+            serde_json::from_str(include_str!("../../src/project/fx-packs.json"))
+                .expect("fx-packs.json");
         raw.into_iter()
             .filter(|(k, _)| !k.starts_with('_'))
             .map(|(k, v)| {
@@ -111,10 +152,20 @@ pub fn expand(effects: &[Effect], length: f64) -> Vec<Inst> {
         }
         if let Some(list) = packs().get(&e.kind) {
             for (kind, base) in list {
-                out.push(Inst { kind: kind.clone(), amount: base * e.amount, a, b });
+                out.push(Inst {
+                    kind: kind.clone(),
+                    amount: base * e.amount,
+                    a,
+                    b,
+                });
             }
         } else if PRIMITIVES.contains(&e.kind.as_str()) {
-            out.push(Inst { kind: e.kind.clone(), amount: e.amount, a, b });
+            out.push(Inst {
+                kind: e.kind.clone(),
+                amount: e.amount,
+                a,
+                b,
+            });
         }
     }
     out
@@ -190,16 +241,47 @@ pub fn scanline_geometry(height: u32) -> (u32, u32) {
     (period, ((period as f64 / 2.0).round() as u32).max(1))
 }
 
+/// Where an effect chain runs, which fixes how local clip time maps to stream time `t`.
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub enum At {
+    /// A clip's own chain: the stream is exactly the clip.
+    Clip,
+    /// An effect layer starting at this timeline time; its chain runs on the whole canvas.
+    Layer(f64),
+    /// A clip's chain over a stream that starts this many seconds before the clip (transition
+    /// handles): effects covering the whole clip also cover the handles.
+    Shifted(f64),
+}
+
+impl At {
+    fn split(self) -> (f64, bool) {
+        match self {
+            At::Clip => (0.0, true),
+            At::Layer(at) => (at, false),
+            At::Shifted(s) => (s, true),
+        }
+    }
+}
+
+impl From<Option<f64>> for At {
+    fn from(layer: Option<f64>) -> Self {
+        layer.map_or(At::Clip, At::Layer)
+    }
+}
+
 /// Flips, applied before the picture is scaled. `layer`: the effect layer's start on the
 /// timeline (its chain runs on the whole canvas), `None` for a clip's own chain.
-pub fn pre_scale(effects: &[Effect], length: f64, layer: Option<f64>) -> Vec<String> {
+pub fn pre_scale(effects: &[Effect], length: f64, layer: impl Into<At>) -> Vec<String> {
     let list = expand(effects, length);
-    let (offset, whole) = (layer.unwrap_or(0.0), layer.is_none());
+    let (offset, whole) = layer.into().split();
     let mut out = Vec::new();
     for (kind, filter) in [("mirror", "hflip"), ("flip", "vflip")] {
         for (i, e) in list.iter().enumerate() {
             if e.kind == kind {
-                out.extend(gated(filter.to_string(), &gate(&list, i, "t", offset, length, whole)));
+                out.extend(gated(
+                    filter.to_string(),
+                    &gate(&list, i, "t", offset, length, whole),
+                ));
             }
         }
     }
@@ -209,9 +291,9 @@ pub fn pre_scale(effects: &[Effect], length: f64, layer: Option<f64>) -> Vec<Str
 /// Filters on the picture (the fitted clip before padding, or a layer's whole canvas). `height` is
 /// the canvas height in pixels, `length` the clip / layer duration, `layer` as for [`pre_scale`].
 /// Ends in an alpha-capable format so padding stays transparent.
-pub fn picture(effects: &[Effect], height: u32, length: f64, layer: Option<f64>) -> Vec<String> {
+pub fn picture(effects: &[Effect], height: u32, length: f64, layer: impl Into<At>) -> Vec<String> {
     let list = expand(effects, length);
-    let (offset, whole) = (layer.unwrap_or(0.0), layer.is_none());
+    let (offset, whole) = layer.into().split();
     let h = height as f64;
     let mut out: Vec<String> = Vec::new();
     let each = |kind: &'static str| list.iter().enumerate().filter(move |(_, e)| e.kind == kind);
@@ -223,8 +305,13 @@ pub fn picture(effects: &[Effect], height: u32, length: f64, layer: Option<f64>)
             continue;
         }
         let Some(op) = color_op(e) else { continue };
-        let Some(chain) = ops_chain(&[op], "rgba") else { continue };
-        let filter = chain.split_once(',').map(|(_, f)| f.to_string()).unwrap_or(chain);
+        let Some(chain) = ops_chain(&[op], "rgba") else {
+            continue;
+        };
+        let filter = chain
+            .split_once(',')
+            .map(|(_, f)| f.to_string())
+            .unwrap_or(chain);
         if !rgba {
             out.push("format=rgba".into());
             rgba = true;
@@ -234,14 +321,23 @@ pub fn picture(effects: &[Effect], height: u32, length: f64, layer: Option<f64>)
     for (i, e) in each("sharpen") {
         let a = e.amount.clamp(0.0, 1.0);
         if a > 0.0 {
-            out.extend(gated(format!("unsharp=lx=5:ly=5:la={:.3}:cx=5:cy=5:ca=0", a * SHARPEN_AMOUNT), &g(i)));
+            out.extend(gated(
+                format!(
+                    "unsharp=lx=5:ly=5:la={:.3}:cx=5:cy=5:ca=0",
+                    a * SHARPEN_AMOUNT
+                ),
+                &g(i),
+            ));
         }
     }
     for (i, e) in each("rgbSplit") {
         let split = (e.amount.clamp(0.0, 1.0) * RGB_SPLIT * h).round() as i64;
         if split > 0 {
             out.push("format=rgba".into());
-            out.extend(gated(format!("rgbashift=rh=-{split}:bh={split}:edge=smear"), &g(i)));
+            out.extend(gated(
+                format!("rgbashift=rh=-{split}:bh={split}:edge=smear"),
+                &g(i),
+            ));
         }
     }
     for (i, e) in each("blur") {
@@ -270,7 +366,9 @@ pub fn picture(effects: &[Effect], height: u32, length: f64, layer: Option<f64>)
             // Cells one line wider than the picture: only the horizontal lines land inside it.
             out.push("format=yuva420p".into());
             out.extend(gated(
-                format!("drawgrid=x=iw:y=0:w=iw+{thick}:h={period}:t={thick}:color=black@{alpha:.3}"),
+                format!(
+                    "drawgrid=x=iw:y=0:w=iw+{thick}:h={period}:t={thick}:color=black@{alpha:.3}"
+                ),
                 &g(i),
             ));
         }
@@ -302,7 +400,11 @@ pub fn picture(effects: &[Effect], height: u32, length: f64, layer: Option<f64>)
             _ => continue,
         };
         // A fade-out leaves black after its end: always gate it unless it runs to the end.
-        let filter = format!("fade=t={way}:st={}:d={}:color=black", n(e.a + offset), n(e.b - e.a));
+        let filter = format!(
+            "fade=t={way}:st={}:d={}:color=black",
+            n(e.a + offset),
+            n(e.b - e.a)
+        );
         out.extend(gated(filter, &g(i)));
     }
     for (i, e) in each("letterbox") {
@@ -310,8 +412,14 @@ pub fn picture(effects: &[Effect], height: u32, length: f64, layer: Option<f64>)
         if f > 0.0 {
             let gate = g(i);
             out.push("format=yuva420p".into());
-            out.extend(gated(format!("drawbox=x=0:y=0:w=iw:h=ih*{f:.4}:color=black:t=fill"), &gate));
-            out.extend(gated(format!("drawbox=x=0:y=ih-ih*{f:.4}:w=iw:h=ih*{f:.4}:color=black:t=fill"), &gate));
+            out.extend(gated(
+                format!("drawbox=x=0:y=0:w=iw:h=ih*{f:.4}:color=black:t=fill"),
+                &gate,
+            ));
+            out.extend(gated(
+                format!("drawbox=x=0:y=ih-ih*{f:.4}:w=iw:h=ih*{f:.4}:color=black:t=fill"),
+                &gate,
+            ));
         }
     }
     if !out.is_empty() {
@@ -322,12 +430,19 @@ pub fn picture(effects: &[Effect], height: u32, length: f64, layer: Option<f64>)
 
 /// Zoom / shake as one `perspective` filter on a canvas-sized layer, or `None`. `length` is the clip
 /// / layer duration, `fps` the export frame rate, `layer` as for [`pre_scale`].
-pub fn motion(effects: &[Effect], length: f64, fps: u32, layer: Option<f64>) -> Option<String> {
+pub fn motion(effects: &[Effect], length: f64, fps: u32, layer: impl Into<At>) -> Option<String> {
     let list = expand(effects, length);
-    let (offset, whole) = (layer.unwrap_or(0.0), layer.is_none());
-    let t = if offset.abs() < 1e-9 { format!("(in/{fps})") } else { format!("(in/{fps}-{})", n(offset)) };
+    let (offset, whole) = layer.into().split();
+    let t = if offset.abs() < 1e-9 {
+        format!("(in/{fps})")
+    } else {
+        format!("(in/{fps}-{})", n(offset))
+    };
     let kinds = ["zoomIn", "zoomOut", "shake", "punch", "hitShake"];
-    if !list.iter().any(|e| kinds.contains(&e.kind.as_str()) && e.amount > 0.0) {
+    if !list
+        .iter()
+        .any(|e| kinds.contains(&e.kind.as_str()) && e.amount > 0.0)
+    {
         return None;
     }
     // Σ weight × term over the instances of a kind (at most one weight is 1 at any time).
@@ -348,18 +463,38 @@ pub fn motion(effects: &[Effect], length: f64, fps: u32, layer: Option<f64>) -> 
     let prog = |e: &Inst| format!("clip(({t}-{})/{},0,1)", n(e.a), n((e.b - e.a).max(1e-3)));
     let ease = |e: &Inst, decay: f64| format!("pow(max(0,1-({t}-{})/{decay}),2)", n(e.a));
     let mut z = String::from("1");
-    if let Some(s) = sum("zoomIn", &|e| format!("{}*{}", n(e.amount.clamp(0.0, 1.0) * ZOOM_RANGE), prog(e))) {
+    if let Some(s) = sum("zoomIn", &|e| {
+        format!("{}*{}", n(e.amount.clamp(0.0, 1.0) * ZOOM_RANGE), prog(e))
+    }) {
         z = format!("{z}*(1+{s})");
     }
-    if let Some(s) = sum("zoomOut", &|e| format!("{}*(1-{})", n(e.amount.clamp(0.0, 1.0) * ZOOM_RANGE), prog(e))) {
+    if let Some(s) = sum("zoomOut", &|e| {
+        format!(
+            "{}*(1-{})",
+            n(e.amount.clamp(0.0, 1.0) * ZOOM_RANGE),
+            prog(e)
+        )
+    }) {
         z = format!("{z}*(1+{s})");
     }
-    if let Some(s) = sum("punch", &|e| format!("{}*{}", n(e.amount.clamp(0.0, 1.0) * PUNCH_RANGE), ease(e, PUNCH_DECAY))) {
+    if let Some(s) = sum("punch", &|e| {
+        format!(
+            "{}*{}",
+            n(e.amount.clamp(0.0, 1.0) * PUNCH_RANGE),
+            ease(e, PUNCH_DECAY)
+        )
+    }) {
         z = format!("{z}*(1+{s})");
     }
     // Shake amplitude: the steady shake plus hits that ease out.
     let shake = sum("shake", &|e| n(e.amount.clamp(0.0, 1.0) * SHAKE_RANGE));
-    let hit = sum("hitShake", &|e| format!("{}*{}", n(e.amount.clamp(0.0, 1.0) * HIT_SHAKE_RANGE), ease(e, HIT_SHAKE_DECAY)));
+    let hit = sum("hitShake", &|e| {
+        format!(
+            "{}*{}",
+            n(e.amount.clamp(0.0, 1.0) * HIT_SHAKE_RANGE),
+            ease(e, HIT_SHAKE_DECAY)
+        )
+    });
     let amp = match (shake, hit) {
         (Some(s), Some(h)) => Some(format!("({s}+{h})")),
         (Some(s), None) => Some(format!("({s})")),
@@ -372,7 +507,9 @@ pub fn motion(effects: &[Effect], length: f64, fps: u32, layer: Option<f64>) -> 
             let wave = |parts: &[(f64, f64, f64); 2]| {
                 let terms: Vec<String> = parts
                     .iter()
-                    .map(|(w, f, ph)| format!("{w}*sin({:.5}*{t}+{ph})", 2.0 * std::f64::consts::PI * f))
+                    .map(|(w, f, ph)| {
+                        format!("{w}*sin({:.5}*{t}+{ph})", 2.0 * std::f64::consts::PI * f)
+                    })
                     .collect();
                 format!("{amp}*({})", terms.join("+"))
             };
@@ -394,11 +531,21 @@ mod tests {
     use super::*;
 
     fn fx(kind: &str, amount: f64) -> Effect {
-        Effect { kind: kind.into(), amount, from: None, to: None }
+        Effect {
+            kind: kind.into(),
+            amount,
+            from: None,
+            to: None,
+        }
     }
 
     fn ranged(kind: &str, amount: f64, from: f64, to: f64) -> Effect {
-        Effect { kind: kind.into(), amount, from: Some(from), to: Some(to) }
+        Effect {
+            kind: kind.into(),
+            amount,
+            from: Some(from),
+            to: Some(to),
+        }
     }
 
     #[test]
@@ -411,31 +558,72 @@ mod tests {
 
     #[test]
     fn picture_effects_in_fixed_order() {
-        let list = [fx("grain", 0.5), fx("letterbox", 1.0), fx("blur", 1.0), fx("bw", 1.0), fx("mirror", 1.0), fx("scanlines", 1.0)];
+        let list = [
+            fx("grain", 0.5),
+            fx("letterbox", 1.0),
+            fx("blur", 1.0),
+            fx("bw", 1.0),
+            fx("mirror", 1.0),
+            fx("scanlines", 1.0),
+        ];
         let chain = picture(&list, 1080, 5.0, None).join(",");
         let color = chain.find("colorchannelmixer").unwrap();
         let blur = chain.find("gblur=sigma=16.20").unwrap();
         let grain = chain.find("noise=c0s=20").unwrap();
-        let lines = chain.find("drawgrid=x=iw:y=0:w=iw+3:h=6:t=3:color=black@0.500").unwrap();
+        let lines = chain
+            .find("drawgrid=x=iw:y=0:w=iw+3:h=6:t=3:color=black@0.500")
+            .unwrap();
         let bars = chain.find("drawbox=x=0:y=0:w=iw:h=ih*0.1200").unwrap();
-        assert!(color < blur && blur < grain && grain < lines && lines < bars, "{chain}");
+        assert!(
+            color < blur && blur < grain && grain < lines && lines < bars,
+            "{chain}"
+        );
         assert!(chain.ends_with("format=yuva420p"));
-        assert!(!chain.contains("enable"), "whole-clip effects need no gate: {chain}");
+        assert!(
+            !chain.contains("enable"),
+            "whole-clip effects need no gate: {chain}"
+        );
         assert_eq!(pre_scale(&list, 5.0, None), vec!["hflip".to_string()]);
     }
 
     #[test]
     fn invert_is_one_minus() {
         let chain = picture(&[fx("invert", 1.0)], 720, 5.0, None).join(",");
-        assert!(chain.contains("clip(-1.00000*val+255.000,0,255)"), "{chain}");
+        assert!(
+            chain.contains("clip(-1.00000*val+255.000,0,255)"),
+            "{chain}"
+        );
     }
 
     #[test]
     fn packs_expand_from_the_shared_table() {
-        let list = expand(&[Effect { kind: "noir".into(), amount: 0.5, from: Some(1.0), to: Some(2.0) }], 5.0);
-        assert_eq!(list[0], Inst { kind: "bw".into(), amount: 0.5, a: 1.0, b: 2.0 });
-        assert!(list.iter().any(|e| e.kind == "vignette" && (e.amount - 0.3).abs() < 1e-9));
-        assert!(expand(&[fx("vhs", 1.0)], 5.0).iter().any(|e| e.kind == "scanlines"));
+        let list = expand(
+            &[Effect {
+                kind: "noir".into(),
+                amount: 0.5,
+                from: Some(1.0),
+                to: Some(2.0),
+            }],
+            5.0,
+        );
+        assert_eq!(
+            list[0],
+            Inst {
+                kind: "bw".into(),
+                amount: 0.5,
+                a: 1.0,
+                b: 2.0
+            }
+        );
+        assert!(
+            list.iter()
+                .any(|e| e.kind == "vignette" && (e.amount - 0.3).abs() < 1e-9)
+        );
+        assert!(
+            expand(&[fx("vhs", 1.0)], 5.0)
+                .iter()
+                .any(|e| e.kind == "scanlines")
+        );
     }
 
     #[test]
@@ -443,21 +631,45 @@ mod tests {
         let list = [ranged("blur", 0.2, 0.0, 4.0), ranged("blur", 1.0, 1.0, 2.0)];
         let chain = picture(&list, 1000, 4.0, None).join(",");
         // The first blur hides while the second (later in the list) is active.
-        assert!(chain.contains("gblur=sigma=3.00:enable='(1-gte(t,1.0000)*lt(t,2.0000))'"), "{chain}");
-        assert!(chain.contains("gblur=sigma=15.00:enable='gte(t,1.0000)*lt(t,2.0000)'"), "{chain}");
+        assert!(
+            chain.contains("gblur=sigma=3.00:enable='(1-gte(t,1.0000)*lt(t,2.0000))'"),
+            "{chain}"
+        );
+        assert!(
+            chain.contains("gblur=sigma=15.00:enable='gte(t,1.0000)*lt(t,2.0000)'"),
+            "{chain}"
+        );
         // A later instance covering it completely removes it.
-        let hidden = picture(&[ranged("blur", 0.2, 1.0, 2.0), fx("blur", 1.0)], 1000, 4.0, None).join(",");
+        let hidden = picture(
+            &[ranged("blur", 0.2, 1.0, 2.0), fx("blur", 1.0)],
+            1000,
+            4.0,
+            None,
+        )
+        .join(",");
         assert_eq!(hidden.matches("gblur").count(), 1, "{hidden}");
         // Colour stacks: both stay, each with its own gate.
-        let colours = picture(&[ranged("bw", 1.0, 0.0, 1.0), ranged("bw", 1.0, 0.5, 1.5)], 1000, 4.0, None).join(",");
+        let colours = picture(
+            &[ranged("bw", 1.0, 0.0, 1.0), ranged("bw", 1.0, 0.5, 1.5)],
+            1000,
+            4.0,
+            None,
+        )
+        .join(",");
         assert_eq!(colours.matches("colorchannelmixer").count(), 2, "{colours}");
     }
 
     #[test]
     fn layers_always_gate_to_their_span() {
         let chain = picture(&[fx("invert", 1.0)], 720, 2.0, Some(3.0)).join(",");
-        assert!(chain.contains("enable='gte(t,3.0000)*lt(t,5.0000)'"), "{chain}");
-        assert_eq!(pre_scale(&[fx("mirror", 1.0)], 2.0, Some(3.0)), vec!["hflip:enable='gte(t,3.0000)*lt(t,5.0000)'".to_string()]);
+        assert!(
+            chain.contains("enable='gte(t,3.0000)*lt(t,5.0000)'"),
+            "{chain}"
+        );
+        assert_eq!(
+            pre_scale(&[fx("mirror", 1.0)], 2.0, Some(3.0)),
+            vec!["hflip:enable='gte(t,3.0000)*lt(t,5.0000)'".to_string()]
+        );
     }
 
     #[test]
@@ -468,19 +680,35 @@ mod tests {
         assert!(f.contains("(1+2.2*(0.0250))"), "{f}"); // shake margin
         assert!(f.ends_with("eval=frame"));
         let ranged_zoom = motion(&[ranged("zoomIn", 1.0, 1.0, 3.0)], 4.0, 30, None).unwrap();
-        assert!(ranged_zoom.contains("gte((in/30),1.0000)*lt((in/30),3.0000)*0.3500*clip(((in/30)-1.0000)/2.0000,0,1)"), "{ranged_zoom}");
+        assert!(
+            ranged_zoom.contains(
+                "gte((in/30),1.0000)*lt((in/30),3.0000)*0.3500*clip(((in/30)-1.0000)/2.0000,0,1)"
+            ),
+            "{ranged_zoom}"
+        );
     }
 
     #[test]
     fn beat_hits() {
         let f = motion(&[fx("punch", 1.0), fx("hitShake", 0.5)], 2.0, 30, None).unwrap();
-        assert!(f.contains("(1+0.1200*pow(max(0,1-((in/30)-0.0000)/0.35),2))"), "{f}");
-        assert!(f.contains("0.0200*pow(max(0,1-((in/30)-0.0000)/0.4),2)"), "{f}");
+        assert!(
+            f.contains("(1+0.1200*pow(max(0,1-((in/30)-0.0000)/0.35),2))"),
+            "{f}"
+        );
+        assert!(
+            f.contains("0.0200*pow(max(0,1-((in/30)-0.0000)/0.4),2)"),
+            "{f}"
+        );
         let chain = picture(&[fx("flash", 0.6)], 720, 2.0, None).join(",");
         assert!(chain.contains("settb=AVTB,setpts=PTS+0.1000/TB,fade=t=in:st=0.0000:d=0.25:color=white,setpts=PTS-0.1000/TB"), "{chain}");
         // Later in the clip there is room before the hit: no clock shift, just a gate.
         let late = picture(&[ranged("flash", 0.6, 1.0, 2.0)], 720, 2.0, None).join(",");
-        assert!(late.contains("fade=t=in:st=0.9000:d=0.25:color=white:enable='gte(t,1.0000)*lt(t,2.0000)'"), "{late}");
+        assert!(
+            late.contains(
+                "fade=t=in:st=0.9000:d=0.25:color=white:enable='gte(t,1.0000)*lt(t,2.0000)'"
+            ),
+            "{late}"
+        );
     }
 }
 
@@ -492,19 +720,65 @@ mod demos {
     use super::*;
 
     const KINDS: [&str; 42] = [
-        "brightness", "contrast", "saturation", "temperature", "sharpen", "punchy", "bw", "sepia", "invert", "cinematic", "noir", "cold",
-        "sunset", "faded", "rgbSplit", "glitch", "beatGlitch", "crt", "blur", "softFocus", "dreamy", "heavyBlur", "vhs", "vintage",
-        "oldFilm", "grain", "scanlines", "fadeIn", "fadeOut", "flash", "zoomIn", "zoomOut", "vignette", "letterbox", "widescreen",
-        "shake", "earthquake", "mirror", "flip", "punch", "hitShake", "amvHit",
+        "brightness",
+        "contrast",
+        "saturation",
+        "temperature",
+        "sharpen",
+        "punchy",
+        "bw",
+        "sepia",
+        "invert",
+        "cinematic",
+        "noir",
+        "cold",
+        "sunset",
+        "faded",
+        "rgbSplit",
+        "glitch",
+        "beatGlitch",
+        "crt",
+        "blur",
+        "softFocus",
+        "dreamy",
+        "heavyBlur",
+        "vhs",
+        "vintage",
+        "oldFilm",
+        "grain",
+        "scanlines",
+        "fadeIn",
+        "fadeOut",
+        "flash",
+        "zoomIn",
+        "zoomOut",
+        "vignette",
+        "letterbox",
+        "widescreen",
+        "shake",
+        "earthquake",
+        "mirror",
+        "flip",
+        "punch",
+        "hitShake",
+        "amvHit",
     ];
 
     /// Amount and range used for a demo: hits fire twice, fades take half the loop.
     fn demo(kind: &str) -> Vec<Effect> {
-        let e = |amount: f64, from: Option<f64>, to: Option<f64>| Effect { kind: kind.into(), amount, from, to };
+        let e = |amount: f64, from: Option<f64>, to: Option<f64>| Effect {
+            kind: kind.into(),
+            amount,
+            from,
+            to,
+        };
         match kind {
             "flash" | "punch" | "hitShake" | "amvHit" | "beatGlitch" => {
                 let amount = if kind == "flash" { 0.8 } else { 1.0 };
-                vec![e(amount, Some(0.25), Some(1.25)), e(amount, Some(1.25), None)]
+                vec![
+                    e(amount, Some(0.25), Some(1.25)),
+                    e(amount, Some(1.25), None),
+                ]
             }
             "fadeIn" => vec![e(1.0, Some(0.2), Some(1.4))],
             "fadeOut" => vec![e(1.0, Some(0.6), Some(1.8))],
@@ -527,11 +801,18 @@ mod demos {
         let (input, scene): (Vec<String>, String) = if clip.is_file() {
             (
                 vec!["-i".into(), clip.display().to_string()],
-                format!("[0:v]fps={fps},scale={w}:{h}:flags=lanczos,trim=duration={len},setpts=PTS-STARTPTS"),
+                format!(
+                    "[0:v]fps={fps},scale={w}:{h}:flags=lanczos,trim=duration={len},setpts=PTS-STARTPTS"
+                ),
             )
         } else {
             (
-                vec!["-f".into(), "lavfi".into(), "-i".into(), format!("color=black:s={w}x{h}:r={fps}:d={len}")],
+                vec![
+                    "-f".into(),
+                    "lavfi".into(),
+                    "-i".into(),
+                    format!("color=black:s={w}x{h}:r={fps}:d={len}"),
+                ],
                 format!(
                     "gradients=s={w}x{h}:r={fps}:d={len}:c0=0x3a1c71:c1=0xd76d77:c2=0x1f8fb5:c3=0xffaf7b:nb_colors=4:speed=0.06:type=linear,\
                      drawbox=x='{w}*0.15+{w}*0.5*abs(sin(t*1.6))':y='{h}*0.35':w='{h}*0.3':h='{h}*0.3':color=white@0.95:t=fill"
@@ -552,7 +833,21 @@ mod demos {
             let status = std::process::Command::new(&bin)
                 .args(["-y", "-loglevel", "error"])
                 .args(&input)
-                .args(["-filter_complex", &graph, "-map", "[v]", "-c:v", "libwebp_anim", "-loop", "0", "-q:v", "60", "-compression_level", "6", "-an"])
+                .args([
+                    "-filter_complex",
+                    &graph,
+                    "-map",
+                    "[v]",
+                    "-c:v",
+                    "libwebp_anim",
+                    "-loop",
+                    "0",
+                    "-q:v",
+                    "60",
+                    "-compression_level",
+                    "6",
+                    "-an",
+                ])
                 .arg(&file)
                 .status()
                 .unwrap();

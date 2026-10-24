@@ -19,11 +19,19 @@ pub fn root(cache: &Path) -> PathBuf {
 }
 
 pub fn valid_session(session: &str) -> bool {
-    !session.is_empty() && session.len() <= 40 && session.chars().all(|c| c.is_ascii_alphanumeric() || c == '-')
+    !session.is_empty()
+        && session.len() <= 40
+        && session
+            .chars()
+            .all(|c| c.is_ascii_alphanumeric() || c == '-')
 }
 
 pub fn begin(cache: &Path) -> Result<String, String> {
-    let session = format!("t{}-{}", std::process::id(), NEXT.fetch_add(1, Ordering::Relaxed));
+    let session = format!(
+        "t{}-{}",
+        std::process::id(),
+        NEXT.fetch_add(1, Ordering::Relaxed)
+    );
     std::fs::create_dir_all(root(cache).join(&session)).map_err(|e| e.to_string())?;
     Ok(session)
 }
@@ -63,7 +71,11 @@ pub struct Entry {
 pub fn concat_list(entries: &[Entry]) -> String {
     let mut out = String::from("ffconcat version 1.0\n");
     for entry in entries {
-        out.push_str(&format!("file '{}'\nduration {:.6}\n", frame_name(entry.frame), entry.duration.max(0.0)));
+        out.push_str(&format!(
+            "file '{}'\nduration {:.6}\n",
+            frame_name(entry.frame),
+            entry.duration.max(0.0)
+        ));
     }
     if let Some(last) = entries.last() {
         out.push_str(&format!("file '{}'\n", frame_name(last.frame)));
@@ -104,7 +116,16 @@ mod tests {
 
     #[test]
     fn concat_list_repeats_the_last_frame() {
-        let list = concat_list(&[Entry { frame: 0, duration: 1.5 }, Entry { frame: 3, duration: 0.033333 }]);
+        let list = concat_list(&[
+            Entry {
+                frame: 0,
+                duration: 1.5,
+            },
+            Entry {
+                frame: 3,
+                duration: 0.033333,
+            },
+        ]);
         assert_eq!(
             list,
             "ffconcat version 1.0\nfile 'f000000.png'\nduration 1.500000\nfile 'f000003.png'\nduration 0.033333\nfile 'f000003.png'\n"
@@ -120,8 +141,26 @@ mod tests {
         assert!(write_frame(&cache, "../x", 0, b"\x89PNG\r\n\x1a\n").is_err());
         assert!(write_frame(&cache, &session, 0, b"not a png").is_err());
         write_frame(&cache, &session, 0, b"\x89PNG\r\n\x1a\n").unwrap();
-        assert!(finish(&cache, &session, &[Entry { frame: 1, duration: 1.0 }]).is_err());
-        let list = finish(&cache, &session, &[Entry { frame: 0, duration: 1.0 }]).unwrap();
+        assert!(
+            finish(
+                &cache,
+                &session,
+                &[Entry {
+                    frame: 1,
+                    duration: 1.0
+                }]
+            )
+            .is_err()
+        );
+        let list = finish(
+            &cache,
+            &session,
+            &[Entry {
+                frame: 0,
+                duration: 1.0,
+            }],
+        )
+        .unwrap();
         assert!(Path::new(&list).is_file());
         discard(&cache, &session);
         assert!(!root(&cache).join(&session).exists());

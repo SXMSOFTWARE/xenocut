@@ -5,7 +5,7 @@
 use std::path::Path;
 use std::process::{Command, Stdio};
 
-use rustfft::{num_complex::Complex32, FftPlanner};
+use rustfft::{FftPlanner, num_complex::Complex32};
 use serde::Serialize;
 
 use crate::audio::ffmpeg;
@@ -49,8 +49,12 @@ pub fn read_pcm(input: &Path, start: f64, duration: Option<f64>) -> Result<Vec<f
         cmd.args(["-t", &format!("{d:.3}")]);
     }
     let rate = RATE.to_string();
-    cmd.arg("-i").arg(input).args(["-vn", "-map", "0:a:0", "-ac", "1", "-ar", &rate, "-f", "f32le", "pipe:1"]);
-    cmd.stdin(Stdio::null()).stdout(Stdio::piped()).stderr(Stdio::piped());
+    cmd.arg("-i").arg(input).args([
+        "-vn", "-map", "0:a:0", "-ac", "1", "-ar", &rate, "-f", "f32le", "pipe:1",
+    ]);
+    cmd.stdin(Stdio::null())
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped());
     #[cfg(windows)]
     {
         use std::os::windows::process::CommandExt;
@@ -61,7 +65,11 @@ pub fn read_pcm(input: &Path, start: f64, duration: Option<f64>) -> Result<Vec<f
         let err = String::from_utf8_lossy(&out.stderr);
         return Err(format!("could not read the audio: {}", err.trim()));
     }
-    Ok(out.stdout.chunks_exact(4).map(|c| f32::from_le_bytes([c[0], c[1], c[2], c[3]])).collect())
+    Ok(out
+        .stdout
+        .chunks_exact(4)
+        .map(|c| f32::from_le_bytes([c[0], c[1], c[2], c[3]]))
+        .collect())
 }
 
 /// Onset strength per hop: positive change of log magnitude summed over frequency, with the
@@ -71,7 +79,9 @@ pub fn onset_envelope(samples: &[f32]) -> Vec<f32> {
         return Vec::new();
     }
     let frames = (samples.len() - N_FFT) / HOP + 1;
-    let window: Vec<f32> = (0..N_FFT).map(|i| 0.5 - 0.5 * (2.0 * std::f32::consts::PI * i as f32 / N_FFT as f32).cos()).collect();
+    let window: Vec<f32> = (0..N_FFT)
+        .map(|i| 0.5 - 0.5 * (2.0 * std::f32::consts::PI * i as f32 / N_FFT as f32).cos())
+        .collect();
     let fft = FftPlanner::<f32>::new().plan_fft_forward(N_FFT);
     let bins = N_FFT / 2 + 1;
     // Ignore the rumble below ~30 Hz and the hiss above ~8 kHz.
@@ -112,7 +122,9 @@ pub fn onset_envelope(samples: &[f32]) -> Vec<f32> {
         .collect();
     let n = detrended.len().max(1) as f32;
     let mean = detrended.iter().sum::<f32>() / n;
-    let std = (detrended.iter().map(|v| (v - mean).powi(2)).sum::<f32>() / n).sqrt().max(1e-6);
+    let std = (detrended.iter().map(|v| (v - mean).powi(2)).sum::<f32>() / n)
+        .sqrt()
+        .max(1e-6);
     detrended.iter().map(|v| v / std).collect()
 }
 
@@ -124,8 +136,23 @@ pub fn estimate_period(env: &[f32]) -> f64 {
     if max_lag <= min_lag + 2 {
         return 60.0 / PRIOR_BPM * fs;
     }
-    let ac = |lag: usize| -> f64 { env[lag..].iter().zip(env).map(|(a, b)| (*a as f64) * (*b as f64)).sum::<f64>() / (env.len() - lag) as f64 };
-    let raw: Vec<f64> = (0..=max_lag + 1).map(|l| if l >= min_lag.saturating_sub(1) { ac(l) } else { 0.0 }).collect();
+    let ac = |lag: usize| -> f64 {
+        env[lag..]
+            .iter()
+            .zip(env)
+            .map(|(a, b)| (*a as f64) * (*b as f64))
+            .sum::<f64>()
+            / (env.len() - lag) as f64
+    };
+    let raw: Vec<f64> = (0..=max_lag + 1)
+        .map(|l| {
+            if l >= min_lag.saturating_sub(1) {
+                ac(l)
+            } else {
+                0.0
+            }
+        })
+        .collect();
     let score = |lag: f64| -> f64 {
         let bpm = 60.0 * fs / lag;
         (-0.5 * ((bpm / PRIOR_BPM).log2()).powi(2)).exp()
@@ -138,7 +165,9 @@ pub fn estimate_period(env: &[f32]) -> f64 {
         }
         v * score(l as f64)
     };
-    let best = (min_lag..=max_lag).max_by(|a, b| total(*a).partial_cmp(&total(*b)).unwrap()).unwrap();
+    let best = (min_lag..=max_lag)
+        .max_by(|a, b| total(*a).partial_cmp(&total(*b)).unwrap())
+        .unwrap();
     // Parabolic refinement around the peak.
     if best > min_lag && best < max_lag {
         let (a, b, c) = (total(best - 1), total(best), total(best + 1));
@@ -159,9 +188,18 @@ pub fn track(env: &[f32], period: f64) -> Vec<usize> {
     // Smooth the envelope a little with a Gaussian ~ period / 32 wide, as librosa does.
     let sigma = (period / 32.0).max(0.5);
     let k = (sigma * 3.0).ceil() as isize;
-    let kernel: Vec<f64> = (-k..=k).map(|i| (-0.5 * (i as f64 / sigma).powi(2)).exp()).collect();
+    let kernel: Vec<f64> = (-k..=k)
+        .map(|i| (-0.5 * (i as f64 / sigma).powi(2)).exp())
+        .collect();
     let local: Vec<f64> = (0..n as isize)
-        .map(|i| (-k..=k).map(|j| env.get((i + j).max(0) as usize).copied().unwrap_or(0.0) as f64 * kernel[(j + k) as usize]).sum())
+        .map(|i| {
+            (-k..=k)
+                .map(|j| {
+                    env.get((i + j).max(0) as usize).copied().unwrap_or(0.0) as f64
+                        * kernel[(j + k) as usize]
+                })
+                .sum()
+        })
         .collect();
     let mut score = vec![0f64; n];
     let mut back = vec![usize::MAX; n];
@@ -189,14 +227,20 @@ pub fn track(env: &[f32], period: f64) -> Vec<usize> {
     }
     // The last beat: the best-scoring local maximum near the end.
     let tail = n.saturating_sub(period.ceil() as usize * 2);
-    let maxima: Vec<usize> = (1..n.saturating_sub(1)).filter(|&t| score[t] >= score[t - 1] && score[t] >= score[t + 1]).collect();
+    let maxima: Vec<usize> = (1..n.saturating_sub(1))
+        .filter(|&t| score[t] >= score[t - 1] && score[t] >= score[t + 1])
+        .collect();
     let median = {
         let mut v: Vec<f64> = maxima.iter().map(|&t| score[t]).collect();
         v.sort_by(|a, b| a.partial_cmp(b).unwrap());
         v.get(v.len() / 2).copied().unwrap_or(0.0)
     };
-    let last = (tail..n).filter(|&t| maxima.binary_search(&t).is_ok() && score[t] >= 0.5 * median).max_by(|a, b| score[*a].partial_cmp(&score[*b]).unwrap());
-    let Some(mut t) = last.or_else(|| (tail..n).max_by(|a, b| score[*a].partial_cmp(&score[*b]).unwrap())) else {
+    let last = (tail..n)
+        .filter(|&t| maxima.binary_search(&t).is_ok() && score[t] >= 0.5 * median)
+        .max_by(|a, b| score[*a].partial_cmp(&score[*b]).unwrap());
+    let Some(mut t) =
+        last.or_else(|| (tail..n).max_by(|a, b| score[*a].partial_cmp(&score[*b]).unwrap()))
+    else {
         return Vec::new();
     };
     let mut beats = vec![t];
@@ -209,7 +253,11 @@ pub fn track(env: &[f32], period: f64) -> Vec<usize> {
     let rms = (local.iter().map(|v| v * v).sum::<f64>() / n as f64).sqrt();
     let strong = |b: &usize| local[*b] >= 0.5 * rms;
     let first = beats.iter().position(strong).unwrap_or(0);
-    let last = beats.iter().rposition(strong).map(|i| i + 1).unwrap_or(beats.len());
+    let last = beats
+        .iter()
+        .rposition(strong)
+        .map(|i| i + 1)
+        .unwrap_or(beats.len());
     beats[first..last].to_vec()
 }
 
@@ -230,32 +278,66 @@ pub fn analyze(samples: &[f32]) -> BeatInfo {
     let duration = samples.len() as f64 / RATE as f64;
     let env = onset_envelope(samples);
     if env.len() < 16 {
-        return BeatInfo { bpm: 0.0, beats: Vec::new(), strength: Vec::new(), downbeat: 0, duration };
+        return BeatInfo {
+            bpm: 0.0,
+            beats: Vec::new(),
+            strength: Vec::new(),
+            downbeat: 0,
+            duration,
+        };
     }
     let period = estimate_period(&env);
     let frames = track(&env, period);
     // Frame f covers samples [f * HOP, f * HOP + N_FFT): its flux marks the change at the centre.
     let offset = (N_FFT / 2) as f64 / RATE as f64;
-    let beats: Vec<f64> = frames.iter().map(|&f| f as f64 * frame_secs() + offset).collect();
-    let peak = frames.iter().map(|&f| env[f]).fold(0f32, f32::max).max(1e-6);
-    let strength: Vec<f32> = frames.iter().map(|&f| (env[f] / peak).clamp(0.0, 1.0)).collect();
+    let beats: Vec<f64> = frames
+        .iter()
+        .map(|&f| f as f64 * frame_secs() + offset)
+        .collect();
+    let peak = frames
+        .iter()
+        .map(|&f| env[f])
+        .fold(0f32, f32::max)
+        .max(1e-6);
+    let strength: Vec<f32> = frames
+        .iter()
+        .map(|&f| (env[f] / peak).clamp(0.0, 1.0))
+        .collect();
     // Tempo from the tracked beats where possible (more precise than the autocorrelation peak).
     let bpm = if beats.len() >= 4 {
         // Least-squares slope of beat time over beat index: averages out the hop quantisation.
         let n = beats.len() as f64;
         let mx = (n - 1.0) / 2.0;
         let my = beats.iter().sum::<f64>() / n;
-        let (sxy, sxx) = beats.iter().enumerate().fold((0.0, 0.0), |(sxy, sxx), (i, y)| (sxy + (i as f64 - mx) * (y - my), sxx + (i as f64 - mx).powi(2)));
+        let (sxy, sxx) = beats
+            .iter()
+            .enumerate()
+            .fold((0.0, 0.0), |(sxy, sxx), (i, y)| {
+                (
+                    sxy + (i as f64 - mx) * (y - my),
+                    sxx + (i as f64 - mx).powi(2),
+                )
+            });
         60.0 / (sxy / sxx)
     } else {
         60.0 / (period * frame_secs())
     };
     let downbeat = downbeat_phase(&strength);
-    BeatInfo { bpm: (bpm * 10.0).round() / 10.0, beats, strength, downbeat, duration }
+    BeatInfo {
+        bpm: (bpm * 10.0).round() / 10.0,
+        beats,
+        strength,
+        downbeat,
+        duration,
+    }
 }
 
 #[tauri::command]
-pub async fn beat_detect(path: String, start: Option<f64>, duration: Option<f64>) -> Result<BeatInfo, String> {
+pub async fn beat_detect(
+    path: String,
+    start: Option<f64>,
+    duration: Option<f64>,
+) -> Result<BeatInfo, String> {
     tauri::async_runtime::spawn_blocking(move || {
         let pcm = read_pcm(Path::new(&path), start.unwrap_or(0.0), duration)?;
         if pcm.is_empty() {
@@ -292,7 +374,9 @@ mod tests {
                     break;
                 }
                 let tt = i as f32 / RATE as f32;
-                out[s + i] += amp * (-tt * 40.0).exp() * (2.0 * std::f32::consts::PI * (60.0 + 200.0 * (-tt * 30.0).exp()) * tt).sin();
+                out[s + i] += amp
+                    * (-tt * 40.0).exp()
+                    * (2.0 * std::f32::consts::PI * (60.0 + 200.0 * (-tt * 30.0).exp()) * tt).sin();
                 out[s + i] += amp * 0.3 * (-tt * 200.0).exp() * if i % 2 == 0 { 1.0 } else { -1.0 };
             }
             k += 1;
@@ -310,9 +394,16 @@ mod tests {
             // Every detected beat sits on a click (within 35 ms).
             for b in &info.beats {
                 let k = ((b - 0.5) / period).round();
-                assert!((b - (0.5 + k * period)).abs() < 0.035, "bpm {bpm}: beat {b} off the grid");
+                assert!(
+                    (b - (0.5 + k * period)).abs() < 0.035,
+                    "bpm {bpm}: beat {b} off the grid"
+                );
             }
-            assert!(info.beats.len() as f64 >= 0.9 * 19.5 / period, "bpm {bpm}: only {} beats", info.beats.len());
+            assert!(
+                info.beats.len() as f64 >= 0.9 * 19.5 / period,
+                "bpm {bpm}: only {} beats",
+                info.beats.len()
+            );
         }
     }
 
@@ -341,7 +432,22 @@ mod real {
         let t0 = std::time::Instant::now();
         let pcm = super::read_pcm(std::path::Path::new(&path), 0.0, None).unwrap();
         let info = super::analyze(&pcm);
-        println!("{:.1}s audio in {:?}: bpm {} beats {} downbeat {}", info.duration, t0.elapsed(), info.bpm, info.beats.len(), info.downbeat);
-        println!("{:?}", &info.beats.iter().take(16).map(|b| (b * 100.0).round() / 100.0).collect::<Vec<_>>());
+        println!(
+            "{:.1}s audio in {:?}: bpm {} beats {} downbeat {}",
+            info.duration,
+            t0.elapsed(),
+            info.bpm,
+            info.beats.len(),
+            info.downbeat
+        );
+        println!(
+            "{:?}",
+            &info
+                .beats
+                .iter()
+                .take(16)
+                .map(|b| (b * 100.0).round() / 100.0)
+                .collect::<Vec<_>>()
+        );
     }
 }

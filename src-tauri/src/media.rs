@@ -16,7 +16,9 @@ const CACHE_VERSION: &str = "1";
 
 const IMAGE_EXT: &[&str] = &["png", "jpg", "jpeg", "webp", "bmp", "gif", "tif", "tiff"];
 const AUDIO_EXT: &[&str] = &["mp3", "wav", "m4a", "aac", "flac", "ogg", "opus", "wma"];
-pub const VIDEO_EXT: &[&str] = &["mp4", "mov", "mkv", "webm", "m4v", "avi", "mts", "m2ts", "3gp", "wmv", "flv"];
+pub const VIDEO_EXT: &[&str] = &[
+    "mp4", "mov", "mkv", "webm", "m4v", "avi", "mts", "m2ts", "3gp", "wmv", "flv",
+];
 
 #[derive(Debug, Clone, Serialize, PartialEq)]
 #[serde(rename_all = "camelCase")]
@@ -45,12 +47,17 @@ pub struct MediaAssets {
 }
 
 fn extension(path: &Path) -> String {
-    path.extension().and_then(|ext| ext.to_str()).unwrap_or("").to_ascii_lowercase()
+    path.extension()
+        .and_then(|ext| ext.to_str())
+        .unwrap_or("")
+        .to_ascii_lowercase()
 }
 
 pub fn is_supported(path: &Path) -> bool {
     let ext = extension(path);
-    IMAGE_EXT.contains(&ext.as_str()) || AUDIO_EXT.contains(&ext.as_str()) || VIDEO_EXT.contains(&ext.as_str())
+    IMAGE_EXT.contains(&ext.as_str())
+        || AUDIO_EXT.contains(&ext.as_str())
+        || VIDEO_EXT.contains(&ext.as_str())
 }
 
 /// Parse the stream summary FFmpeg prints for `ffmpeg -i <file>`.
@@ -97,7 +104,10 @@ pub fn parse_probe(text: &str, ext: &str) -> (MediaKind, f64, u32, u32, f64, boo
             has_audio = true;
         }
     }
-    if text.contains("rotation of -90") || text.contains("rotation of 90") || text.contains("rotation of 270") {
+    if text.contains("rotation of -90")
+        || text.contains("rotation of 90")
+        || text.contains("rotation of 270")
+    {
         std::mem::swap(&mut width, &mut height);
     }
     let kind = if IMAGE_EXT.contains(&ext) {
@@ -107,8 +117,20 @@ pub fn parse_probe(text: &str, ext: &str) -> (MediaKind, f64, u32, u32, f64, boo
     } else {
         MediaKind::Audio
     };
-    let duration = if kind == MediaKind::Image { 0.0 } else { duration };
-    (kind, duration, width, height, fps, has_audio, has_video && kind != MediaKind::Audio)
+    let duration = if kind == MediaKind::Image {
+        0.0
+    } else {
+        duration
+    };
+    (
+        kind,
+        duration,
+        width,
+        height,
+        fps,
+        has_audio,
+        has_video && kind != MediaKind::Audio,
+    )
 }
 
 pub fn probe(path: &Path) -> Result<ProbeInfo, String> {
@@ -124,12 +146,18 @@ pub fn probe(path: &Path) -> Result<ProbeInfo, String> {
         .map_err(|err| err.to_string())?;
     let text = String::from_utf8_lossy(&output.stderr);
     if text.contains("Invalid data found") || !text.contains("Stream #") {
-        return Err(format!("{} is not a media file FFmpeg can read", file_name(path)));
+        return Err(format!(
+            "{} is not a media file FFmpeg can read",
+            file_name(path)
+        ));
     }
     let ext = extension(path);
     let (kind, duration, width, height, fps, has_audio, has_video) = parse_probe(&text, &ext);
     if kind != MediaKind::Image && duration <= 0.0 {
-        return Err(format!("Could not read the duration of {}", file_name(path)));
+        return Err(format!(
+            "Could not read the duration of {}",
+            file_name(path)
+        ));
     }
     if kind == MediaKind::Audio && !has_audio {
         return Err(format!("{} has no audio or video stream", file_name(path)));
@@ -149,7 +177,10 @@ pub fn probe(path: &Path) -> Result<ProbeInfo, String> {
 }
 
 fn file_name(path: &Path) -> String {
-    path.file_name().and_then(|name| name.to_str()).unwrap_or("media").to_string()
+    path.file_name()
+        .and_then(|name| name.to_str())
+        .unwrap_or("media")
+        .to_string()
 }
 
 fn cache_key(path: &Path) -> String {
@@ -165,7 +196,12 @@ fn cache_key(path: &Path) -> String {
     hasher.update(path.display().to_string().as_bytes());
     hasher.update(size.to_le_bytes());
     hasher.update(mtime.to_le_bytes());
-    hasher.finalize().iter().take(12).map(|b| format!("{b:02x}")).collect()
+    hasher
+        .finalize()
+        .iter()
+        .take(12)
+        .map(|b| format!("{b:02x}"))
+        .collect()
 }
 
 /// Number of frames in a filmstrip sprite: about one per second, 6..=60.
@@ -174,7 +210,12 @@ pub fn strip_count(duration: f64) -> u32 {
 }
 
 pub fn thumb_args(input: &Path, kind: MediaKind, duration: f64, out: &Path) -> Vec<String> {
-    let mut args: Vec<String> = vec!["-hide_banner".into(), "-loglevel".into(), "error".into(), "-y".into()];
+    let mut args: Vec<String> = vec![
+        "-hide_banner".into(),
+        "-loglevel".into(),
+        "error".into(),
+        "-y".into(),
+    ];
     if kind == MediaKind::Video {
         let at = (duration * 0.1).min(1.0);
         args.extend(["-ss".into(), format!("{at:.3}")]);
@@ -195,7 +236,12 @@ pub fn thumb_args(input: &Path, kind: MediaKind, duration: f64, out: &Path) -> V
 }
 
 pub fn strip_args(input: &Path, duration: f64, count: u32, out: &Path) -> Vec<String> {
-    let mut args: Vec<String> = vec!["-hide_banner".into(), "-loglevel".into(), "error".into(), "-y".into()];
+    let mut args: Vec<String> = vec![
+        "-hide_banner".into(),
+        "-loglevel".into(),
+        "error".into(),
+        "-y".into(),
+    ];
     // Long sources only decode keyframes, which keeps a one-hour file to a few seconds of work.
     if duration > 180.0 {
         args.extend(["-skip_frame".into(), "nokey".into()]);
@@ -263,17 +309,43 @@ impl ProxyCodec {
 /// half second keep scrubbing cheap; MP4s get `faststart` so playback begins before the file is
 /// read. Audio-only inputs (`video == false`) keep just the sound.
 pub fn proxy_args(input: &Path, out: &Path, codec: ProxyCodec, video: bool) -> Vec<String> {
-    let mut args: Vec<String> = ["-hide_banner", "-loglevel", "error", "-y", "-i"].iter().map(|s| s.to_string()).collect();
+    let mut args: Vec<String> = ["-hide_banner", "-loglevel", "error", "-y", "-i"]
+        .iter()
+        .map(|s| s.to_string())
+        .collect();
     args.push(input.display().to_string());
     let mut push = |items: &[&str]| args.extend(items.iter().map(|s| s.to_string()));
     if video {
         push(&["-map", "0:v:0", "-map", "0:a:0?", "-sn", "-dn"]);
-        push(&["-vf", &format!("scale=-2:'min({PROXY_HEIGHT},ih)',format=yuv420p")]);
+        push(&[
+            "-vf",
+            &format!("scale=-2:'min({PROXY_HEIGHT},ih)',format=yuv420p"),
+        ]);
         match codec {
-            ProxyCodec::H264 => push(&["-c:v", "libx264", "-preset", "veryfast", "-crf", "26", "-g", "15"]),
+            ProxyCodec::H264 => push(&[
+                "-c:v", "libx264", "-preset", "veryfast", "-crf", "26", "-g", "15",
+            ]),
             ProxyCodec::Webm => push(&[
-                "-c:v", "libvpx", "-deadline", "realtime", "-cpu-used", "8", "-b:v", "2500k", "-crf", "10",
-                "-qmin", "4", "-qmax", "40", "-g", "15", "-auto-alt-ref", "0", "-threads", "4",
+                "-c:v",
+                "libvpx",
+                "-deadline",
+                "realtime",
+                "-cpu-used",
+                "8",
+                "-b:v",
+                "2500k",
+                "-crf",
+                "10",
+                "-qmin",
+                "4",
+                "-qmax",
+                "40",
+                "-g",
+                "15",
+                "-auto-alt-ref",
+                "0",
+                "-threads",
+                "4",
             ]),
         }
     } else {
@@ -289,10 +361,19 @@ pub fn proxy_args(input: &Path, out: &Path, codec: ProxyCodec, video: bool) -> V
 
 /// Build (or reuse) the preview proxy of `input`. Written to a temp name first so a half-written
 /// file is never served.
-pub fn proxy(cache_dir: &Path, input: &Path, codec: ProxyCodec, video: bool) -> Result<String, String> {
+pub fn proxy(
+    cache_dir: &Path,
+    input: &Path,
+    codec: ProxyCodec,
+    video: bool,
+) -> Result<String, String> {
     let dir = cache_dir.join("media");
     let ext = codec.extension();
-    let tag = if video { format!("proxy{PROXY_HEIGHT}") } else { "proxya".to_string() };
+    let tag = if video {
+        format!("proxy{PROXY_HEIGHT}")
+    } else {
+        "proxya".to_string()
+    };
     let out = dir.join(format!("{}-{tag}.{ext}", cache_key(input)));
     if out.is_file() {
         return Ok(out.display().to_string());
@@ -300,7 +381,10 @@ pub fn proxy(cache_dir: &Path, input: &Path, codec: ProxyCodec, video: bool) -> 
     std::fs::create_dir_all(&dir).map_err(|e| e.to_string())?;
     let tmp = out.with_extension(format!("part.{ext}"));
     let bin = ffmpeg::ffmpeg_binary().map_err(|e| e.to_string())?;
-    let output = Command::new(bin).args(proxy_args(input, &tmp, codec, video)).output().map_err(|e| e.to_string())?;
+    let output = Command::new(bin)
+        .args(proxy_args(input, &tmp, codec, video))
+        .output()
+        .map_err(|e| e.to_string())?;
     if !output.status.success() {
         let _ = std::fs::remove_file(&tmp);
         return Err(String::from_utf8_lossy(&output.stderr).trim().to_string());
@@ -326,10 +410,20 @@ fn ensure(out: &Path, args: Vec<String>) -> Option<String> {
 }
 
 /// Produce (or reuse) preview assets. Failures leave the field empty rather than failing the import.
-pub fn assets(cache_dir: &Path, input: &Path, kind: MediaKind, duration: f64, has_audio: bool) -> MediaAssets {
+pub fn assets(
+    cache_dir: &Path,
+    input: &Path,
+    kind: MediaKind,
+    duration: f64,
+    has_audio: bool,
+) -> MediaAssets {
     let dir = cache_dir.join("media");
     let key = cache_key(input);
-    let mut result = MediaAssets { strip_frame_w: STRIP_FRAME_W, strip_frame_h: STRIP_FRAME_H, ..Default::default() };
+    let mut result = MediaAssets {
+        strip_frame_w: STRIP_FRAME_W,
+        strip_frame_h: STRIP_FRAME_H,
+        ..Default::default()
+    };
     if kind != MediaKind::Audio {
         let out = dir.join(format!("{key}-thumb.jpg"));
         result.thumb = ensure(&out, thumb_args(input, kind, duration, &out));
@@ -350,7 +444,9 @@ pub fn assets(cache_dir: &Path, input: &Path, kind: MediaKind, duration: f64, ha
 }
 
 pub fn dir_size(path: &Path) -> u64 {
-    let Ok(entries) = std::fs::read_dir(path) else { return 0 };
+    let Ok(entries) = std::fs::read_dir(path) else {
+        return 0;
+    };
     entries
         .flatten()
         .map(|entry| {
@@ -368,7 +464,11 @@ pub fn expand_dir(path: &Path) -> Vec<PathBuf> {
     let mut found = Vec::new();
     if path.is_dir() {
         if let Ok(entries) = std::fs::read_dir(path) {
-            let mut items: Vec<PathBuf> = entries.flatten().map(|e| e.path()).filter(|p| p.is_file() && is_supported(p)).collect();
+            let mut items: Vec<PathBuf> = entries
+                .flatten()
+                .map(|e| e.path())
+                .filter(|p| p.is_file() && is_supported(p))
+                .collect();
             items.sort();
             found.extend(items);
         }
@@ -435,22 +535,54 @@ mod tests {
         std::fs::create_dir_all(&dir).unwrap();
         let src = dir.join("src.mp4");
         let ok = Command::new(&bin)
-            .args(["-y", "-loglevel", "error", "-f", "lavfi", "-i", "testsrc2=s=1280x720:r=30:d=2", "-f", "lavfi", "-i", "sine=f=440:d=2"])
-            .args(["-c:v", "libx264", "-pix_fmt", "yuvj420p", "-c:a", "aac", "-shortest"])
+            .args([
+                "-y",
+                "-loglevel",
+                "error",
+                "-f",
+                "lavfi",
+                "-i",
+                "testsrc2=s=1280x720:r=30:d=2",
+                "-f",
+                "lavfi",
+                "-i",
+                "sine=f=440:d=2",
+            ])
+            .args([
+                "-c:v",
+                "libx264",
+                "-pix_fmt",
+                "yuvj420p",
+                "-c:a",
+                "aac",
+                "-shortest",
+            ])
             .arg(&src)
             .status()
             .unwrap();
         assert!(ok.success());
         let out = proxy(&dir, &src, ProxyCodec::Webm, true).unwrap();
         assert!(out.ends_with(".webm"), "{out}");
-        let probe = Command::new(&bin).args(["-hide_banner", "-i", &out]).output().unwrap();
+        let probe = Command::new(&bin)
+            .args(["-hide_banner", "-i", &out])
+            .output()
+            .unwrap();
         let text = String::from_utf8_lossy(&probe.stderr);
-        assert!(text.contains("Video: vp8") && text.contains("yuv420p") && text.contains("Audio: opus"), "{text}");
+        assert!(
+            text.contains("Video: vp8") && text.contains("yuv420p") && text.contains("Audio: opus"),
+            "{text}"
+        );
         assert!(text.contains("x540"), "{text}");
         let audio = proxy(&dir, &src, ProxyCodec::Webm, false).unwrap();
-        let probe = Command::new(&bin).args(["-hide_banner", "-i", &audio]).output().unwrap();
+        let probe = Command::new(&bin)
+            .args(["-hide_banner", "-i", &audio])
+            .output()
+            .unwrap();
         let text = String::from_utf8_lossy(&probe.stderr);
-        assert!(text.contains("Audio: opus") && !text.contains("Video:"), "{text}");
+        assert!(
+            text.contains("Audio: opus") && !text.contains("Video:"),
+            "{text}"
+        );
         let _ = std::fs::remove_dir_all(&dir);
     }
 }

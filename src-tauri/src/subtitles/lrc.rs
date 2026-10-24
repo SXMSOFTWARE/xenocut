@@ -12,7 +12,11 @@ const LAST_LINE: f64 = 4.0;
 pub fn looks_like_lrc(text: &str) -> bool {
     text.lines().any(|l| {
         let l = l.trim_start_matches('\u{feff}').trim();
-        l.starts_with('[') && l[1..].split(']').next().is_some_and(|s| parse_stamp(s).is_some())
+        l.starts_with('[')
+            && l[1..]
+                .split(']')
+                .next()
+                .is_some_and(|s| parse_stamp(s).is_some())
     })
 }
 
@@ -55,7 +59,11 @@ pub fn parse(text: &str) -> Vec<Cue> {
             None => start + LAST_LINE,
         };
         if end > start {
-            cues.push(Cue { start, end, text: line.clone() });
+            cues.push(Cue {
+                start,
+                end,
+                text: line.clone(),
+            });
         }
     }
     cues
@@ -65,7 +73,11 @@ pub fn parse(text: &str) -> Vec<Cue> {
 pub fn write(cues: &[Cue]) -> String {
     let mut out = String::from("[re:XenoCut]\n");
     for (i, cue) in cues.iter().enumerate() {
-        out.push_str(&format!("[{}]{}\n", stamp(cue.start), cue.text.split_whitespace().collect::<Vec<_>>().join(" ")));
+        out.push_str(&format!(
+            "[{}]{}\n",
+            stamp(cue.start),
+            cue.text.split_whitespace().collect::<Vec<_>>().join(" ")
+        ));
         let gap = cues.get(i + 1).map_or(f64::INFINITY, |n| n.start - cue.end);
         if gap > 0.05 {
             out.push_str(&format!("[{}]\n", stamp(cue.end)));
@@ -92,7 +104,9 @@ fn parse_stamp(s: &str) -> Option<f64> {
     }
     let sec: f64 = sec.parse().ok()?;
     let frac = match frac {
-        Some(f) if !f.is_empty() && f.bytes().all(|b| b.is_ascii_digit()) => f.parse::<f64>().ok()? / 10f64.powi(f.len() as i32),
+        Some(f) if !f.is_empty() && f.bytes().all(|b| b.is_ascii_digit()) => {
+            f.parse::<f64>().ok()? / 10f64.powi(f.len() as i32)
+        }
         Some(_) => return None,
         None => 0.0,
     };
@@ -103,7 +117,9 @@ fn strip_word_stamps(line: &str) -> String {
     let mut out = String::new();
     let mut rest = line;
     while let Some(open) = rest.find('<') {
-        let Some(close) = rest[open..].find('>') else { break };
+        let Some(close) = rest[open..].find('>') else {
+            break;
+        };
         if parse_stamp(&rest[open + 1..open + close]).is_none() {
             out.push_str(&rest[..open + close + 1]);
         } else {
@@ -123,8 +139,19 @@ mod tests {
     fn parses_lines_tags_and_repeats() {
         let text = "\u{feff}[ti:Song]\n[ar:Someone]\n[00:01.50]First line\n[00:04.00][00:20.00]Chorus <00:04.50>word\n[00:07.25]\n[00:10.000]Third\n";
         let cues = parse(text);
-        let got: Vec<_> = cues.iter().map(|c| (c.start, c.end, c.text.as_str())).collect();
-        assert_eq!(got, vec![(1.5, 4.0, "First line"), (4.0, 7.25, "Chorus word"), (10.0, 18.0, "Third"), (20.0, 24.0, "Chorus word")]);
+        let got: Vec<_> = cues
+            .iter()
+            .map(|c| (c.start, c.end, c.text.as_str()))
+            .collect();
+        assert_eq!(
+            got,
+            vec![
+                (1.5, 4.0, "First line"),
+                (4.0, 7.25, "Chorus word"),
+                (10.0, 18.0, "Third"),
+                (20.0, 24.0, "Chorus word")
+            ]
+        );
         assert!(looks_like_lrc(text));
         assert!(!looks_like_lrc("1\n00:00:01,000 --> 00:00:02,000\nhi\n"));
     }
@@ -138,14 +165,36 @@ mod tests {
     #[test]
     fn round_trips() {
         let cues = vec![
-            Cue { start: 1.0, end: 3.0, text: "one".into() },
-            Cue { start: 3.0, end: 5.5, text: "two  words".into() },
-            Cue { start: 65.25, end: 68.0, text: "three".into() },
+            Cue {
+                start: 1.0,
+                end: 3.0,
+                text: "one".into(),
+            },
+            Cue {
+                start: 3.0,
+                end: 5.5,
+                text: "two  words".into(),
+            },
+            Cue {
+                start: 65.25,
+                end: 68.0,
+                text: "three".into(),
+            },
         ];
         let text = write(&cues);
         assert!(text.contains("[01:05.25]three"));
         let back = parse(&text);
-        let got: Vec<_> = back.iter().map(|c| (c.start, c.end, c.text.as_str())).collect();
-        assert_eq!(got, vec![(1.0, 3.0, "one"), (3.0, 5.5, "two words"), (65.25, 68.0, "three")]);
+        let got: Vec<_> = back
+            .iter()
+            .map(|c| (c.start, c.end, c.text.as_str()))
+            .collect();
+        assert_eq!(
+            got,
+            vec![
+                (1.0, 3.0, "one"),
+                (3.0, 5.5, "two words"),
+                (65.25, 68.0, "three")
+            ]
+        );
     }
 }

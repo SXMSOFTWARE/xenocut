@@ -32,7 +32,12 @@ fn random_token() -> String {
     for salt in 0..4u64 {
         let mut h = RandomState::new().build_hasher();
         h.write_u64(salt);
-        h.write_u128(std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).map(|d| d.as_nanos()).unwrap_or(0));
+        h.write_u128(
+            std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .map(|d| d.as_nanos())
+                .unwrap_or(0),
+        );
         h.write_u32(std::process::id());
         out.push_str(&format!("{:016x}", h.finish()));
     }
@@ -54,21 +59,30 @@ pub fn start(roots: Vec<PathBuf>) -> io::Result<&'static MediaServer> {
         port,
         token: random_token(),
         allowed: Mutex::new(HashSet::new()),
-        roots: Mutex::new(roots.iter().filter_map(|r| {
-            let _ = std::fs::create_dir_all(r);
-            canonical(r)
-        }).collect()),
+        roots: Mutex::new(
+            roots
+                .iter()
+                .filter_map(|r| {
+                    let _ = std::fs::create_dir_all(r);
+                    canonical(r)
+                })
+                .collect(),
+        ),
     };
     let server = SERVER.get_or_init(|| server);
-    std::thread::Builder::new().name("media-server".into()).spawn(move || {
-        for stream in listener.incoming().flatten() {
-            let _ = std::thread::Builder::new().name("media-conn".into()).spawn(move || {
-                if let Some(server) = SERVER.get() {
-                    let _ = server.serve(stream);
-                }
-            });
-        }
-    })?;
+    std::thread::Builder::new()
+        .name("media-server".into())
+        .spawn(move || {
+            for stream in listener.incoming().flatten() {
+                let _ = std::thread::Builder::new()
+                    .name("media-conn".into())
+                    .spawn(move || {
+                        if let Some(server) = SERVER.get() {
+                            let _ = server.serve(stream);
+                        }
+                    });
+            }
+        })?;
     Ok(server)
 }
 
@@ -93,7 +107,13 @@ pub fn allow_root(path: &Path) {
 }
 
 pub fn content_type(path: &Path) -> &'static str {
-    match path.extension().and_then(|e| e.to_str()).unwrap_or("").to_ascii_lowercase().as_str() {
+    match path
+        .extension()
+        .and_then(|e| e.to_str())
+        .unwrap_or("")
+        .to_ascii_lowercase()
+        .as_str()
+    {
         "mp4" | "m4v" => "video/mp4",
         "mov" => "video/quicktime",
         "webm" => "video/webm",
@@ -160,7 +180,11 @@ pub fn parse_range(header: &str, len: u64) -> Option<(u64, u64)> {
     if start >= len {
         return None;
     }
-    let end = if b.is_empty() { len - 1 } else { b.parse::<u64>().ok()?.min(len - 1) };
+    let end = if b.is_empty() {
+        len - 1
+    } else {
+        b.parse::<u64>().ok()?.min(len - 1)
+    };
     if end < start {
         return None;
     }
@@ -180,7 +204,13 @@ impl MediaServer {
         if self.allowed.lock().unwrap().contains(&path) {
             return Some(path);
         }
-        if self.roots.lock().unwrap().iter().any(|r| path.starts_with(r)) {
+        if self
+            .roots
+            .lock()
+            .unwrap()
+            .iter()
+            .any(|r| path.starts_with(r))
+        {
             return Some(path);
         }
         None
@@ -226,10 +256,19 @@ impl MediaServer {
         }
     }
 
-    fn respond(&self, out: &mut TcpStream, method: &str, target: &str, range: Option<&str>) -> io::Result<()> {
+    fn respond(
+        &self,
+        out: &mut TcpStream,
+        method: &str,
+        target: &str,
+        range: Option<&str>,
+    ) -> io::Result<()> {
         const COMMON: &str = "Access-Control-Allow-Origin: *\r\nAccess-Control-Allow-Headers: Range\r\nAccess-Control-Expose-Headers: Content-Range, Content-Length, Accept-Ranges\r\nCache-Control: no-store\r\n";
         let simple = |out: &mut TcpStream, status: &str| -> io::Result<()> {
-            write!(out, "HTTP/1.1 {status}\r\n{COMMON}Content-Length: 0\r\n\r\n")
+            write!(
+                out,
+                "HTTP/1.1 {status}\r\n{COMMON}Content-Length: 0\r\n\r\n"
+            )
         };
         if method == "OPTIONS" {
             return simple(out, "204 No Content");
@@ -238,11 +277,17 @@ impl MediaServer {
             return simple(out, "405 Method Not Allowed");
         }
         let target = target.split('?').next().unwrap_or("");
-        let rest = target.strip_prefix('/').and_then(|t| t.strip_prefix(self.token.as_str())).and_then(|t| t.strip_prefix('/'));
+        let rest = target
+            .strip_prefix('/')
+            .and_then(|t| t.strip_prefix(self.token.as_str()))
+            .and_then(|t| t.strip_prefix('/'));
         let Some(encoded) = rest else {
             return simple(out, "403 Forbidden");
         };
-        let Some(path) = percent_decode(encoded).map(PathBuf::from).and_then(|p| self.permitted(&p)) else {
+        let Some(path) = percent_decode(encoded)
+            .map(PathBuf::from)
+            .and_then(|p| self.permitted(&p))
+        else {
             return simple(out, "404 Not Found");
         };
         let mut file = match File::open(&path) {
@@ -255,13 +300,18 @@ impl MediaServer {
             Some(r) => match parse_range(r, len) {
                 Some((s, e)) => ("206 Partial Content", s, e),
                 None => {
-                    return write!(out, "HTTP/1.1 416 Range Not Satisfiable\r\n{COMMON}Content-Range: bytes */{len}\r\nContent-Length: 0\r\n\r\n");
+                    return write!(
+                        out,
+                        "HTTP/1.1 416 Range Not Satisfiable\r\n{COMMON}Content-Range: bytes */{len}\r\nContent-Length: 0\r\n\r\n"
+                    );
                 }
             },
             None => ("200 OK", 0, len.saturating_sub(1)),
         };
         let body_len = if len == 0 { 0 } else { end - start + 1 };
-        let mut head = format!("HTTP/1.1 {status}\r\n{COMMON}Content-Type: {ctype}\r\nAccept-Ranges: bytes\r\nContent-Length: {body_len}\r\n");
+        let mut head = format!(
+            "HTTP/1.1 {status}\r\n{COMMON}Content-Type: {ctype}\r\nAccept-Ranges: bytes\r\nContent-Length: {body_len}\r\n"
+        );
         if status.starts_with("206") {
             head.push_str(&format!("Content-Range: bytes {start}-{end}/{len}\r\n"));
         }
@@ -303,7 +353,10 @@ mod tests {
 
     #[test]
     fn decodes_paths() {
-        assert_eq!(percent_decode("%2Fhome%2Fa%20b.mp4").as_deref(), Some("/home/a b.mp4"));
+        assert_eq!(
+            percent_decode("%2Fhome%2Fa%20b.mp4").as_deref(),
+            Some("/home/a b.mp4")
+        );
         assert_eq!(percent_decode("%2"), None);
     }
 
@@ -318,17 +371,35 @@ mod tests {
         let server = start(vec![]).unwrap();
         allow(&file);
         let url = |p: &Path| {
-            let enc: String = p.to_str().unwrap().bytes().map(|b| if b.is_ascii_alphanumeric() || b"-_.~".contains(&b) { (b as char).to_string() } else { format!("%{b:02X}") }).collect();
+            let enc: String = p
+                .to_str()
+                .unwrap()
+                .bytes()
+                .map(|b| {
+                    if b.is_ascii_alphanumeric() || b"-_.~".contains(&b) {
+                        (b as char).to_string()
+                    } else {
+                        format!("%{b:02X}")
+                    }
+                })
+                .collect();
             format!("/{}/{}", server.token, enc)
         };
         let get = |path: &str, range: Option<&str>| -> (String, Vec<u8>) {
             let mut s = TcpStream::connect(("127.0.0.1", server.port)).unwrap();
             let r = range.map(|r| format!("Range: {r}\r\n")).unwrap_or_default();
-            write!(s, "GET {path} HTTP/1.1\r\nHost: x\r\n{r}Connection: close\r\n\r\n").unwrap();
+            write!(
+                s,
+                "GET {path} HTTP/1.1\r\nHost: x\r\n{r}Connection: close\r\n\r\n"
+            )
+            .unwrap();
             let mut all = Vec::new();
             s.read_to_end(&mut all).unwrap();
             let split = all.windows(4).position(|w| w == b"\r\n\r\n").unwrap();
-            (String::from_utf8_lossy(&all[..split]).to_string(), all[split + 4..].to_vec())
+            (
+                String::from_utf8_lossy(&all[..split]).to_string(),
+                all[split + 4..].to_vec(),
+            )
         };
         let (h, body) = get(&url(&file), Some("bytes=100-199"));
         assert!(h.starts_with("HTTP/1.1 206"), "{h}");
@@ -341,7 +412,10 @@ mod tests {
         assert_eq!(body.len(), 10_000);
         let (h, _) = get(&url(&other), None);
         assert!(h.starts_with("HTTP/1.1 404"), "not allowlisted: {h}");
-        let (h, _) = get(&format!("/wrongtoken/{}", &url(&file)[server.token.len() + 2..]), None);
+        let (h, _) = get(
+            &format!("/wrongtoken/{}", &url(&file)[server.token.len() + 2..]),
+            None,
+        );
         assert!(h.starts_with("HTTP/1.1 403"));
         let _ = std::fs::remove_dir_all(&dir);
         let _ = std::fs::remove_file(&other);

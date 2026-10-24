@@ -5,14 +5,15 @@ pub mod beats;
 pub mod content_import;
 pub mod diag;
 pub mod effects;
-pub mod grade;
 pub mod export;
+pub mod grade;
 pub mod media;
 pub mod mediaserver;
 pub mod plugins;
 pub mod project;
 pub mod subtitles;
 pub mod textlayer;
+pub mod transitions;
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
@@ -24,12 +25,34 @@ pub fn run() {
             let handle = app.handle();
             diag::init_log(handle);
             textlayer::clear_stale(&app::cache_root(handle));
-            let roots = vec![app::cache_root(handle), app::audio_root(handle), app::plugins_root(handle)];
+            let roots = vec![
+                app::cache_root(handle),
+                app::audio_root(handle),
+                app::plugins_root(handle),
+            ];
             match mediaserver::start(roots) {
-                Ok(server) => diag::log("info", &format!("media server on {}", server.base_url().split('/').take(3).collect::<Vec<_>>().join("/"))),
+                Ok(server) => diag::log(
+                    "info",
+                    &format!(
+                        "media server on {}",
+                        server
+                            .base_url()
+                            .split('/')
+                            .take(3)
+                            .collect::<Vec<_>>()
+                            .join("/")
+                    ),
+                ),
                 Err(err) => diag::log("error", &format!("media server failed: {err}")),
             }
-            diag::log("info", &format!("XenoCut {} started on {}", handle.package_info().version, std::env::consts::OS));
+            diag::log(
+                "info",
+                &format!(
+                    "XenoCut {} started on {}",
+                    handle.package_info().version,
+                    std::env::consts::OS
+                ),
+            );
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![

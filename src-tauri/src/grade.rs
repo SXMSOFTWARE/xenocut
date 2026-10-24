@@ -45,9 +45,21 @@ fn affine(op: Op) -> Affine {
             let a = 1.0 - a.clamp(0.0, 1.0);
             Affine {
                 m: [
-                    [0.2126 + 0.7874 * a, 0.7152 - 0.7152 * a, 0.0722 - 0.0722 * a],
-                    [0.2126 - 0.2126 * a, 0.7152 + 0.2848 * a, 0.0722 - 0.0722 * a],
-                    [0.2126 - 0.2126 * a, 0.7152 - 0.7152 * a, 0.0722 + 0.9278 * a],
+                    [
+                        0.2126 + 0.7874 * a,
+                        0.7152 - 0.7152 * a,
+                        0.0722 - 0.0722 * a,
+                    ],
+                    [
+                        0.2126 - 0.2126 * a,
+                        0.7152 + 0.2848 * a,
+                        0.0722 - 0.0722 * a,
+                    ],
+                    [
+                        0.2126 - 0.2126 * a,
+                        0.7152 - 0.7152 * a,
+                        0.0722 + 0.9278 * a,
+                    ],
                 ],
                 o: z,
             }
@@ -71,13 +83,25 @@ fn affine(op: Op) -> Affine {
             ],
             o: z,
         },
-        Op::Brightness(b) => Affine { m: [[b, 0.0, 0.0], [0.0, b, 0.0], [0.0, 0.0, b]], o: z },
-        Op::Contrast(c) => Affine { m: [[c, 0.0, 0.0], [0.0, c, 0.0], [0.0, 0.0, c]], o: [0.5 - 0.5 * c; 3] },
-        Op::Tint(r, g, b) => Affine { m: [[r, 0.0, 0.0], [0.0, g, 0.0], [0.0, 0.0, b]], o: z },
+        Op::Brightness(b) => Affine {
+            m: [[b, 0.0, 0.0], [0.0, b, 0.0], [0.0, 0.0, b]],
+            o: z,
+        },
+        Op::Contrast(c) => Affine {
+            m: [[c, 0.0, 0.0], [0.0, c, 0.0], [0.0, 0.0, c]],
+            o: [0.5 - 0.5 * c; 3],
+        },
+        Op::Tint(r, g, b) => Affine {
+            m: [[r, 0.0, 0.0], [0.0, g, 0.0], [0.0, 0.0, b]],
+            o: z,
+        },
         Op::Invert(a) => {
             let a = a.clamp(0.0, 1.0);
             let d = 1.0 - 2.0 * a;
-            Affine { m: [[d, 0.0, 0.0], [0.0, d, 0.0], [0.0, 0.0, d]], o: [a; 3] }
+            Affine {
+                m: [[d, 0.0, 0.0], [0.0, d, 0.0], [0.0, 0.0, d]],
+                o: [a; 3],
+            }
         }
     }
 }
@@ -106,7 +130,9 @@ fn fold(list: &[Op]) -> Option<Affine> {
     if list.is_empty() {
         return None;
     }
-    Some(list.iter().fold(Affine { m: ID, o: [0.0; 3] }, |acc, op| then(acc, affine(*op))))
+    Some(list.iter().fold(Affine { m: ID, o: [0.0; 3] }, |acc, op| {
+        then(acc, affine(*op))
+    }))
 }
 
 /// ffmpeg filters (without labels) that apply `grade`, or `None` for no grade.
@@ -134,7 +160,9 @@ pub fn ops_chain(list: &[Op], format: &str) -> Option<String> {
     for op in list {
         let a = affine(*op);
         if is_diagonal(&a.m) {
-            let wrap = |e: &str, i: usize| format!("clip({:.5}*{e}+{:.3},0,255)", a.m[i][i], a.o[i] * 255.0);
+            let wrap = |e: &str, i: usize| {
+                format!("clip({:.5}*{e}+{:.3},0,255)", a.m[i][i], a.o[i] * 255.0)
+            };
             match steps.last_mut() {
                 Some(Step::Lut(exprs)) => {
                     for (i, e) in exprs.iter_mut().enumerate() {
@@ -216,7 +244,11 @@ mod chain_tests {
         let chain = ops_chain(&[Op::Invert(1.0), Op::Brightness(1.5)], "rgba").unwrap();
         assert_eq!(chain.matches("lutrgb").count(), 1);
         assert!(chain.contains("r='clip(1.50000*clip(-1.00000*val+255.000,0,255)+0.000,0,255)'"));
-        let mixed = ops_chain(&[Op::Saturate(1.2), Op::Grayscale(0.5), Op::Contrast(1.1)], "rgba").unwrap();
+        let mixed = ops_chain(
+            &[Op::Saturate(1.2), Op::Grayscale(0.5), Op::Contrast(1.1)],
+            "rgba",
+        )
+        .unwrap();
         assert_eq!(mixed.matches("colorchannelmixer").count(), 1);
         assert!(mixed.find("colorchannelmixer").unwrap() < mixed.find("lutrgb").unwrap());
     }

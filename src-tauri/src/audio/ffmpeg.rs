@@ -27,7 +27,9 @@ pub fn ffmpeg_binary() -> Result<PathBuf, AudioError> {
             candidates.push(dir.join("ffmpeg"));
         }
     }
-    let manifest = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("binaries").join(&name);
+    let manifest = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+        .join("binaries")
+        .join(&name);
     candidates.push(manifest);
 
     for candidate in candidates {
@@ -53,7 +55,10 @@ fn android_ffmpeg() -> Result<PathBuf, AudioError> {
     for line in maps.lines() {
         if let Some(idx) = line.find('/') {
             let path = Path::new(line[idx..].trim());
-            if path.file_name().is_some_and(|name| name == "libxenocut_lib.so") {
+            if path
+                .file_name()
+                .is_some_and(|name| name == "libxenocut_lib.so")
+            {
                 if let Some(dir) = path.parent() {
                     let candidate = dir.join("libffmpeg.so");
                     if candidate.is_file() {
@@ -63,7 +68,9 @@ fn android_ffmpeg() -> Result<PathBuf, AudioError> {
             }
         }
     }
-    Err(AudioError::Failed("FFmpeg is not bundled in this Android build.".into()))
+    Err(AudioError::Failed(
+        "FFmpeg is not bundled in this Android build.".into(),
+    ))
 }
 
 fn sidecar_name() -> String {
@@ -123,7 +130,9 @@ pub fn probe_duration(input: &Path) -> Result<f64, AudioError> {
         .output()
         .map_err(|err| AudioError::Failed(err.to_string()))?;
     let stderr = String::from_utf8_lossy(&output.stderr);
-    parse_duration(&stderr).ok_or_else(|| AudioError::Failed(format!("could not read duration of {}", input.display())))
+    parse_duration(&stderr).ok_or_else(|| {
+        AudioError::Failed(format!("could not read duration of {}", input.display()))
+    })
 }
 
 pub fn run(
@@ -145,7 +154,8 @@ pub fn run(
         stderr
             .map(|pipe| {
                 let mut text = String::new();
-                let _ = std::io::Read::read_to_string(&mut std::io::BufReader::new(pipe), &mut text);
+                let _ =
+                    std::io::Read::read_to_string(&mut std::io::BufReader::new(pipe), &mut text);
                 text
             })
             .unwrap_or_default()
@@ -168,13 +178,22 @@ pub fn run(
         }
     }
 
-    let status = child.wait().map_err(|err| AudioError::Failed(err.to_string()))?;
+    let status = child
+        .wait()
+        .map_err(|err| AudioError::Failed(err.to_string()))?;
     let stderr = stderr_thread.join().unwrap_or_default();
     if cancel::is_cancelled() {
         return Err(AudioError::Cancelled);
     }
     if !status.success() {
-        let tail = stderr.chars().rev().take(700).collect::<String>().chars().rev().collect::<String>();
+        let tail = stderr
+            .chars()
+            .rev()
+            .take(700)
+            .collect::<String>()
+            .chars()
+            .rev()
+            .collect::<String>();
         return Err(AudioError::Failed(format!("ffmpeg failed: {tail}")));
     }
     Ok(())
@@ -207,7 +226,10 @@ mod tests {
 
     #[test]
     fn duration_and_progress_lines_parse() {
-        assert_eq!(parse_duration("Duration: 00:01:02.50, start: 0.000000"), Some(62.5));
+        assert_eq!(
+            parse_duration("Duration: 00:01:02.50, start: 0.000000"),
+            Some(62.5)
+        );
         assert!((progress_from_line("out_time_us=2000000", 4.0).unwrap() - 0.5).abs() < 1e-4);
         assert!((progress_from_line("out_time_ms=2000000", 4.0).unwrap() - 0.5).abs() < 1e-4);
         assert!((progress_from_line("out_time=00:00:02.000000", 4.0).unwrap() - 0.5).abs() < 1e-4);

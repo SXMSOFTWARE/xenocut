@@ -13,11 +13,15 @@ use crate::project::{self, Project};
 use crate::textlayer;
 
 fn data_dir(app: &AppHandle) -> PathBuf {
-    app.path().app_data_dir().unwrap_or_else(|_| std::env::temp_dir().join("xenocut-data"))
+    app.path()
+        .app_data_dir()
+        .unwrap_or_else(|_| std::env::temp_dir().join("xenocut-data"))
 }
 
 fn cache_dir(app: &AppHandle) -> PathBuf {
-    app.path().app_cache_dir().unwrap_or_else(|_| std::env::temp_dir().join("xenocut-cache"))
+    app.path()
+        .app_cache_dir()
+        .unwrap_or_else(|_| std::env::temp_dir().join("xenocut-cache"))
 }
 
 pub fn cache_root(app: &AppHandle) -> PathBuf {
@@ -51,15 +55,28 @@ pub struct AppInfo {
 
 #[tauri::command]
 pub fn app_info(app: AppHandle) -> AppInfo {
-    let home = app.path().home_dir().unwrap_or_else(|_| std::env::temp_dir());
-    let videos = app.path().video_dir().unwrap_or_else(|_| home.join("Videos"));
-    let docs = app.path().document_dir().unwrap_or_else(|_| home.join("Documents"));
+    let home = app
+        .path()
+        .home_dir()
+        .unwrap_or_else(|_| std::env::temp_dir());
+    let videos = app
+        .path()
+        .video_dir()
+        .unwrap_or_else(|_| home.join("Videos"));
+    let docs = app
+        .path()
+        .document_dir()
+        .unwrap_or_else(|_| home.join("Documents"));
     let mut output = videos.join("XenoCut");
     if cfg!(target_os = "android") {
         // Android 11+ lets apps add their own files to the shared Movies collection without a
         // permission, so exports show up in the gallery. Fall back to app storage otherwise.
         let shared = PathBuf::from("/storage/emulated/0/Movies/XenoCut");
-        output = if std::fs::create_dir_all(&shared).is_ok() { shared } else { data_dir(&app).join("exports") };
+        output = if std::fs::create_dir_all(&shared).is_ok() {
+            shared
+        } else {
+            data_dir(&app).join("exports")
+        };
     }
     AppInfo {
         os: std::env::consts::OS,
@@ -94,7 +111,11 @@ pub fn store_write(app: AppHandle, name: String, value: serde_json::Value) -> Re
         std::fs::create_dir_all(parent).map_err(|e| e.to_string())?;
     }
     let tmp = path.with_extension("json.tmp");
-    std::fs::write(&tmp, serde_json::to_vec_pretty(&value).map_err(|e| e.to_string())?).map_err(|e| e.to_string())?;
+    std::fs::write(
+        &tmp,
+        serde_json::to_vec_pretty(&value).map_err(|e| e.to_string())?,
+    )
+    .map_err(|e| e.to_string())?;
     std::fs::rename(&tmp, &path).map_err(|e| e.to_string())
 }
 
@@ -175,19 +196,28 @@ pub async fn media_assets(
     has_audio: bool,
 ) -> Result<MediaAssets, String> {
     let cache = cache_dir(&app);
-    tauri::async_runtime::spawn_blocking(move || media::assets(&cache, Path::new(&path), kind, duration, has_audio))
-        .await
-        .map_err(|e| e.to_string())
+    tauri::async_runtime::spawn_blocking(move || {
+        media::assets(&cache, Path::new(&path), kind, duration, has_audio)
+    })
+    .await
+    .map_err(|e| e.to_string())
 }
 
 #[tauri::command]
-pub async fn media_proxy(app: AppHandle, path: String, codec: Option<media::ProxyCodec>, video: Option<bool>) -> Result<String, String> {
+pub async fn media_proxy(
+    app: AppHandle,
+    path: String,
+    codec: Option<media::ProxyCodec>,
+    video: Option<bool>,
+) -> Result<String, String> {
     let cache = cache_dir(&app);
     let codec = codec.unwrap_or(media::ProxyCodec::H264);
     let video = video.unwrap_or(true);
-    tauri::async_runtime::spawn_blocking(move || media::proxy(&cache, Path::new(&path), codec, video))
-        .await
-        .map_err(|e| e.to_string())?
+    tauri::async_runtime::spawn_blocking(move || {
+        media::proxy(&cache, Path::new(&path), codec, video)
+    })
+    .await
+    .map_err(|e| e.to_string())?
 }
 
 #[derive(Serialize)]
@@ -205,9 +235,12 @@ fn cache_dirs(app: &AppHandle) -> Vec<PathBuf> {
 pub async fn cache_info(app: AppHandle) -> Result<CacheInfo, String> {
     let dirs = cache_dirs(&app);
     let path = cache_dir(&app).display().to_string();
-    tauri::async_runtime::spawn_blocking(move || CacheInfo { bytes: dirs.iter().map(|d| media::dir_size(d)).sum(), path })
-        .await
-        .map_err(|e| e.to_string())
+    tauri::async_runtime::spawn_blocking(move || CacheInfo {
+        bytes: dirs.iter().map(|d| media::dir_size(d)).sum(),
+        path,
+    })
+    .await
+    .map_err(|e| e.to_string())
 }
 
 #[tauri::command]
@@ -241,7 +274,13 @@ pub(crate) struct ExportSink {
 
 impl ProgressSink for ExportSink {
     fn report(&self, amount: f32, message: &str) {
-        let _ = self.app.emit(self.event, ExportProgress { progress: amount.clamp(0.0, 1.0), message: message.into() });
+        let _ = self.app.emit(
+            self.event,
+            ExportProgress {
+                progress: amount.clamp(0.0, 1.0),
+                message: message.into(),
+            },
+        );
     }
 }
 
@@ -253,12 +292,22 @@ pub struct ExportResult {
 }
 
 #[tauri::command]
-pub async fn export_start(app: AppHandle, project: Project, options: ExportOptions) -> Result<ExportResult, String> {
+pub async fn export_start(
+    app: AppHandle,
+    project: Project,
+    options: ExportOptions,
+) -> Result<ExportResult, String> {
     cancel::begin();
     tauri::async_runtime::spawn_blocking(move || {
-        let sink = ExportSink { app, event: "export-progress" };
+        let sink = ExportSink {
+            app,
+            event: "export-progress",
+        };
         export::run(&project, &options, &sink)
-            .map(|p| ExportResult { bytes: std::fs::metadata(&p).map(|m| m.len()).unwrap_or(0), path: p.display().to_string() })
+            .map(|p| ExportResult {
+                bytes: std::fs::metadata(&p).map(|m| m.len()).unwrap_or(0),
+                path: p.display().to_string(),
+            })
             .map_err(|e| e.to_string())
     })
     .await
@@ -280,9 +329,17 @@ pub fn text_layer_begin(app: AppHandle) -> Result<String, String> {
 /// Raw PNG body; headers `x-session` and `x-frame`.
 #[tauri::command]
 pub fn text_layer_frame(app: AppHandle, request: tauri::ipc::Request<'_>) -> Result<(), String> {
-    let header = |name: &str| request.headers().get(name).and_then(|v| v.to_str().ok()).map(str::to_string);
+    let header = |name: &str| {
+        request
+            .headers()
+            .get(name)
+            .and_then(|v| v.to_str().ok())
+            .map(str::to_string)
+    };
     let session = header("x-session").ok_or("missing x-session")?;
-    let frame: u32 = header("x-frame").and_then(|v| v.parse().ok()).ok_or("missing x-frame")?;
+    let frame: u32 = header("x-frame")
+        .and_then(|v| v.parse().ok())
+        .ok_or("missing x-frame")?;
     let tauri::ipc::InvokeBody::Raw(bytes) = request.body() else {
         return Err("text frame must be sent as raw bytes".into());
     };
@@ -290,7 +347,11 @@ pub fn text_layer_frame(app: AppHandle, request: tauri::ipc::Request<'_>) -> Res
 }
 
 #[tauri::command]
-pub fn text_layer_finish(app: AppHandle, session: String, entries: Vec<textlayer::Entry>) -> Result<String, String> {
+pub fn text_layer_finish(
+    app: AppHandle,
+    session: String,
+    entries: Vec<textlayer::Entry>,
+) -> Result<String, String> {
     textlayer::finish(&cache_root(&app), &session, &entries)
 }
 
@@ -314,7 +375,12 @@ pub struct ModelStatus {
 pub fn model_status(app: AppHandle) -> ModelStatus {
     let path = model::model_path(&model_dir(&app));
     let bytes = std::fs::metadata(&path).map(|m| m.len()).unwrap_or(0);
-    ModelStatus { installed: bytes > 0, bytes, path: path.display().to_string(), name: model::MODEL_FILE }
+    ModelStatus {
+        installed: bytes > 0,
+        bytes,
+        path: path.display().to_string(),
+        name: model::MODEL_FILE,
+    }
 }
 
 #[tauri::command]
@@ -322,8 +388,13 @@ pub async fn model_download(app: AppHandle) -> Result<(), String> {
     cancel::begin();
     let dir = model_dir(&app);
     tauri::async_runtime::spawn_blocking(move || {
-        let sink = ExportSink { app, event: "model-progress" };
-        model::ensure_model(&dir, &sink).map(|_| ()).map_err(|e| e.to_string())
+        let sink = ExportSink {
+            app,
+            event: "model-progress",
+        };
+        model::ensure_model(&dir, &sink)
+            .map(|_| ())
+            .map_err(|e| e.to_string())
     })
     .await
     .map_err(|e| e.to_string())?
@@ -338,7 +409,6 @@ pub fn model_delete(app: AppHandle) -> Result<(), String> {
     Ok(())
 }
 
-
 fn plugin_store(app: &AppHandle) -> crate::plugins::Store {
     crate::plugins::Store::new(plugins_root(app))
 }
@@ -349,15 +419,26 @@ pub fn plugin_list(app: AppHandle) -> Vec<crate::plugins::Installed> {
 }
 
 #[tauri::command]
-pub async fn plugin_install(app: AppHandle, path: String) -> Result<crate::plugins::Installed, String> {
+pub async fn plugin_install(
+    app: AppHandle,
+    path: String,
+) -> Result<crate::plugins::Installed, String> {
     let store = plugin_store(&app);
-    tauri::async_runtime::spawn_blocking(move || store.install_path(std::path::Path::new(&path))).await.map_err(|e| e.to_string())?
+    tauri::async_runtime::spawn_blocking(move || store.install_path(std::path::Path::new(&path)))
+        .await
+        .map_err(|e| e.to_string())?
 }
 
 #[tauri::command]
-pub async fn plugin_install_url(app: AppHandle, url: String, sha256: String) -> Result<crate::plugins::Installed, String> {
+pub async fn plugin_install_url(
+    app: AppHandle,
+    url: String,
+    sha256: String,
+) -> Result<crate::plugins::Installed, String> {
     let store = plugin_store(&app);
-    tauri::async_runtime::spawn_blocking(move || crate::plugins::install_url(&store, &url, &sha256)).await.map_err(|e| e.to_string())?
+    tauri::async_runtime::spawn_blocking(move || crate::plugins::install_url(&store, &url, &sha256))
+        .await
+        .map_err(|e| e.to_string())?
 }
 
 #[tauri::command]
@@ -377,5 +458,7 @@ pub fn plugin_lut(app: AppHandle, path: String) -> Result<crate::plugins::Cube, 
 
 #[tauri::command]
 pub async fn plugin_catalog() -> Result<serde_json::Value, String> {
-    tauri::async_runtime::spawn_blocking(crate::plugins::fetch_catalog).await.map_err(|e| e.to_string())?
+    tauri::async_runtime::spawn_blocking(crate::plugins::fetch_catalog)
+        .await
+        .map_err(|e| e.to_string())?
 }

@@ -6,7 +6,9 @@ use super::cancel;
 use super::music::LocalMusicProvider;
 use super::renderer::FfmpegRenderer;
 use super::separator::OnnxMdxSeparator;
-use super::traits::{MusicProvider, MusicRequest, ProgressSink, RenderJob, Renderer, StemSeparator};
+use super::traits::{
+    MusicProvider, MusicRequest, ProgressSink, RenderJob, Renderer, StemSeparator,
+};
 
 #[derive(Clone, serde::Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -77,7 +79,10 @@ impl ProgressSink for EmitProgress {
 }
 
 fn root_dir(app: &AppHandle) -> PathBuf {
-    let base = app.path().app_data_dir().unwrap_or_else(|_| std::env::temp_dir());
+    let base = app
+        .path()
+        .app_data_dir()
+        .unwrap_or_else(|_| std::env::temp_dir());
     base.join("xenocut")
 }
 
@@ -97,7 +102,11 @@ fn job_dir(root: &std::path::Path, video: &std::path::Path) -> PathBuf {
         })
         .take(48)
         .collect();
-    let name = if safe.is_empty() { "clip".to_string() } else { safe };
+    let name = if safe.is_empty() {
+        "clip".to_string()
+    } else {
+        safe
+    };
     root.join("jobs").join(name)
 }
 
@@ -107,7 +116,10 @@ pub fn audio_cancel() {
 }
 
 #[tauri::command]
-pub async fn audio_separate_stems(app: AppHandle, input_path: String) -> Result<SeparateResult, String> {
+pub async fn audio_separate_stems(
+    app: AppHandle,
+    input_path: String,
+) -> Result<SeparateResult, String> {
     let input = PathBuf::from(input_path.trim());
     if input.as_os_str().is_empty() {
         return Err("Choose a video before separating stems.".into());
@@ -153,7 +165,10 @@ pub async fn audio_import_music(app: AppHandle, local_path: String) -> Result<Mu
 }
 
 #[tauri::command]
-pub async fn audio_mix_render(app: AppHandle, request: RenderRequest) -> Result<RenderResult, String> {
+pub async fn audio_mix_render(
+    app: AppHandle,
+    request: RenderRequest,
+) -> Result<RenderResult, String> {
     let video = PathBuf::from(request.video_path.trim());
     if video.as_os_str().is_empty() {
         return Err("Choose a video before rendering.".into());

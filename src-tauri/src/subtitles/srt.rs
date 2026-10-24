@@ -4,10 +4,17 @@ use super::whisper::Cue;
 
 /// Parses SRT or WebVTT text. Cue numbers, VTT headers, styling tags and positioning are ignored.
 pub fn parse(text: &str) -> Vec<Cue> {
-    let text = text.trim_start_matches('\u{feff}').replace("\r\n", "\n").replace('\r', "\n");
+    let text = text
+        .trim_start_matches('\u{feff}')
+        .replace("\r\n", "\n")
+        .replace('\r', "\n");
     let mut cues = Vec::new();
     for block in text.split("\n\n") {
-        let mut lines = block.lines().map(str::trim_end).filter(|l| !l.trim().is_empty()).peekable();
+        let mut lines = block
+            .lines()
+            .map(str::trim_end)
+            .filter(|l| !l.trim().is_empty())
+            .peekable();
         let mut timing = None;
         while let Some(line) = lines.next() {
             if let Some(t) = parse_timing(line) {
@@ -20,7 +27,11 @@ pub fn parse(text: &str) -> Vec<Cue> {
         if body.is_empty() || end <= start {
             continue;
         }
-        cues.push(Cue { start, end, text: body.join("\n") });
+        cues.push(Cue {
+            start,
+            end,
+            text: body.join("\n"),
+        });
     }
     cues.sort_by(|a, b| a.start.total_cmp(&b.start));
     cues
@@ -37,7 +48,11 @@ fn parse_stamp(s: &str) -> Option<f64> {
     let s = s.replace(',', ".");
     let parts: Vec<&str> = s.split(':').collect();
     let (h, m, sec) = match parts.as_slice() {
-        [h, m, s] => (h.parse::<f64>().ok()?, m.parse::<f64>().ok()?, s.parse::<f64>().ok()?),
+        [h, m, s] => (
+            h.parse::<f64>().ok()?,
+            m.parse::<f64>().ok()?,
+            s.parse::<f64>().ok()?,
+        ),
         [m, s] => (0.0, m.parse::<f64>().ok()?, s.parse::<f64>().ok()?),
         _ => return None,
     };
@@ -69,13 +84,20 @@ pub fn reflow(cues: &[Cue], max_chars: usize) -> Vec<Cue> {
         let text = cue.text.split_whitespace().collect::<Vec<_>>().join(" ");
         if let Some(prev) = joined.last_mut() {
             let open = !prev.text.ends_with(['.', '?', '!', '…']);
-            if open && cue.start - prev.end < 0.3 && prev.text.chars().count() + 1 + text.chars().count() <= max_chars * 4 {
+            if open
+                && cue.start - prev.end < 0.3
+                && prev.text.chars().count() + 1 + text.chars().count() <= max_chars * 4
+            {
                 prev.text = format!("{} {}", prev.text, text);
                 prev.end = prev.end.max(cue.end);
                 continue;
             }
         }
-        joined.push(Cue { start: cue.start, end: cue.end, text });
+        joined.push(Cue {
+            start: cue.start,
+            end: cue.end,
+            text,
+        });
     }
     let mut out = Vec::new();
     for cue in &joined {
@@ -84,17 +106,28 @@ pub fn reflow(cues: &[Cue], max_chars: usize) -> Vec<Cue> {
             continue;
         }
         if text.chars().count() <= max_chars {
-            out.push(Cue { start: cue.start, end: cue.end, text });
+            out.push(Cue {
+                start: cue.start,
+                end: cue.end,
+                text,
+            });
             continue;
         }
         let pieces = break_lines(&text, max_chars);
-        let weights: Vec<f64> = pieces.iter().map(|p| p.chars().count() as f64 + 1.0).collect();
+        let weights: Vec<f64> = pieces
+            .iter()
+            .map(|p| p.chars().count() as f64 + 1.0)
+            .collect();
         let sum: f64 = weights.iter().sum();
         let span = (cue.end - cue.start).max(0.0);
         let mut t = cue.start;
         for (piece, w) in pieces.into_iter().zip(weights) {
             let end = (t + span * w / sum).min(cue.end);
-            out.push(Cue { start: t, end, text: piece });
+            out.push(Cue {
+                start: t,
+                end,
+                text: piece,
+            });
             t = end;
         }
     }
@@ -122,7 +155,8 @@ fn break_lines(text: &str, max_chars: usize) -> Vec<String> {
                 continue;
             }
             let slack = max_chars.saturating_sub(len) as u64;
-            let ends_clause = end == n || words[end - 1].ends_with([',', '.', '?', '!', ';', ':', '…']);
+            let ends_clause =
+                end == n || words[end - 1].ends_with([',', '.', '?', '!', ';', ':', '…']);
             let cost = best[start].0 + 10_000 + slack * slack + if ends_clause { 0 } else { 150 };
             if cost < best[end].0 {
                 best[end] = (cost, start);
@@ -146,7 +180,10 @@ fn break_lines(text: &str, max_chars: usize) -> Vec<String> {
 pub fn snap_to_speech(cues: &mut [Cue], pcm: &[f32]) {
     const RATE: f64 = 16_000.0;
     const FRAME: usize = 320;
-    let rms: Vec<f32> = pcm.chunks(FRAME).map(|c| (c.iter().map(|x| x * x).sum::<f32>() / c.len() as f32).sqrt()).collect();
+    let rms: Vec<f32> = pcm
+        .chunks(FRAME)
+        .map(|c| (c.iter().map(|x| x * x).sum::<f32>() / c.len() as f32).sqrt())
+        .collect();
     if rms.is_empty() {
         return;
     }
@@ -162,7 +199,9 @@ pub fn snap_to_speech(cues: &mut [Cue], pcm: &[f32]) {
     let at = |t: f64| ((t / frame_secs).floor().max(0.0) as usize).min(rms.len());
     for cue in cues.iter_mut() {
         let (a, b) = (at(cue.start), at(cue.end).max(at(cue.start)));
-        let Some(first) = (a..b).find(|&i| rms[i] > threshold) else { continue };
+        let Some(first) = (a..b).find(|&i| rms[i] > threshold) else {
+            continue;
+        };
         let last = (a..b).rev().find(|&i| rms[i] > threshold).unwrap_or(first);
         let start = (first as f64 * frame_secs - 0.08).max(cue.start);
         let end = ((last + 1) as f64 * frame_secs + 0.2).min(cue.end);
@@ -184,11 +223,19 @@ mod tests {
         let mut pcm = vec![0.0f32; 32_000];
         pcm.extend((0..24_000).map(|i| (i as f32 * 0.05).sin() * 0.3));
         pcm.extend(vec![0.0f32; 24_000]);
-        let mut cues = vec![Cue { start: 0.0, end: 5.0, text: "hi".into() }];
+        let mut cues = vec![Cue {
+            start: 0.0,
+            end: 5.0,
+            text: "hi".into(),
+        }];
         snap_to_speech(&mut cues, &pcm);
         assert!((cues[0].start - 1.92).abs() < 0.05, "{:?}", cues[0]);
         assert!((cues[0].end - 3.7).abs() < 0.05, "{:?}", cues[0]);
-        let mut quiet = vec![Cue { start: 0.0, end: 1.0, text: "x".into() }];
+        let mut quiet = vec![Cue {
+            start: 0.0,
+            end: 1.0,
+            text: "x".into(),
+        }];
         snap_to_speech(&mut quiet, &vec![0.0; 16_000]);
         assert_eq!(quiet[0].start, 0.0);
     }
@@ -196,8 +243,16 @@ mod tests {
     #[test]
     fn srt_round_trips() {
         let cues = vec![
-            Cue { start: 0.5, end: 2.25, text: "Merhaba dünya".into() },
-            Cue { start: 3661.001, end: 3662.0, text: "two\nlines".into() },
+            Cue {
+                start: 0.5,
+                end: 2.25,
+                text: "Merhaba dünya".into(),
+            },
+            Cue {
+                start: 3661.001,
+                end: 3662.0,
+                text: "two\nlines".into(),
+            },
         ];
         let back = parse(&to_srt(&cues));
         assert_eq!(back.len(), 2);
@@ -221,23 +276,49 @@ mod tests {
     fn line_breaks_prefer_clause_ends() {
         let text = "And so my fellow Americans ask not what your country can do for you, ask what you can do for your country.";
         let pieces = break_lines(text, 42);
-        assert_eq!(pieces, ["And so my fellow Americans ask not", "what your country can do for you,", "ask what you can do for your country."]);
+        assert_eq!(
+            pieces,
+            [
+                "And so my fellow Americans ask not",
+                "what your country can do for you,",
+                "ask what you can do for your country."
+            ]
+        );
         assert_eq!(break_lines("short", 42), ["short"]);
         let fragments = [
-            Cue { start: 1.0, end: 2.0, text: "ask what you can do for".into() },
-            Cue { start: 2.0, end: 2.6, text: "your country.".into() },
-            Cue { start: 2.6, end: 3.0, text: "Next.".into() },
+            Cue {
+                start: 1.0,
+                end: 2.0,
+                text: "ask what you can do for".into(),
+            },
+            Cue {
+                start: 2.0,
+                end: 2.6,
+                text: "your country.".into(),
+            },
+            Cue {
+                start: 2.6,
+                end: 3.0,
+                text: "Next.".into(),
+            },
         ];
         let joined = reflow(&fragments, 42);
         assert_eq!(joined.len(), 2, "{joined:?}");
         assert_eq!(joined[0].text, "ask what you can do for your country.");
         assert_eq!((joined[0].start, joined[0].end), (1.0, 2.6));
-        assert_eq!(break_lines("supercalifragilisticexpialidocious word", 10), ["supercalifragilisticexpialidocious", "word"]);
+        assert_eq!(
+            break_lines("supercalifragilisticexpialidocious word", 10),
+            ["supercalifragilisticexpialidocious", "word"]
+        );
     }
 
     #[test]
     fn reflow_splits_long_cues_in_order_and_keeps_the_span() {
-        let cue = Cue { start: 10.0, end: 16.0, text: "And so my fellow Americans ask not what your country can do for you".into() };
+        let cue = Cue {
+            start: 10.0,
+            end: 16.0,
+            text: "And so my fellow Americans ask not what your country can do for you".into(),
+        };
         let out = reflow(&[cue], 32);
         assert!(out.len() >= 2);
         assert!(out.iter().all(|c| c.text.chars().count() <= 32), "{out:?}");
@@ -245,7 +326,13 @@ mod tests {
         assert!((out.last().unwrap().end - 16.0).abs() < 1e-6);
         assert!(out.windows(2).all(|w| (w[0].end - w[1].start).abs() < 1e-9));
         let words: Vec<String> = out.iter().map(|c| c.text.clone()).collect();
-        assert_eq!(words.join(" "), "And so my fellow Americans ask not what your country can do for you");
-        assert!(out.last().unwrap().text.contains(' '), "no orphan word: {out:?}");
+        assert_eq!(
+            words.join(" "),
+            "And so my fellow Americans ask not what your country can do for you"
+        );
+        assert!(
+            out.last().unwrap().text.contains(' '),
+            "no orphan word: {out:?}"
+        );
     }
 }

@@ -5,7 +5,8 @@ use hound::{SampleFormat, WavReader, WavSpec, WavWriter};
 use super::traits::AudioError;
 
 pub fn read_stereo(path: &Path) -> Result<(u32, Vec<f32>, Vec<f32>), AudioError> {
-    let mut reader = WavReader::open(path).map_err(|err| AudioError::Failed(format!("could not read wav: {err}")))?;
+    let mut reader = WavReader::open(path)
+        .map_err(|err| AudioError::Failed(format!("could not read wav: {err}")))?;
     let spec = reader.spec();
     if spec.channels == 0 {
         return Err(AudioError::Failed("wav has no channels".into()));
@@ -44,7 +45,8 @@ pub fn write_stereo(path: &Path, rate: u32, left: &[f32], right: &[f32]) -> Resu
         bits_per_sample: 32,
         sample_format: SampleFormat::Float,
     };
-    let mut writer = WavWriter::create(path, spec).map_err(|err| AudioError::Failed(err.to_string()))?;
+    let mut writer =
+        WavWriter::create(path, spec).map_err(|err| AudioError::Failed(err.to_string()))?;
     let length = left.len().min(right.len());
     for index in 0..length {
         writer
@@ -54,5 +56,7 @@ pub fn write_stereo(path: &Path, rate: u32, left: &[f32], right: &[f32]) -> Resu
             .write_sample(right[index])
             .map_err(|err| AudioError::Failed(err.to_string()))?;
     }
-    writer.finalize().map_err(|err| AudioError::Failed(err.to_string()))
+    writer
+        .finalize()
+        .map_err(|err| AudioError::Failed(err.to_string()))
 }
