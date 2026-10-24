@@ -11,14 +11,13 @@ import { openProjectDialog, openProjectPath } from "../../project/actions";
 import { NewProjectDialog } from "./NewProjectDialog";
 
 const SOON_TOOLS: { icon: typeof Captions; title: Key; text: Key }[] = [
-  { icon: Captions, title: "tools.captions", text: "tools.captionsText" },
   { icon: Scissors, title: "tools.silence", text: "tools.silenceText" },
   { icon: Film, title: "tools.reframe", text: "tools.reframeText" },
 ];
 
 export function HomePage() {
   const t = useT();
-  const [creating, setCreating] = useState(false);
+  const [creating, setCreating] = useState<false | "plain" | "captions">(false);
   const go = useRouter((s) => s.go);
   const entries = useRecent((s) => s.entries);
 
@@ -40,7 +39,7 @@ export function HomePage() {
           </section>
 
           <section className="home-actions">
-            <button className="action-card primary" onClick={() => setCreating(true)}>
+            <button className="action-card primary" onClick={() => setCreating("plain")}>
               <span className="action-icon">
                 <Plus />
               </span>
@@ -94,6 +93,15 @@ export function HomePage() {
             </span>
             {!isAndroid && <Sparkles className="tool-spark" />}
           </button>
+          <button className="tool-card live" onClick={() => setCreating("captions")}>
+            <span className="tool-icon">
+              <Captions />
+            </span>
+            <span className="tool-text">
+              <b>{t("tools.captions")}</b>
+              <small>{t("tools.captionsText")}</small>
+            </span>
+          </button>
           {SOON_TOOLS.map(({ icon: Icon, title, text }) => (
             <div className="tool-card" key={title} aria-disabled="true">
               <span className="tool-icon">
@@ -110,7 +118,7 @@ export function HomePage() {
         </aside>
       </main>
 
-      {creating && <NewProjectDialog onClose={() => setCreating(false)} />}
+      {creating && <NewProjectDialog panel={creating === "captions" ? "captions" : undefined} onClose={() => setCreating(false)} />}
     </div>
   );
 }

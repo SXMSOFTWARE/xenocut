@@ -162,6 +162,12 @@ export const api = {
   importMusic: (localPath: string) => call<{ musicPath: string; message: string }>("audio_import_music", { localPath }),
   mixRender: (request: MixRequest) => call<{ outputPath: string; message: string }>("audio_mix_render", { request }),
   audioCancel: () => call<void>("audio_cancel"),
+  subtitleModels: () => call<{ size: "tiny" | "base" | "small"; installed: boolean; downloadBytes: number }[]>("subtitle_models"),
+  subtitleModelDelete: (size: "tiny" | "base" | "small") => call<void>("subtitle_model_delete", { size }),
+  subtitleTranscribe: (project: Project, options: TranscribeOptions) => call<{ language: string; cues: SubtitleCue[] }>("subtitle_transcribe", { project, options }),
+  subtitleCancel: () => call<void>("subtitle_cancel"),
+  subtitleRead: (path: string) => call<SubtitleCue[]>("subtitle_read", { path }),
+  subtitleWrite: (path: string, cues: SubtitleCue[]) => call<string>("subtitle_write", { path, cues }),
   mediaAllow: (paths: string[]) => (isTauri ? call<void>("media_allow", { paths }) : Promise.resolve()),
 };
 
@@ -199,4 +205,18 @@ export interface ExportOptions {
 export interface ProgressEvent {
   progress: number;
   message: string;
+}
+
+export interface SubtitleCue {
+  start: number;
+  end: number;
+  text: string;
+}
+
+export interface TranscribeOptions {
+  model: "tiny" | "base" | "small";
+  /** ISO 639-1 code; omitted or "auto" detects. */
+  language?: string;
+  includeMusic?: boolean;
+  maxChars?: number;
 }

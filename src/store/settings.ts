@@ -11,7 +11,17 @@ export interface Settings {
   /** Play a 540p FFmpeg copy in the preview instead of the original (exports use the original). */
   previewProxy: boolean;
   autosave: boolean;
+  /** Whisper model for automatic subtitles. */
+  subtitleModel: SubtitleModel;
+  /** ISO 639-1 code or "auto". */
+  subtitleLanguage: string;
+  /** Text preset new subtitles get. */
+  subtitleStyle: string;
 }
+
+export type SubtitleModel = "tiny" | "base" | "small";
+
+const KEYS: (keyof Settings)[] = ["language", "outputDir", "projectDir", "performanceMode", "previewProxy", "autosave", "subtitleModel", "subtitleLanguage", "subtitleStyle"];
 
 interface SettingsState extends Settings {
   ready: boolean;
@@ -33,6 +43,9 @@ export const useSettings = create<SettingsState>((set, get) => ({
   performanceMode: true,
   previewProxy: false,
   autosave: true,
+  subtitleModel: "base",
+  subtitleLanguage: "auto",
+  subtitleStyle: "subtitle",
   ready: false,
   info: null,
   load: async () => {
@@ -47,13 +60,16 @@ export const useSettings = create<SettingsState>((set, get) => ({
       // Linux WebKitGTK paints 1080p frames slowly; the 540p copy measured 45 -> 60 fps there.
       previewProxy: saved.previewProxy ?? info.os === "linux",
       autosave: saved.autosave ?? true,
+      subtitleModel: saved.subtitleModel === "tiny" || saved.subtitleModel === "small" ? saved.subtitleModel : "base",
+      subtitleLanguage: typeof saved.subtitleLanguage === "string" ? saved.subtitleLanguage : "auto",
+      subtitleStyle: typeof saved.subtitleStyle === "string" ? saved.subtitleStyle : "subtitle",
     };
     apply(settings);
     set({ ...settings, info, ready: true });
   },
   update: (patch) => {
-    const { language, outputDir, projectDir, performanceMode, previewProxy, autosave } = { ...get(), ...patch };
-    const settings: Settings = { language, outputDir, projectDir, performanceMode, previewProxy, autosave };
+    const next = { ...get(), ...patch };
+    const settings = Object.fromEntries(KEYS.map((k) => [k, next[k]])) as unknown as Settings;
     apply(settings);
     set(settings);
     void api.storeWrite("settings", settings);

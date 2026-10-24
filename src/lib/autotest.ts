@@ -15,6 +15,8 @@ import { addTextClip, projectDuration } from "../project/ops";
 import { textFromPreset } from "../project/text";
 import { renderTextLayer, discardTextLayer } from "../text/exportLayer";
 import { api } from "./backend";
+import { maxCharsFor, setSubtitles } from "../project/subtitles";
+import { useSubtitleJob } from "../store/subtitleJob";
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
@@ -69,6 +71,7 @@ export async function runAutotest(file: string) {
   engine.pause();
   snapshot("paused");
   await textProbe();
+  await subsProbe();
   await perfProbe();
 }
 
@@ -203,14 +206,49 @@ async function textProbe() {
   await sleep(1200);
   log("autotest", "text-karaoke");
   await sleep(1000);
-  if (!o.export) return;
+  await exportProbe(o.export);
+}
+
+/** subs=1[,model=base][,lang=en][,style=subtitle][,export=out.mp4]: transcribes the timeline and logs the cues. */
+async function subsProbe() {
+  const o = opts();
+  if (!o.subs) return;
+  const settings = useSettings.getState();
+  settings.update({ subtitleModel: (o.model as "base") ?? "base", subtitleLanguage: o.lang ?? "auto", subtitleStyle: o.style ?? "subtitle" });
+  useEditorUi.setState({ panel: "captions" });
+  await sleep(800);
+  const t0 = performance.now();
+  const stages: string[] = [];
+  const stop = useSubtitleJob.subscribe((s) => {
+    if (s.running && stages[stages.length - 1] !== s.stage) stages.push(s.stage);
+  });
+  await useSubtitleJob.getState().run(
+    useProject.getState().project!,
+    { model: useSettings.getState().subtitleModel, language: useSettings.getState().subtitleLanguage, maxChars: maxCharsFor(useSettings.getState().subtitleStyle) },
+    (cues, lang) => useProject.getState().commit((p) => setSubtitles(p, cues, useSettings.getState().subtitleStyle, "Subtitles", lang)),
+  );
+  stop();
+  const job = useSubtitleJob.getState();
+  const project = useProject.getState().project!;
+  const subs = project.clips.filter((c) => project.tracks.find((t) => t.id === c.trackId)?.role === "subtitles");
+  const cues = subs.map((c) => ({ start: +c.start.toFixed(2), end: +(c.start + c.out - c.in).toFixed(2), text: c.text?.content }));
+  log("autotest", `SUBS ${JSON.stringify({ error: job.error, last: job.last, stages, ms: Math.round(performance.now() - t0), cues })}`);
+  if (cues.length) engine.seek(cues[0].start + 0.6);
+  await sleep(1500);
+  log("autotest", "subs-ready");
+  await sleep(800);
+  await exportProbe(o.export);
+}
+
+async function exportProbe(path: string | undefined) {
+  if (!path) return;
   const project = useProject.getState().project!;
   const t0 = performance.now();
   try {
     const layer = await renderTextLayer(project, project.settings.width, project.settings.height, project.settings.fps, () => {}, () => false);
     const t1 = performance.now();
     const out = await api.exportStart(project, {
-      outputPath: o.export,
+      outputPath: path,
       width: project.settings.width,
       height: project.settings.height,
       fps: project.settings.fps,

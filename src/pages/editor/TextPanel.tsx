@@ -29,7 +29,7 @@ const BACKGROUNDS: TextBackground[] = ["none", "box", "pill", "band"];
 const PLACES = [0.14, 0.5, 0.86];
 
 let fontsReady: Promise<void> | null = null;
-function loadAllFonts() {
+export function loadAllFonts() {
   fontsReady ??= ensureFonts(FONTS.flatMap((f) => f.weights.map((w) => ({ font: f.id, weight: w, italic: false, sample: "AaĞğŞşİı" }))));
   return fontsReady;
 }
@@ -91,11 +91,11 @@ export function TextPanel() {
   );
 }
 
-function PresetGrid({ ready, active, onPick }: { ready: boolean; active: string | null; onPick: (id: string) => void }) {
+export function PresetGrid({ ready, active, onPick, ids }: { ready: boolean; active: string | null; onPick: (id: string) => void; ids?: string[] }) {
   const t = useT();
   return (
     <div className="text-presets">
-      {TEXT_PRESETS.map((p) => (
+      {(ids ? ids.map((id) => TEXT_PRESETS.find((p) => p.id === id)!).filter(Boolean) : TEXT_PRESETS).map((p) => (
         <button key={p.id} className={`text-preset${active === p.id ? " active" : ""}`} onClick={() => onPick(p.id)} aria-pressed={active === p.id} title={t(`text.preset.${p.id}` as Key)}>
           <PresetSwatch id={p.id} label={t(`text.preset.${p.id}` as Key)} ready={ready} />
         </button>

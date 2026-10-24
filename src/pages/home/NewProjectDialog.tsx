@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useEditorUi, type PanelId } from "../../store/editorUi";
 import { Modal } from "../../components/Modal";
 import { useT } from "../../i18n";
 import { createAndOpen } from "../../project/actions";
@@ -16,7 +17,8 @@ const ASPECTS: { value: Aspect; key: "aspect.landscape" | "aspect.vertical" | "a
 const RESOLUTIONS: Resolution[] = ["720p", "1080p", "1440p", "4K"];
 const FPS = [24, 30, 60];
 
-export function NewProjectDialog({ onClose }: { onClose: () => void }) {
+/** `panel` opens that editor panel in the new project (a Home quick tool). */
+export function NewProjectDialog({ onClose, panel }: { onClose: () => void; panel?: PanelId }) {
   const t = useT();
   const [name, setName] = useState(t("home.untitled"));
   const [aspect, setAspect] = useState<Aspect>("16:9");
@@ -28,6 +30,7 @@ export function NewProjectDialog({ onClose }: { onClose: () => void }) {
   const create = async () => {
     setBusy(true);
     try {
+      if (panel) useEditorUi.setState({ panel });
       await createAndOpen(name, aspect, resolution, fps);
     } catch (error) {
       toast(messageOf(error), "error");
