@@ -150,7 +150,7 @@ function CatalogCard({ entry, installed }: { entry: CatalogEntry; installed?: In
   const t = useT();
   const busy = usePlugins((s) => s.busy === entry.id);
   const update = installed ? newer(entry.version, installed.manifest.version) : false;
-  const thumb = entry.thumbnail ? (/^https:\/\//.test(entry.thumbnail) ? entry.thumbnail : CATALOG_BASE + entry.thumbnail) : null;
+  const thumb = entry.thumbnail ? (/^(https:\/\/|data:image\/)/.test(entry.thumbnail) ? entry.thumbnail : CATALOG_BASE + entry.thumbnail) : null;
   const install = () =>
     void usePlugins
       .getState()
