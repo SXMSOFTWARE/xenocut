@@ -75,9 +75,9 @@ top-level folder.
 ### LUTs
 
 Standard Adobe/Resolve `.cube` 3D LUTs, `LUT_3D_SIZE` 2–65, with an optional
-`DOMAIN_MIN` / `DOMAIN_MAX`. 1D LUTs are not supported. Preview applies the LUT on the GPU-side
-canvas with trilinear interpolation. Export bakes the LUT mixed at the chosen strength and runs it
-through FFmpeg `lut3d`, so preview and export match.
+`DOMAIN_MIN` / `DOMAIN_MAX`. 1D LUTs are not supported. Preview applies the LUT in a WebGL2
+canvas (trilinear interpolation). Export bakes the LUT mixed at the chosen strength and runs it
+through FFmpeg `lut3d` (tetrahedral), so preview and export look the same.
 
 ### Effect looks
 
