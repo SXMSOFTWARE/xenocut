@@ -1167,6 +1167,14 @@ const BUNDLED_PACKS: &[(&str, &[u8])] = &[
         "xenocut.title-styles-1.0.0.xcpack",
         include_bytes!("../../catalog/packs/xenocut.title-styles-1.0.0.xcpack"),
     ),
+    (
+        "xenocut.lottie-stickers-1.0.0.xcpack",
+        include_bytes!("../../catalog/packs/xenocut.lottie-stickers-1.0.0.xcpack"),
+    ),
+    (
+        "xenocut.lottie-titles-1.0.0.xcpack",
+        include_bytes!("../../catalog/packs/xenocut.lottie-titles-1.0.0.xcpack"),
+    ),
 ];
 const BUNDLED_THUMBS: &[(&str, &[u8])] = &[
     (
@@ -1176,6 +1184,14 @@ const BUNDLED_THUMBS: &[(&str, &[u8])] = &[
     (
         "xenocut.film-looks",
         include_bytes!("../../catalog/thumbs/xenocut.film-looks.jpg"),
+    ),
+    (
+        "xenocut.lottie-stickers",
+        include_bytes!("../../catalog/thumbs/xenocut.lottie-stickers.jpg"),
+    ),
+    (
+        "xenocut.lottie-titles",
+        include_bytes!("../../catalog/thumbs/xenocut.lottie-titles.jpg"),
     ),
 ];
 

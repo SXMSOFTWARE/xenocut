@@ -98,6 +98,38 @@
       }
     },
     {
+      "id": "xenocut.lottie-stickers",
+      "name": "Animated Stickers",
+      "version": "1.0.0",
+      "author": "XenoCut contributors",
+      "license": "CC0-1.0",
+      "homepage": "https://github.com/sxmsoft/xenocut/tree/main/catalog",
+      "description": "Thirteen looping Lottie stickers: sparkles, hearts, confetti, badges, social prompts and hand-drawn highlights.",
+      "url": "https://raw.githubusercontent.com/sxmsoft/xenocut/main/catalog/packs/xenocut.lottie-stickers-1.0.0.xcpack",
+      "sha256": "f2ebdda84a7678a8cde92a468d10d6fff0f6e7fd241e3f01686b6f084963c8bf",
+      "bytes": 32545,
+      "thumbnail": "https://raw.githubusercontent.com/sxmsoft/xenocut/main/catalog/thumbs/xenocut.lottie-stickers.jpg",
+      "contents": {
+        "lottie": 13
+      }
+    },
+    {
+      "id": "xenocut.lottie-titles",
+      "name": "Animated Titles",
+      "version": "1.0.0",
+      "author": "XenoCut contributors",
+      "license": "CC0-1.0",
+      "homepage": "https://github.com/sxmsoft/xenocut/tree/main/catalog",
+      "description": "Six Lottie titles with editable text: lower third, title pop, chapter, quote card, subscribe button and a 3-2-1 countdown.",
+      "url": "https://raw.githubusercontent.com/sxmsoft/xenocut/main/catalog/packs/xenocut.lottie-titles-1.0.0.xcpack",
+      "sha256": "e1aae86fbd8e281a4e1e4a7aca6599fa0cab345f37f6f1984a271fe7cda6af0b",
+      "bytes": 19351,
+      "thumbnail": "https://raw.githubusercontent.com/sxmsoft/xenocut/main/catalog/thumbs/xenocut.lottie-titles.jpg",
+      "contents": {
+        "lottie": 6
+      }
+    },
+    {
       "id": "xenocut.motion-essentials",
       "name": "Motion Essentials",
       "version": "1.0.0",
