@@ -120,6 +120,9 @@ export default function SettingsPage() {
             <Row title={t("settings.perfMode")} text={t("settings.perfModeText")}>
               <Switch on={s.performanceMode} onChange={(v) => s.update({ performanceMode: v })} label={t("settings.perfMode")} />
             </Row>
+            <Row title={t("settings.proxy")} text={t("settings.proxyText")}>
+              <Switch on={s.previewProxy} onChange={(v) => s.update({ previewProxy: v })} label={t("settings.proxy")} />
+            </Row>
             <Row title={t("settings.cache")} text={t("settings.cacheText")} icon={<HardDrive />}>
               <div className="row-actions">
                 <span className="stat tnum">{cache ? bytes(cache.bytes) : "—"}</span>

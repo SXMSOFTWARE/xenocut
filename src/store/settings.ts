@@ -8,6 +8,8 @@ export interface Settings {
   outputDir: string;
   projectDir: string;
   performanceMode: boolean;
+  /** Play a 540p FFmpeg copy in the preview instead of the original (exports use the original). */
+  previewProxy: boolean;
   autosave: boolean;
 }
 
@@ -29,6 +31,7 @@ export const useSettings = create<SettingsState>((set, get) => ({
   outputDir: "",
   projectDir: "",
   performanceMode: true,
+  previewProxy: false,
   autosave: true,
   ready: false,
   info: null,
@@ -41,14 +44,15 @@ export const useSettings = create<SettingsState>((set, get) => ({
       projectDir: saved.projectDir || info.defaultProjectDir,
       // WebKitGTK paints translucency in software, so Linux starts in performance mode.
       performanceMode: saved.performanceMode ?? info.os === "linux",
+      previewProxy: saved.previewProxy ?? false,
       autosave: saved.autosave ?? true,
     };
     apply(settings);
     set({ ...settings, info, ready: true });
   },
   update: (patch) => {
-    const { language, outputDir, projectDir, performanceMode, autosave } = { ...get(), ...patch };
-    const settings: Settings = { language, outputDir, projectDir, performanceMode, autosave };
+    const { language, outputDir, projectDir, performanceMode, previewProxy, autosave } = { ...get(), ...patch };
+    const settings: Settings = { language, outputDir, projectDir, performanceMode, previewProxy, autosave };
     apply(settings);
     set(settings);
     void api.storeWrite("settings", settings);

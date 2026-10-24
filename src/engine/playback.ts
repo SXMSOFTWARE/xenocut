@@ -1,6 +1,8 @@
 // Timeline preview. One <video>, one <img> and a small pool of <audio> elements are driven
 // from a requestAnimationFrame clock. While a video clip plays, its element is the master
 // clock (smooth A/V); in gaps or audio-only stretches the wall clock takes over.
+import { useSettings } from "../store/settings";
+import { useAssets } from "../store/assets";
 import { fileSrc, log } from "../lib/backend";
 import { clipDuration, clipEnd, projectDuration } from "../project/ops";
 import type { Clip, MediaItem, Project, Track } from "../project/types";
@@ -52,6 +54,23 @@ function watch(el: HTMLMediaElement | HTMLImageElement) {
     if (usePlayback.getState().mediaError) usePlayback.setState({ mediaError: null });
   };
   el.addEventListener(el instanceof HTMLImageElement ? "load" : "loadeddata", ok);
+}
+
+/** The file the preview should actually play: the 540p proxy when that option is on and it is ready. */
+function previewPath(path: string): string {
+  if (!useSettings.getState().previewProxy) return path;
+  return useAssets.getState().proxies[path] ?? path;
+}
+
+/** Fully opaque media gets no opacity at all, so WebKit never treats the frame as translucent. */
+/** Automated test runs (XENOCUT_AUTOTEST) never make a sound. */
+let silent = false;
+export function setSilent(on: boolean) {
+  silent = on;
+}
+
+function opacityCss(value: number): string {
+  return value >= 0.999 ? "" : String(Math.max(0, value));
 }
 
 function setSrc(el: HTMLMediaElement | HTMLImageElement, path: string) {
@@ -220,13 +239,13 @@ class PlaybackEngine {
       video.style.visibility = "hidden";
       setSrc(image, visual.media.path);
       image.style.visibility = "visible";
-      image.style.opacity = String(visual.clip.opacity * fadeGain(visual.clip, t));
+      image.style.opacity = opacityCss(visual.clip.opacity * fadeGain(visual.clip, t));
     } else {
       image.style.visibility = "hidden";
-      setSrc(video, visual.media.path);
+      setSrc(video, previewPath(visual.media.path));
       video.style.visibility = "visible";
-      video.style.opacity = String(visual.clip.opacity * fadeGain(visual.clip, t));
-      const muted = visual.track.muted || !visual.media.hasAudio;
+      video.style.opacity = opacityCss(visual.clip.opacity * fadeGain(visual.clip, t));
+      const muted = silent || visual.track.muted || !visual.media.hasAudio;
       video.muted = muted;
       video.volume = Math.min(1, visual.clip.volume * fadeGain(visual.clip, t));
       this.syncElement(video, visual.clip, t, playing, this.videoClipId !== visual.clip.id);
@@ -248,7 +267,7 @@ class PlaybackEngine {
         this.audio.set(active.clip.id, el);
       }
       setSrc(el, active.media.path);
-      el.volume = Math.min(1, active.clip.volume * fadeGain(active.clip, t));
+      el.volume = silent ? 0 : Math.min(1, active.clip.volume * fadeGain(active.clip, t));
       this.syncElement(el, active.clip, t, playing, false);
     }
     for (const [id, el] of this.audio) {

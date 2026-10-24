@@ -40,6 +40,7 @@ pub fn run() {
             app::project_load,
             app::media_probe,
             app::media_assets,
+            app::media_proxy,
             app::cache_info,
             app::cache_clear,
             app::export_start,

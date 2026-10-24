@@ -1,7 +1,7 @@
 // Hidden self-test, enabled only by the XENOCUT_AUTOTEST=<media file> environment variable.
 // Imports the file into a fresh project, plays it and logs what the <video> element reports,
 // so playback can be verified on a headless machine (Xvfb) from the log file.
-import { engine } from "../engine/playback";
+import { engine, setSilent } from "../engine/playback";
 import { openMediaAsProject } from "../project/actions";
 import { usePlayback } from "../store/playback";
 import { log, transport } from "./backend";
@@ -9,6 +9,7 @@ import { perfCounters } from "./perfHook";
 import { useProject } from "../store/project";
 import { useSettings } from "../store/settings";
 import { useEditorUi } from "../store/editorUi";
+import { useAssets } from "../store/assets";
 import type { Grade } from "../project/grade";
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
@@ -43,6 +44,7 @@ function snapshot(tag: string) {
 }
 
 export async function runAutotest(file: string) {
+  setSilent(true);
   log("autotest", `start ${file}`);
   await sleep(800);
   const ok = await openMediaAsProject(file, "Autotest");
@@ -89,6 +91,16 @@ async function perfProbe() {
   const o = opts();
   if (!o.secs) return;
   if (o.perf !== undefined) useSettings.getState().update({ performanceMode: o.perf === "1" });
+  if (o.proxy === "1") {
+    useSettings.getState().update({ previewProxy: true });
+    const started = performance.now();
+    while (performance.now() - started < 120_000) {
+      const proxies = useAssets.getState().proxies;
+      if (Object.values(proxies).some((v) => v)) break;
+      await new Promise((r) => setTimeout(r, 250));
+    }
+    await log("autotest", `proxy ready ${JSON.stringify(useAssets.getState().proxies)}`);
+  }
   if (o.grade) {
     const p = useProject.getState().project;
     if (p) useProject.setState({ project: { ...p, settings: { ...p.settings, grade: o.grade as Grade } } });

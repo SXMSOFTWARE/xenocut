@@ -4,6 +4,8 @@ import { useT } from "../../i18n";
 import { gradeFilter, tintDefs } from "../../project/grade";
 import { usePlayback } from "../../store/playback";
 import { useProject } from "../../store/project";
+import { useAssets } from "../../store/assets";
+import { useSettings } from "../../store/settings";
 
 /**
  * The project canvas, letterboxed (contain) into whatever room the hero leaves between the rail,
@@ -20,6 +22,22 @@ export function Preview() {
   const grade = useProject((s) => s.project?.settings.grade);
   const empty = useProject((s) => (s.project?.clips.length ?? 0) === 0);
   const mediaError = usePlayback((s) => s.mediaError);
+  const lite = useSettings((s) => s.performanceMode);
+  const proxyOn = useSettings((s) => s.previewProxy);
+  const media = useProject((s) => s.project?.media);
+  const proxies = useAssets((s) => s.proxies);
+  // Performance mode skips the live colour grade (a per-frame CSS filter); exports still apply it.
+  const liveGrade = grade && grade !== "none" && !lite ? gradeFilter(grade) : undefined;
+
+  useEffect(() => {
+    if (!proxyOn || !media) return;
+    for (const m of media) useAssets.getState().requestProxy(m);
+  }, [proxyOn, media]);
+
+  // Swap sources when a proxy finishes or the option is toggled.
+  useEffect(() => {
+    engine.seek(usePlayback.getState().time);
+  }, [proxyOn, proxies]);
   const [box, setBox] = useState({ w: 0, h: 0 });
 
   useEffect(() => {
@@ -43,7 +61,7 @@ export function Preview() {
 
   return (
     <div className="stage-area" ref={areaRef}>
-      <div className="stage" style={{ width: box.w, height: box.h, filter: grade ? gradeFilter(grade) : undefined }} onClick={() => engine.toggle()}>
+      <div className="stage" style={{ width: box.w, height: box.h, filter: liveGrade }} onClick={() => engine.toggle()}>
         <video ref={videoRef} className="stage-media" playsInline />
         <img ref={imageRef} className="stage-media" alt="" draggable={false} />
         {empty && <div className="stage-empty">{t("preview.empty")}</div>}

@@ -6,9 +6,14 @@ import type { MediaAssets, MediaItem } from "../project/types";
 interface AssetState {
   assets: Record<string, MediaAssets | undefined>;
   pending: Record<string, boolean>;
+  /** Preview proxies by original path: a file path when ready, null while building or after a failure. */
+  proxies: Record<string, string | null | undefined>;
   request: (media: MediaItem) => void;
+  requestProxy: (media: MediaItem) => void;
   reset: () => void;
 }
+
+export const PROXY_HEIGHT = 540;
 
 const queue: MediaItem[] = [];
 let running = 0;
@@ -34,6 +39,7 @@ const emptyAssets: MediaAssets = { thumb: null, strip: null, stripCount: 0, stri
 export const useAssets = create<AssetState>((set, get) => ({
   assets: {},
   pending: {},
+  proxies: {},
   request: (media) => {
     const { assets, pending } = get();
     if (assets[media.path] || pending[media.path]) return;
@@ -41,5 +47,13 @@ export const useAssets = create<AssetState>((set, get) => ({
     queue.push(media);
     pump();
   },
-  reset: () => set({ assets: {}, pending: {} }),
+  requestProxy: (media) => {
+    if (media.kind !== "video" || media.height <= PROXY_HEIGHT || media.path in get().proxies) return;
+    set((s) => ({ proxies: { ...s.proxies, [media.path]: null } }));
+    void api
+      .mediaProxy(media.path)
+      .then((proxy) => set((s) => ({ proxies: { ...s.proxies, [media.path]: proxy } })))
+      .catch(() => {});
+  },
+  reset: () => set({ assets: {}, pending: {}, proxies: {} }),
 }));

@@ -1581,3 +1581,12 @@
     justify-content: center;
   }
 }
+
+/* Performance mode around the preview: no ambient picture behind the video and no soft shadow, so
+   each new video frame only repaints the video itself. */
+.perf .ambient-img {
+  display: none;
+}
+.perf .stage {
+  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.08);
+}

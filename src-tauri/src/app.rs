@@ -172,6 +172,14 @@ pub async fn media_assets(
         .map_err(|e| e.to_string())
 }
 
+#[tauri::command]
+pub async fn media_proxy(app: AppHandle, path: String) -> Result<String, String> {
+    let cache = cache_dir(&app);
+    tauri::async_runtime::spawn_blocking(move || media::proxy(&cache, Path::new(&path)))
+        .await
+        .map_err(|e| e.to_string())?
+}
+
 #[derive(Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct CacheInfo {
