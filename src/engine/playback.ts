@@ -8,6 +8,7 @@ import { clipDuration, clipEnd, projectDuration } from "../project/ops";
 import type { Clip, MediaItem, Project, Track } from "../project/types";
 import { usePlayback } from "../store/playback";
 import { useProject } from "../store/project";
+import { drawTexts, textStateKey } from "../text/render";
 
 const HARD_DRIFT = 0.3;
 const PAUSED_EPS = 1 / 120;
@@ -92,6 +93,9 @@ class PlaybackEngine {
   private timeStart = 0;
   private videoClipId: string | null = null;
   private unsubscribe: (() => void) | null = null;
+  private textCanvas: HTMLCanvasElement | null = null;
+  private textKey = "";
+  private textProject: Project | null = null;
 
   attach(video: HTMLVideoElement, image: HTMLImageElement) {
     this.video = video;
@@ -109,6 +113,42 @@ class PlaybackEngine {
     this.render(usePlayback.getState().time, false);
   }
 
+  /** The transparent canvas over the stage that shows text clips (drawn above the grade). */
+  attachText(canvas: HTMLCanvasElement | null) {
+    this.textCanvas = canvas;
+    this.invalidateText();
+  }
+
+  /** Force the next render to redraw text (canvas resized, fonts loaded). */
+  invalidateText() {
+    this.textProject = null;
+    this.drawTextAt(this.latestTime());
+  }
+
+  private latestTime() {
+    return usePlayback.getState().playing ? this.latest : usePlayback.getState().time;
+  }
+
+  private drawTextAt(t: number) {
+    const canvas = this.textCanvas;
+    const p = this.project();
+    if (!canvas || !p) return;
+    const frame = Math.floor(t * p.settings.fps + 1e-6);
+    const key = textStateKey(p, t, frame);
+    if (p === this.textProject && key === this.textKey) return;
+    const hadText = this.textKey !== "" || this.textProject === null;
+    this.textProject = p;
+    this.textKey = key;
+    if (!key && !hadText) return;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return;
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    if (!key) return;
+    ctx.setTransform(canvas.width / p.settings.width, 0, 0, canvas.height / p.settings.height, 0, 0);
+    drawTexts(ctx, p, t, p.settings.width, p.settings.height);
+  }
+
   detach() {
     this.pause();
     this.unsubscribe?.();
@@ -123,6 +163,7 @@ class PlaybackEngine {
     this.video = null;
     this.image = null;
     this.videoClipId = null;
+    this.textCanvas = null;
   }
 
   private project(): Project | null {
@@ -218,6 +259,7 @@ class PlaybackEngine {
     const video = this.video;
     const image = this.image;
     if (!p || !video || !image) return;
+    this.drawTextAt(t);
 
     const mediaById = new Map(p.media.map((m) => [m.id, m]));
     const at = (track: Track): Active | null => {
@@ -265,7 +307,7 @@ class PlaybackEngine {
     // Audio: every unmuted audio/music track clip under the playhead.
     const wanted = new Set<string>();
     for (const track of p.tracks) {
-      if (track.kind === "video" || track.muted) continue;
+      if (track.kind === "video" || track.kind === "text" || track.muted) continue;
       const active = at(track);
       if (!active) continue;
       wanted.add(active.clip.id);

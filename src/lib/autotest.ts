@@ -11,6 +11,10 @@ import { useSettings } from "../store/settings";
 import { useEditorUi } from "../store/editorUi";
 import { useAssets } from "../store/assets";
 import type { Grade } from "../project/grade";
+import { addTextClip, projectDuration } from "../project/ops";
+import { textFromPreset } from "../project/text";
+import { renderTextLayer, discardTextLayer } from "../text/exportLayer";
+import { api } from "./backend";
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
@@ -64,6 +68,7 @@ export async function runAutotest(file: string) {
   // Pause on a frame so a screenshot shows a stable picture.
   engine.pause();
   snapshot("paused");
+  await textProbe();
   await perfProbe();
 }
 
@@ -172,4 +177,49 @@ async function perfProbe() {
   };
   engine.pause();
   log("autotest", `PERF ${JSON.stringify(result)}`);
+}
+
+/** text=1: lay out two styled text clips, show the Text panel; export=<path>: render them out. */
+async function textProbe() {
+  const o = opts();
+  if (!o.text) return;
+  const { commit, select } = useProject.getState();
+  let first = "";
+  commit((p) => {
+    const a = addTextClip(p, textFromPreset(o.preset ?? "headline", "XenoCut Başlık Ğüşİ"), 0, 4);
+    first = a.clipId;
+    const b = addTextClip(a.project, textFromPreset("captionPop", "words light up as they are sung"), 4, 4);
+    return b.project;
+  });
+  select([first]);
+  useEditorUi.setState({ panel: "text" });
+  engine.seek(1.2);
+  await sleep(1500);
+  log("autotest", "text-ready");
+  await sleep(1500);
+  const moved = useProject.getState().project?.clips.find((c) => c.id === first)?.text?.style;
+  log("autotest", `text-style ${JSON.stringify({ x: moved?.x, y: moved?.y })}`);
+  engine.seek(5.5);
+  await sleep(1200);
+  log("autotest", "text-karaoke");
+  await sleep(1000);
+  if (!o.export) return;
+  const project = useProject.getState().project!;
+  const t0 = performance.now();
+  try {
+    const layer = await renderTextLayer(project, project.settings.width, project.settings.height, project.settings.fps, () => {}, () => false);
+    const t1 = performance.now();
+    const out = await api.exportStart(project, {
+      outputPath: o.export,
+      width: project.settings.width,
+      height: project.settings.height,
+      fps: project.settings.fps,
+      quality: "fast",
+      textOverlay: layer?.list,
+    });
+    discardTextLayer(layer);
+    log("autotest", `EXPORT ok ${JSON.stringify({ path: out.path, bytes: out.bytes, frames: layer?.frames, textMs: Math.round(t1 - t0), totalMs: Math.round(performance.now() - t0), duration: projectDuration(project) })}`);
+  } catch (error) {
+    log("autotest", `EXPORT failed ${String(error)}`);
+  }
 }

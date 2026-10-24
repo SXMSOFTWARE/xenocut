@@ -3,7 +3,7 @@ import { fileSrc } from "../../../lib/backend";
 import { clipDuration } from "../../../project/ops";
 import type { Clip, MediaAssets, MediaItem, TrackKind } from "../../../project/types";
 import { useAssets } from "../../../store/assets";
-import { ChevronLeft, ChevronRight } from "lucide-react";
+import { ChevronLeft, ChevronRight, Type } from "lucide-react";
 import { beginClipDrag } from "./clipDrag";
 
 const MAX_TILES = 48;
@@ -48,6 +48,41 @@ export const ClipView = memo(function ClipView({ clip, media, trackKind, pps, se
         {visual && clip.speed !== 1 && <em className="clip-speed">{clip.speed.toFixed(2)}×</em>}
         {clip.fadeIn > 0 && <span className="clip-fade in" style={{ width: Math.min(width / 2, clip.fadeIn * pps) }} />}
         {clip.fadeOut > 0 && <span className="clip-fade out" style={{ width: Math.min(width / 2, clip.fadeOut * pps) }} />}
+      </div>
+      <span className="clip-handle start" onPointerDown={(e) => beginClipDrag(e, clip.id, "trim-start")} />
+      <span className="clip-handle end" onPointerDown={(e) => beginClipDrag(e, clip.id, "trim-end")} />
+      {selected && width >= 52 && (
+        <>
+          <span className="trim-btn start" onPointerDown={(e) => beginClipDrag(e, clip.id, "trim-start")}>
+            <ChevronLeft size={12} strokeWidth={2.4} />
+          </span>
+          <span className="trim-btn end" onPointerDown={(e) => beginClipDrag(e, clip.id, "trim-end")}>
+            <ChevronRight size={12} strokeWidth={2.4} />
+          </span>
+        </>
+      )}
+    </div>
+  );
+});
+
+/** A text clip: a teal pill that shows its words. */
+export const TextClipView = memo(function TextClipView({ clip, pps, selected }: { clip: Clip; pps: number; selected: boolean }) {
+  const duration = clipDuration(clip);
+  const width = Math.max(2, duration * pps);
+  const label = (clip.text?.content ?? "").replace(/\s+/g, " ").trim();
+  return (
+    <div
+      className={`clip tone-text${selected ? " selected" : ""}${width < 36 ? " tiny" : ""}`}
+      style={{ transform: `translateX(${clip.start * pps}px)`, width }}
+      data-clip-id={clip.id}
+      title={label}
+      onPointerDown={(e) => beginClipDrag(e, clip.id, "move")}
+    >
+      <div className="clip-body">
+        <div className="clip-label">
+          <Type className="clip-text-glyph" />
+          <span>{label || "…"}</span>
+        </div>
       </div>
       <span className="clip-handle start" onPointerDown={(e) => beginClipDrag(e, clip.id, "trim-start")} />
       <span className="clip-handle end" onPointerDown={(e) => beginClipDrag(e, clip.id, "trim-end")} />

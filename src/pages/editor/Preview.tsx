@@ -6,6 +6,10 @@ import { usePlayback } from "../../store/playback";
 import { useProject } from "../../store/project";
 import { useAssets } from "../../store/assets";
 import { useSettings } from "../../store/settings";
+import { useEditorUi } from "../../store/editorUi";
+import { updateText } from "../../project/ops";
+import { fontsFor } from "../../text/exportLayer";
+import { activeTexts, textAtPoint, textBox } from "../../text/render";
 
 /**
  * The project canvas, letterboxed (contain) into whatever room the hero leaves between the rail,
@@ -16,6 +20,9 @@ export function Preview() {
   const t = useT();
   const videoRef = useRef<HTMLVideoElement>(null);
   const imageRef = useRef<HTMLImageElement>(null);
+  const textRef = useRef<HTMLCanvasElement>(null);
+  const stageRef = useRef<HTMLDivElement>(null);
+  const draggedRef = useRef(false);
   const areaRef = useRef<HTMLDivElement>(null);
   const width = useProject((s) => s.project?.settings.width ?? 1920);
   const height = useProject((s) => s.project?.settings.height ?? 1080);
@@ -42,8 +49,88 @@ export function Preview() {
 
   useEffect(() => {
     engine.attach(videoRef.current!, imageRef.current!);
+    engine.attachText(textRef.current);
     return () => engine.detach();
   }, []);
+
+  // Text canvas backing store follows the on-screen size (capped for speed in performance mode).
+  useLayoutEffect(() => {
+    const canvas = textRef.current;
+    if (!canvas || !box.w) return;
+    const dpr = Math.min(window.devicePixelRatio || 1, lite ? 1 : 2);
+    const w = Math.round(box.w * dpr);
+    const h = Math.round(box.h * dpr);
+    if (canvas.width !== w || canvas.height !== h) {
+      canvas.width = w;
+      canvas.height = h;
+    }
+    engine.invalidateText();
+  }, [box.w, box.h, lite]);
+
+  // Load the fonts the text clips use, then redraw with them.
+  const fontKey = useProject((s) =>
+    (s.project?.clips ?? [])
+      .filter((c) => c.text)
+      .map((c) => `${c.text!.style.font}/${c.text!.style.weight}/${c.text!.style.italic ? 1 : 0}`)
+      .sort()
+      .join(","),
+  );
+  useEffect(() => {
+    const p = useProject.getState().project;
+    if (!p || !fontKey) return;
+    let live = true;
+    void fontsFor(p).then(() => live && engine.invalidateText());
+    return () => {
+      live = false;
+    };
+  }, [fontKey]);
+
+  /** Grab a text clip on the stage: select it, and drag to move it. */
+  const onStagePointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
+    draggedRef.current = false;
+    const project = useProject.getState().project;
+    const stage = stageRef.current;
+    if (e.button !== 0 || !project || !stage) return;
+    const rect = stage.getBoundingClientRect();
+    const toProject = (cx: number, cy: number) => ({
+      x: ((cx - rect.left) / rect.width) * project.settings.width,
+      y: ((cy - rect.top) / rect.height) * project.settings.height,
+    });
+    const time = usePlayback.getState().time;
+    const start = toProject(e.clientX, e.clientY);
+    const id = textAtPoint(project, time, start.x, start.y);
+    if (!id) return;
+    const clip = project.clips.find((c) => c.id === id);
+    if (!clip?.text) return;
+    engine.pause();
+    draggedRef.current = true; // a press on text never toggles playback
+    useProject.getState().select([id]);
+    useEditorUi.setState({ panel: "text" });
+    const origin = { x: clip.text.style.x, y: clip.text.style.y };
+    const { beginGesture, endGesture, transient } = useProject.getState();
+    let moved = false;
+    const move = (ev: PointerEvent) => {
+      const now = toProject(ev.clientX, ev.clientY);
+      const dx = (now.x - start.x) / project.settings.width;
+      const dy = (now.y - start.y) / project.settings.height;
+      if (!moved && Math.hypot(ev.clientX - e.clientX, ev.clientY - e.clientY) < 3) return;
+      if (!moved) beginGesture();
+      moved = true;
+      let x = Math.min(1, Math.max(0, origin.x + dx));
+      let y = Math.min(1, Math.max(0, origin.y + dy));
+      // Snap to the centre lines.
+      if (Math.abs(x - 0.5) < 0.012) x = 0.5;
+      if (Math.abs(y - 0.5) < 0.012) y = 0.5;
+      transient((p) => updateText(p, id, (tx) => ({ ...tx, style: { ...tx.style, x, y } })));
+    };
+    const up = () => {
+      window.removeEventListener("pointermove", move);
+      window.removeEventListener("pointerup", up);
+      if (moved) endGesture();
+    };
+    window.addEventListener("pointermove", move);
+    window.addEventListener("pointerup", up);
+  };
 
   useLayoutEffect(() => {
     const area = areaRef.current!;
@@ -61,9 +148,20 @@ export function Preview() {
 
   return (
     <div className="stage-area" ref={areaRef}>
-      <div className="stage" style={{ width: box.w, height: box.h, filter: liveGrade }} onClick={() => engine.toggle()}>
-        <video ref={videoRef} className="stage-media" playsInline />
-        <img ref={imageRef} className="stage-media" alt="" draggable={false} />
+      <div
+        ref={stageRef}
+        className="stage"
+        style={{ width: box.w, height: box.h }}
+        onPointerDown={onStagePointerDown}
+        onClick={() => {
+          if (!draggedRef.current) engine.toggle();
+          draggedRef.current = false;
+        }}
+      >
+        <video ref={videoRef} className="stage-media" playsInline style={{ filter: liveGrade }} />
+        <img ref={imageRef} className="stage-media" alt="" draggable={false} style={{ filter: liveGrade }} />
+        <canvas ref={textRef} className="stage-text" aria-hidden="true" />
+        <TextSelection width={width} height={height} />
         {empty && <div className="stage-empty">{t("preview.empty")}</div>}
       </div>
       {mediaError && (
@@ -80,5 +178,23 @@ export function Preview() {
         ))}
       </svg>
     </div>
+  );
+}
+
+/** Dashed box around the selected text clip while it is on screen. */
+function TextSelection({ width, height }: { width: number; height: number }) {
+  const time = usePlayback((s) => s.time);
+  const playing = usePlayback((s) => s.playing);
+  const project = useProject((s) => s.project);
+  const selection = useProject((s) => s.selection);
+  if (!project || playing || selection.length !== 1) return null;
+  const active = activeTexts(project, time).find((a) => a.clip.id === selection[0]);
+  if (!active) return null;
+  const b = textBox(active.text, width, height);
+  return (
+    <div
+      className="stage-text-box"
+      style={{ left: `${(b.left / width) * 100}%`, top: `${(b.top / height) * 100}%`, width: `${(b.w / width) * 100}%`, height: `${(b.h / height) * 100}%` }}
+    />
   );
 }

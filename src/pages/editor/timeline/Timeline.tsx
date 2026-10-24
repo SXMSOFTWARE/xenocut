@@ -1,5 +1,5 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
-import { AudioLines, Film, Magnet, Maximize2, Music2, Plus, Scissors, Trash2, ZoomIn, ZoomOut } from "lucide-react";
+import { AudioLines, Film, Magnet, Maximize2, Music2, Plus, Scissors, Trash2, Type, ZoomIn, ZoomOut } from "lucide-react";
 import { useT } from "../../../i18n";
 import { NEW_TRACK } from "../../../project/actions";
 import { projectDuration } from "../../../project/ops";
@@ -113,7 +113,7 @@ export function Timeline() {
   };
 
   if (!tracks) return null;
-  const counts = { video: 0, audio: 0, music: 0 };
+  const counts = { video: 0, audio: 0, music: 0, text: 0 };
   for (const tr of tracks) counts[tr.kind] += 1;
   const mainVideo = tracks.find((tr) => tr.kind === "video")?.id;
 
@@ -147,6 +147,7 @@ export function Timeline() {
                     ["video", Film],
                     ["audio", AudioLines],
                     ["music", Music2],
+                    ["text", Type],
                   ] as const
                 ).map(([kind, Icon]) => (
                   <button key={kind} className="menu-item" onClick={() => (addTrack(kind), setAddOpen(false))}>
@@ -189,7 +190,7 @@ export function Timeline() {
                 media={media}
                 pps={pps}
                 height={track.kind === "video" ? VIDEO_H : AUDIO_H}
-                canRemove={counts[track.kind] > 1 || !(byTrack.get(track.id)?.length ?? 0)}
+                canRemove={track.kind === "text" || counts[track.kind] > 1 || !(byTrack.get(track.id)?.length ?? 0)}
                 showAdd={track.id === mainVideo}
               />
             ))}

@@ -1,10 +1,11 @@
-import { Scissors, Trash2, SlidersHorizontal } from "lucide-react";
+import { Scissors, Trash2, SlidersHorizontal, Type } from "lucide-react";
 import { Slider } from "../../components/controls";
 import { useT } from "../../i18n";
 import { shortTime, timecode } from "../../lib/format";
 import { clipDuration, clipEnd, maxSourceOut, MIN_CLIP_SECONDS, projectDuration, updateClip } from "../../project/ops";
 import type { Clip, MediaItem, Project } from "../../project/types";
 import { useProject } from "../../store/project";
+import { useEditorUi } from "../../store/editorUi";
 import { deleteSelection, splitAtPlayhead } from "./commands";
 
 
@@ -24,7 +25,15 @@ export function Inspector() {
   return (
     <div className="inspector">
       <div className="inspector-body">
-        {clip && media ? (
+        {clip?.text ? (
+          <div className="inspector-note">
+            <p>{t("text.inInspector")}</p>
+            <button className="btn btn-sm" onClick={() => useEditorUi.setState({ panel: "text" })}>
+              <Type />
+              {t("text.openPanel")}
+            </button>
+          </div>
+        ) : clip && media ? (
           <ClipInspector project={project} clip={clip} media={media} />
         ) : selection.length > 1 ? (
           <div className="inspector-note">

@@ -1,6 +1,7 @@
 // Pure project operations. Every function returns a new project; nothing mutates.
 import { uid } from "../lib/id";
 import type { Aspect, Clip, MediaItem, ProbeInfo, Project, ProjectSettings, Resolution, Track, TrackKind } from "./types";
+import { TEXT_DEFAULT_SECONDS, type TextContent } from "./text";
 
 export const IMAGE_DEFAULT_SECONDS = 5;
 export const MIN_CLIP_SECONDS = 0.1;
@@ -22,7 +23,7 @@ export function settingsFor(aspect: Aspect, resolution: Resolution, fps: number)
 }
 
 export function makeTrack(kind: TrackKind, existing: Track[]): Track {
-  const base = kind === "video" ? "Video" : kind === "audio" ? "Audio" : "Music";
+  const base = kind === "video" ? "Video" : kind === "audio" ? "Audio" : kind === "text" ? "Text" : "Music";
   const n = existing.filter((t) => t.kind === kind).length + 1;
   return { id: uid("t"), kind, name: `${base} ${n}`, muted: false, hidden: false };
 }
@@ -70,11 +71,17 @@ export function projectDuration(project: Project): number {
   return end;
 }
 
-export function maxSourceOut(media: MediaItem): number {
-  return media.kind === "image" ? 3600 : media.duration;
+export function maxSourceOut(media: MediaItem | null | undefined): number {
+  return !media || media.kind === "image" ? 3600 : media.duration;
+}
+
+/** Text clips and stills can be stretched freely; their "in" point is always 0. */
+export function isElastic(clip: Clip, media: MediaItem | null | undefined): boolean {
+  return !!clip.text || media?.kind === "image";
 }
 
 export function trackAccepts(kind: TrackKind, media: MediaItem): boolean {
+  if (kind === "text") return false;
   if (kind === "video") return media.kind === "video" || media.kind === "image";
   return media.kind === "audio" || (media.kind === "video" && media.hasAudio);
 }
@@ -188,9 +195,55 @@ export function updateClip(project: Project, clipId: string, patch: Partial<Clip
   return { ...project, clips: project.clips.map((c) => (c.id === clipId ? { ...c, ...patch } : c)) };
 }
 
-const TRACK_ORDER: TrackKind[] = ["video", "audio", "music"];
+const TRACK_ORDER: TrackKind[] = ["text", "video", "audio", "music"];
 
-/** Video tracks first, then audio, then music; order inside a group is preserved. */
+/** Text tracks on top, then video, audio and music; order inside a group is preserved. */
 export function sortTracks(tracks: Track[]): Track[] {
   return [...tracks].sort((a, b) => TRACK_ORDER.indexOf(a.kind) - TRACK_ORDER.indexOf(b.kind));
+}
+
+export function newTextClip(trackId: string, start: number, text: TextContent, duration = TEXT_DEFAULT_SECONDS): Clip {
+  return {
+    id: uid("c"),
+    trackId,
+    mediaId: "",
+    start,
+    in: 0,
+    out: duration,
+    speed: 1,
+    volume: 1,
+    opacity: 1,
+    fadeIn: 0,
+    fadeOut: 0,
+    text,
+  };
+}
+
+/** The first text track, created when missing. Returns the project and the track id. */
+export function ensureTextTrack(project: Project, name?: string): { project: Project; trackId: string } {
+  const found = project.tracks.find((t) => t.kind === "text" && (!name || t.name === name));
+  if (found) return { project, trackId: found.id };
+  const track = makeTrack("text", project.tracks);
+  if (name) track.name = name;
+  return { project: { ...project, tracks: sortTracks([...project.tracks, track]) }, trackId: track.id };
+}
+
+/** Put a text clip on a text track at (or near) `at`; a new track is added when every one is busy. */
+export function addTextClip(project: Project, text: TextContent, at: number, duration = TEXT_DEFAULT_SECONDS): { project: Project; clipId: string } {
+  let next = project;
+  let trackId = next.tracks.find((t) => t.kind === "text" && isFree(next, t.id, at, duration))?.id;
+  if (!trackId) {
+    const track = makeTrack("text", next.tracks);
+    next = { ...next, tracks: sortTracks([...next.tracks, track]) };
+    trackId = track.id;
+  }
+  const clip = newTextClip(trackId, Math.max(0, at), text, duration);
+  return { project: { ...next, clips: [...next.clips, clip] }, clipId: clip.id };
+}
+
+export function updateText(project: Project, clipId: string, update: (text: TextContent) => TextContent): Project {
+  return {
+    ...project,
+    clips: project.clips.map((c) => (c.id === clipId && c.text ? { ...c, text: update(c.text) } : c)),
+  };
 }

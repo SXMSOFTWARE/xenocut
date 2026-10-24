@@ -1,5 +1,5 @@
 import { memo, useMemo } from "react";
-import { Eye, EyeOff, Film, Music2, Plus, Trash2, Volume2, VolumeX, AudioLines } from "lucide-react";
+import { Eye, EyeOff, Film, Music2, Plus, Trash2, Type, Volume2, VolumeX, AudioLines } from "lucide-react";
 import { engine } from "../../../engine/playback";
 import { useT } from "../../../i18n";
 import type { Clip, MediaItem, Track } from "../../../project/types";
@@ -8,9 +8,9 @@ import { useProject } from "../../../store/project";
 import { importDialog, addToTimeline } from "../../../project/actions";
 import { clipDuration } from "../../../project/ops";
 import { removeTrack, toggleTrack } from "../commands";
-import { ClipView } from "./ClipView";
+import { ClipView, TextClipView } from "./ClipView";
 
-const ICON = { video: Film, audio: AudioLines, music: Music2 };
+const ICON = { video: Film, audio: AudioLines, music: Music2, text: Type };
 
 interface Props {
   track: Track;
@@ -41,14 +41,16 @@ export const TrackRow = memo(function TrackRow({ track, clips, media, pps, heigh
         </span>
         <div className="tl-track-actions">
           <span className="tl-track-name">{track.name}</span>
-          {track.kind === "video" && (
+          {(track.kind === "video" || track.kind === "text") && (
             <button className="mini-btn" onClick={() => toggleTrack(track.id, "hidden")} title={t(track.hidden ? "track.show" : "track.hide")} aria-label={t(track.hidden ? "track.show" : "track.hide")}>
               {track.hidden ? <EyeOff /> : <Eye />}
             </button>
           )}
-          <button className="mini-btn" onClick={() => toggleTrack(track.id, "muted")} title={t(track.muted ? "track.unmute" : "track.mute")} aria-label={t(track.muted ? "track.unmute" : "track.mute")}>
-            {track.muted ? <VolumeX /> : <Volume2 />}
-          </button>
+          {track.kind !== "text" && (
+            <button className="mini-btn" onClick={() => toggleTrack(track.id, "muted")} title={t(track.muted ? "track.unmute" : "track.mute")} aria-label={t(track.muted ? "track.unmute" : "track.mute")}>
+              {track.muted ? <VolumeX /> : <Volume2 />}
+            </button>
+          )}
           {canRemove && (
             <button className="mini-btn danger" onClick={() => removeTrack(track.id)} title={t("track.remove")} aria-label={t("track.remove")}>
               <Trash2 />
@@ -58,6 +60,7 @@ export const TrackRow = memo(function TrackRow({ track, clips, media, pps, heigh
       </div>
       <div className="tl-lane" data-lane="" data-track-id={track.id} onPointerDown={lanePointerDown}>
         {clips.map((clip, i) => {
+          if (clip.text) return <TextClipView key={clip.id} clip={clip} pps={pps} selected={selected.has(clip.id)} />;
           const m = media.get(clip.mediaId);
           const tint = track.kind === "video" ? TINTS[i % TINTS.length] : track.kind === "music" ? "gold" : "lavender";
           return m ? <ClipView key={clip.id} clip={clip} media={m} trackKind={track.kind} tint={tint} pps={pps} selected={selected.has(clip.id)} laneHeight={height} /> : null;

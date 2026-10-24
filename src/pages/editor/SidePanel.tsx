@@ -1,5 +1,5 @@
 import { useMemo } from "react";
-import { Eye, EyeOff, FileAudio, Mic, Music2, Type, Volume2, VolumeX, Wand2, X } from "lucide-react";
+import { Eye, EyeOff, FileAudio, Mic, Music2, Volume2, VolumeX, Wand2, X } from "lucide-react";
 import { Slider } from "../../components/controls";
 import { useT, type Key } from "../../i18n";
 import { AUDIO_EXT, fileSrc, pickFiles } from "../../lib/backend";
@@ -15,6 +15,7 @@ import { useProject } from "../../store/project";
 import { useRouter } from "../../store/router";
 import { addTrack, toggleTrack } from "./commands";
 import { Inspector } from "./Inspector";
+import { TextPanel } from "./TextPanel";
 import { MediaBin } from "./MediaBin";
 
 const TITLES: Record<PanelId, Key> = {
@@ -166,14 +167,16 @@ function AudioPanel() {
           <div key={track.id} className={`sp-row track-row kind-${track.kind}${track.muted ? " off" : ""}`}>
             <i className={`tone-dot kind-${track.kind}`} />
             <span className="sp-row-name">{track.name}</span>
-            {track.kind === "video" && (
+            {(track.kind === "video" || track.kind === "text") && (
               <button className="mini-btn" onClick={() => toggleTrack(track.id, "hidden")} aria-label={t(track.hidden ? "track.show" : "track.hide")} title={t(track.hidden ? "track.show" : "track.hide")}>
                 {track.hidden ? <EyeOff /> : <Eye />}
               </button>
             )}
-            <button className="mini-btn" onClick={() => toggleTrack(track.id, "muted")} aria-label={t(track.muted ? "track.unmute" : "track.mute")} title={t(track.muted ? "track.unmute" : "track.mute")}>
-              {track.muted ? <VolumeX /> : <Volume2 />}
-            </button>
+            {track.kind !== "text" && (
+              <button className="mini-btn" onClick={() => toggleTrack(track.id, "muted")} aria-label={t(track.muted ? "track.unmute" : "track.mute")} title={t(track.muted ? "track.unmute" : "track.mute")}>
+                {track.muted ? <VolumeX /> : <Volume2 />}
+              </button>
+            )}
           </div>
         ))}
       </div>
@@ -234,19 +237,6 @@ export function usePosterThumb(): string | null {
   });
   const thumb = useAssets((s) => (path ? s.assets[path]?.thumb : undefined));
   return thumb ? fileSrc(thumb) : null;
-}
-
-function TextPanel() {
-  const t = useT();
-  return (
-    <div className="sp-stack">
-      <div className="sp-hero-icon">
-        <Type />
-      </div>
-      <span className="soon">{t("common.soon")}</span>
-      <p className="sp-text">{t("text.soon")}</p>
-    </div>
-  );
 }
 
 const NO_TRACKS: Track[] = [];

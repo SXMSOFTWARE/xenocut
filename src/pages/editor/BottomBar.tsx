@@ -115,7 +115,7 @@ function DurationMenu({ close }: { close: () => void }) {
     const { project, commit } = useProject.getState();
     if (!project || !sel) return;
     const media = project.media.find((m) => m.id === sel.mediaId);
-    if (!media) return;
+    if (!media && !sel.text) return;
     const out = Math.min(maxSourceOut(media), sel.in + seconds * sel.speed);
     const next = { ...sel, out };
     if (!isFree(project, sel.trackId, sel.start, clipDuration(next), new Set([sel.id]))) {

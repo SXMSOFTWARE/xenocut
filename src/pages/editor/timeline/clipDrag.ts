@@ -3,6 +3,7 @@
 import {
   clipDuration,
   clipEnd,
+  isElastic,
   isFree,
   maxSourceOut,
   MIN_CLIP_SECONDS,
@@ -12,6 +13,7 @@ import {
   trackAccepts,
   updateClip,
 } from "../../../project/ops";
+import type { TrackKind } from "../../../project/types";
 import { useEditorUi } from "../../../store/editorUi";
 import { usePlayback } from "../../../store/playback";
 import { useProject } from "../../../store/project";
@@ -27,8 +29,10 @@ export function beginClipDrag(e: React.PointerEvent, clipId: string, mode: ClipD
   const store = useProject.getState();
   const project = store.project;
   const origin = project?.clips.find((c) => c.id === clipId);
-  const media = origin && project?.media.find((m) => m.id === origin.mediaId);
-  if (!project || !origin || !media) return;
+  const media = origin ? project?.media.find((m) => m.id === origin.mediaId) ?? null : null;
+  if (!project || !origin || (!media && !origin.text)) return;
+  const elastic = isElastic(origin, media);
+  const fits = (kind: TrackKind) => (origin.text ? kind === "text" : !!media && trackAccepts(kind, media));
 
   const additive = e.shiftKey || e.ctrlKey || e.metaKey;
   const wasSelected = store.selection.includes(clipId);
@@ -81,17 +85,17 @@ export function beginClipDrag(e: React.PointerEvent, clipId: string, mode: ClipD
       const lane = laneAtPoint(ev.clientX, ev.clientY);
       const current = useProject.getState().project;
       const target = lane?.trackId && current?.tracks.find((t) => t.id === lane.trackId);
-      if (target && trackAccepts(target.kind, media)) trackId = target.id;
+      if (target && fits(target.kind)) trackId = target.id;
       useProject.getState().transient((p) => updateClip(p, clipId, { start, trackId }));
     } else if (mode === "trim-start") {
       const s = snapTo(origin.start + dx);
       let start = s.time;
       snapLine = s.snapped;
-      const earliest = media.kind === "image" ? prevEnd : Math.max(prevEnd, origin.start - origin.in / origin.speed);
+      const earliest = elastic ? prevEnd : Math.max(prevEnd, origin.start - origin.in / origin.speed);
       start = Math.min(Math.max(start, earliest), end - minLen);
       if (start !== s.time) snapLine = null;
       const patch =
-        media.kind === "image"
+        elastic
           ? { start, in: 0, out: (end - start) * origin.speed }
           : { start, in: origin.in + (start - origin.start) * origin.speed };
       useProject.getState().transient((p) => updateClip(p, clipId, patch));

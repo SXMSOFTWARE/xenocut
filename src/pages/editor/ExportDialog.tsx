@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { CheckCircle2, Download, FolderOpen, XCircle } from "lucide-react";
 import { Segmented } from "../../components/controls";
 import { Modal } from "../../components/Modal";
@@ -10,8 +10,9 @@ import type { Resolution } from "../../project/types";
 import { useEditorUi } from "../../store/editorUi";
 import { useProject } from "../../store/project";
 import { useSettings } from "../../store/settings";
+import { discardTextLayer, hasVisibleText, renderTextLayer, type TextLayerJob } from "../../text/exportLayer";
 
-type Phase = { kind: "setup" } | { kind: "running"; progress: number } | { kind: "done"; path: string; bytes: number; seconds: number } | { kind: "error"; message: string } | { kind: "cancelled" };
+type Phase = { kind: "setup" } | { kind: "running"; progress: number; step: "text" | "video" } | { kind: "done"; path: string; bytes: number; seconds: number } | { kind: "error"; message: string } | { kind: "cancelled" };
 
 const SAFE = /[\\/:*?"<>|]+/g;
 
@@ -25,6 +26,7 @@ export function ExportDialog() {
   const [quality, setQuality] = useState<ExportOptions["quality"]>("balanced");
   const [phase, setPhase] = useState<Phase>({ kind: "setup" });
   const [exists, setExists] = useState(false);
+  const cancelRef = useRef(false);
   const duration = projectDuration(project);
 
   const size = useMemo(
@@ -46,21 +48,42 @@ export function ExportDialog() {
     if (picked) setPath(picked.toLowerCase().endsWith(".mp4") ? picked : `${picked}.mp4`);
   };
 
+  const withText = hasVisibleText(project);
+  // Text frames are drawn first (about the first 15% of the bar), then FFmpeg renders.
+  const textShare = withText ? 0.15 : 0;
+
   const start = async () => {
-    setPhase({ kind: "running", progress: 0 });
+    cancelRef.current = false;
+    setPhase({ kind: "running", progress: 0, step: withText ? "text" : "video" });
     const began = performance.now();
     const unlisten = await listen<ProgressEvent>("export-progress", (p) =>
-      setPhase((prev) => (prev.kind === "running" ? { kind: "running", progress: p.progress } : prev)),
+      setPhase((prev) => (prev.kind === "running" ? { kind: "running", step: "video", progress: textShare + (1 - textShare) * p.progress } : prev)),
     );
+    let layer: TextLayerJob | null = null;
     try {
-      const result = await api.exportStart(project, { outputPath: path, width: size.width, height: size.height, fps, quality });
+      layer = await renderTextLayer(
+        project,
+        size.width,
+        size.height,
+        fps,
+        (p) => setPhase((prev) => (prev.kind === "running" ? { kind: "running", step: "text", progress: textShare * p } : prev)),
+        () => cancelRef.current,
+      );
+      if (cancelRef.current) throw new Error("cancelled");
+      const result = await api.exportStart(project, { outputPath: path, width: size.width, height: size.height, fps, quality, textOverlay: layer?.list });
       setPhase({ kind: "done", path: result.path, bytes: result.bytes, seconds: (performance.now() - began) / 1000 });
     } catch (error) {
       const message = messageOf(error);
       setPhase(/cancel/i.test(message) ? { kind: "cancelled" } : { kind: "error", message });
     } finally {
       unlisten();
+      discardTextLayer(layer);
     }
+  };
+
+  const cancel = () => {
+    cancelRef.current = true;
+    void api.exportCancel();
   };
 
   const resOptions: ("project" | Resolution)[] = ["project", "720p", "1080p", "1440p", "4K"];
@@ -88,7 +111,7 @@ export function ExportDialog() {
             </button>
           </>
         ) : phase.kind === "running" ? (
-          <button className="btn btn-danger" onClick={() => void api.exportCancel()}>
+          <button className="btn btn-danger" onClick={cancel}>
             {t("common.cancel")}
           </button>
         ) : (
@@ -176,7 +199,7 @@ export function ExportDialog() {
           <div className="progress">
             <i style={{ width: `${Math.max(2, phase.progress * 100)}%` }} />
           </div>
-          <p className="muted">{t("export.rendering")}</p>
+          <p className="muted">{t(phase.step === "text" ? "export.renderingText" : "export.rendering")}</p>
         </div>
       )}
 
