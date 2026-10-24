@@ -54,6 +54,8 @@ pub enum TrackKind {
     Video,
     Audio,
     Music,
+    /// Titles, subtitles and lyrics. Drawn by the frontend; the export receives them pre-rendered.
+    Text,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
@@ -96,6 +98,10 @@ pub struct Clip {
     pub fade_in: f64,
     #[serde(default)]
     pub fade_out: f64,
+    /// Text clips only: content, style and animation. Opaque to the backend (the frontend
+    /// renders it), but kept verbatim so saving never loses it.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub text: Option<serde_json::Value>,
 }
 
 impl Clip {
@@ -219,6 +225,7 @@ mod tests {
             opacity: 1.0,
             fade_in: 0.0,
             fade_out: 0.0,
+            text: None,
         });
         let text = serde_json::to_string(&project).unwrap();
         assert!(text.contains("\"trackId\":\"v1\""));
@@ -226,6 +233,21 @@ mod tests {
         let back: Project = serde_json::from_str(&text).unwrap();
         assert_eq!(back, project);
         assert!((back.duration() - 4.0).abs() < 1e-9);
+    }
+
+    #[test]
+    fn text_clips_and_tracks_survive_a_round_trip() {
+        let json = r#"{"version":1,"id":"p","name":"T","created":"","modified":"",
+            "settings":{"aspect":"16:9","resolution":"1080p","width":1920,"height":1080,"fps":30},
+            "media":[],"tracks":[{"id":"x1","kind":"text","name":"Text 1"}],
+            "clips":[{"id":"c","trackId":"x1","mediaId":"","start":1,"in":0,"out":2,
+              "text":{"content":"Merhaba","style":{"font":"inter","size":72},"anim":{"in":"pop"}}}]}"#;
+        let project: Project = serde_json::from_str(json).unwrap();
+        assert_eq!(project.tracks[0].kind, TrackKind::Text);
+        let again = serde_json::to_string(&project).unwrap();
+        assert!(again.contains("\"content\":\"Merhaba\""));
+        assert!(again.contains("\"in\":\"pop\""));
+        assert!((project.duration() - 3.0).abs() < 1e-9);
     }
 
     #[test]

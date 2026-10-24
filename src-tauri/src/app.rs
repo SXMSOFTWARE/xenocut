@@ -10,6 +10,7 @@ use crate::audio::{cancel, model};
 use crate::export::{self, ExportOptions};
 use crate::media::{self, MediaAssets, ProbeInfo};
 use crate::project::{self, Project};
+use crate::textlayer;
 
 fn data_dir(app: &AppHandle) -> PathBuf {
     app.path().app_data_dir().unwrap_or_else(|_| std::env::temp_dir().join("xenocut-data"))
@@ -258,6 +259,35 @@ pub async fn export_start(app: AppHandle, project: Project, options: ExportOptio
 #[tauri::command]
 pub fn export_cancel() {
     cancel::request();
+}
+
+// ---------- text layer (pre-rendered titles for exports) ----------
+
+#[tauri::command]
+pub fn text_layer_begin(app: AppHandle) -> Result<String, String> {
+    textlayer::begin(&cache_root(&app))
+}
+
+/// Raw PNG body; headers `x-session` and `x-frame`.
+#[tauri::command]
+pub fn text_layer_frame(app: AppHandle, request: tauri::ipc::Request<'_>) -> Result<(), String> {
+    let header = |name: &str| request.headers().get(name).and_then(|v| v.to_str().ok()).map(str::to_string);
+    let session = header("x-session").ok_or("missing x-session")?;
+    let frame: u32 = header("x-frame").and_then(|v| v.parse().ok()).ok_or("missing x-frame")?;
+    let tauri::ipc::InvokeBody::Raw(bytes) = request.body() else {
+        return Err("text frame must be sent as raw bytes".into());
+    };
+    textlayer::write_frame(&cache_root(&app), &session, frame, bytes)
+}
+
+#[tauri::command]
+pub fn text_layer_finish(app: AppHandle, session: String, entries: Vec<textlayer::Entry>) -> Result<String, String> {
+    textlayer::finish(&cache_root(&app), &session, &entries)
+}
+
+#[tauri::command]
+pub fn text_layer_discard(app: AppHandle, session: String) {
+    textlayer::discard(&cache_root(&app), &session);
 }
 
 // ---------- stem model ----------

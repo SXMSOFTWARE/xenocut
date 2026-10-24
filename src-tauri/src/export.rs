@@ -40,6 +40,10 @@ pub struct ExportOptions {
     pub height: u32,
     pub fps: u32,
     pub quality: Quality,
+    /// Text layer pre-rendered by the frontend: an ffconcat list of transparent PNG frames at
+    /// the output size covering the timeline (see `textlayer.rs`). Drawn above the colour grade.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub text_overlay: Option<String>,
 }
 
 #[derive(Debug)]
@@ -91,7 +95,7 @@ pub fn build(project: &Project, options: &ExportOptions) -> Result<ExportPlan, S
     // Collect renderable clips in compositing order: bottom video track first.
     let mut layers: Vec<Layer> = Vec::new();
     let video_tracks: Vec<_> = project.tracks.iter().filter(|t| t.kind == TrackKind::Video).rev().collect();
-    let audio_tracks: Vec<_> = project.tracks.iter().filter(|t| t.kind != TrackKind::Video).collect();
+    let audio_tracks: Vec<_> = project.tracks.iter().filter(|t| matches!(t.kind, TrackKind::Audio | TrackKind::Music)).collect();
     for track in video_tracks.iter().chain(audio_tracks.iter()) {
         let mut clips: Vec<&Clip> = project.clips.iter().filter(|c| c.track_id == track.id).collect();
         clips.sort_by(|a, b| a.start.total_cmp(&b.start));
@@ -111,7 +115,8 @@ pub fn build(project: &Project, options: &ExportOptions) -> Result<ExportPlan, S
     }
 
     let duration = project.duration();
-    if duration < 0.05 || layers.is_empty() {
+    let text_overlay = options.text_overlay.as_deref().filter(|path| !path.is_empty());
+    if duration < 0.05 || (layers.is_empty() && text_overlay.is_none()) {
         return Err("The timeline is empty. Add a clip before exporting.".into());
     }
 
@@ -209,9 +214,19 @@ pub fn build(project: &Project, options: &ExportOptions) -> Result<ExportPlan, S
     }
 
     let grade = project.settings.grade.as_deref().and_then(crate::grade::ffmpeg_chain);
-    match grade {
-        Some(chain) => graph.push(format!("[{current}]{chain},format=yuv420p[vout]")),
-        None => graph.push(format!("[{current}]format=yuv420p[vout]")),
+    let graded = match grade {
+        Some(chain) => format!("{chain},"),
+        None => String::new(),
+    };
+    match text_overlay {
+        Some(list) => {
+            let index = layers.len();
+            args.extend(["-f".into(), "concat".into(), "-safe".into(), "0".into(), "-i".into(), list.to_string()]);
+            graph.push(format!("[{current}]{graded}format=yuv420p[graded]"));
+            graph.push(format!("[{index}:v]fps={fps},format=rgba,setsar=1[text]"));
+            graph.push("[graded][text]overlay=eof_action=pass:format=auto,format=yuv420p[vout]".into());
+        }
+        None => graph.push(format!("[{current}]{graded}format=yuv420p[vout]")),
     }
     graph.push(format!(
         "{}amix=inputs={}:normalize=0:duration=first:dropout_transition=0[aout]",
@@ -316,6 +331,7 @@ mod tests {
             opacity: 1.0,
             fade_in: 0.0,
             fade_out: 0.0,
+            text: None,
         }
     }
 
@@ -339,7 +355,7 @@ mod tests {
     }
 
     fn options() -> ExportOptions {
-        ExportOptions { output_path: "out.mp4".into(), width: 1280, height: 720, fps: 30, quality: Quality::Fast }
+        ExportOptions { output_path: "out.mp4".into(), width: 1280, height: 720, fps: 30, quality: Quality::Fast, text_overlay: None }
     }
 
     fn filter(plan: &ExportPlan) -> String {
@@ -492,7 +508,7 @@ mod tests {
             vec![clip("c1", "v1", "a", 0.0, 1.0, 4.0), clip("c2", "v1", "b", 3.5, 0.0, 2.5), c3],
         );
         cancel::begin();
-        let o = ExportOptions { output_path: out.display().to_string(), width: 1280, height: 720, fps: 30, quality: Quality::Fast };
+        let o = ExportOptions { output_path: out.display().to_string(), width: 1280, height: 720, fps: 30, quality: Quality::Fast, text_overlay: None };
         let started = std::time::Instant::now();
         run(&p, &o, &Quiet).unwrap();
         let elapsed = started.elapsed();
@@ -502,6 +518,84 @@ mod tests {
         assert!((probed.duration - 6.0).abs() < 0.1, "duration was {}", probed.duration);
         assert_eq!((probed.width, probed.height), (1280, 720));
         assert!(probed.has_audio);
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn text_overlay_is_drawn_after_the_grade() {
+        let mut p = project(vec![media("m", MediaKind::Video, "a.mp4", 20.0, false)], vec![clip("v", "v1", "m", 0.0, 0.0, 2.0)]);
+        p.settings.grade = Some("mono".into());
+        let mut o = options();
+        o.text_overlay = Some("/tmp/layer.ffconcat".into());
+        let plan = build(&p, &o).unwrap();
+        let f = filter(&plan);
+        assert!(plan.args.windows(2).any(|w| w[0] == "concat" && w[1] == "-safe"));
+        assert!(f.contains("[1:v]fps=30,format=rgba"));
+        let graded = f.find("[graded]").unwrap();
+        assert!(f.find("[graded][text]overlay").unwrap() > graded);
+    }
+
+    #[test]
+    fn text_only_timelines_export() {
+        let mut p = project(vec![], vec![]);
+        let mut c = clip("t", "v1", "", 0.0, 0.0, 3.0);
+        c.text = Some(serde_json::json!({"content": "Hi"}));
+        p.tracks.push(Track { id: "x1".into(), kind: TrackKind::Text, name: "Text 1".into(), muted: false, hidden: false });
+        c.track_id = "x1".into();
+        p.clips.push(c);
+        assert!(build(&p, &options()).is_err());
+        let mut o = options();
+        o.text_overlay = Some("/tmp/layer.ffconcat".into());
+        let plan = build(&p, &o).unwrap();
+        assert!(filter(&plan).contains("[0:v]fps=30"));
+        assert!((plan.duration - 3.0).abs() < 1e-9);
+    }
+
+    /// End to end: a red title frame over a blue clip, through the real concat demuxer.
+    #[test]
+    fn exports_a_pre_rendered_text_layer() {
+        if ffmpeg::ffmpeg_binary().is_err() {
+            eprintln!("skipping text export: ffmpeg missing");
+            return;
+        }
+        let dir = std::env::temp_dir().join(format!("xenocut-textexport-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&dir);
+        std::fs::create_dir_all(&dir).unwrap();
+        let blue = dir.join("blue.mp4");
+        let out = dir.join("out.mp4");
+        assert!(make(&["-y", "-loglevel", "error", "-f", "lavfi", "-i", "color=c=blue:s=320x180:r=30:d=2", "-c:v", "libx264", "-pix_fmt", "yuv420p", blue.to_str().unwrap()]));
+        // Frame 0: fully transparent. Frame 1: opaque red square in the middle.
+        assert!(make(&["-y", "-loglevel", "error", "-f", "lavfi", "-i", "color=c=black@0:s=320x180,format=rgba", "-frames:v", "1", dir.join("f000000.png").to_str().unwrap()]));
+        assert!(make(&["-y", "-loglevel", "error", "-f", "lavfi", "-i", "color=c=red:s=100x60,format=rgba,pad=320:180:110:60:color=black@0", "-frames:v", "1", dir.join("f000001.png").to_str().unwrap()]));
+        let list = dir.join("layer.ffconcat");
+        std::fs::write(&list, crate::textlayer::concat_list(&[
+            crate::textlayer::Entry { frame: 0, duration: 1.0 },
+            crate::textlayer::Entry { frame: 1, duration: 1.0 },
+        ]))
+        .unwrap();
+        let p = project(vec![media("b", MediaKind::Video, blue.to_str().unwrap(), 2.0, false)], vec![clip("c", "v1", "b", 0.0, 0.0, 2.0)]);
+        cancel::begin();
+        let o = ExportOptions {
+            output_path: out.display().to_string(),
+            width: 320,
+            height: 180,
+            fps: 30,
+            quality: Quality::Fast,
+            text_overlay: Some(list.display().to_string()),
+        };
+        run(&p, &o, &Quiet).unwrap();
+        let pixel = |at: &str| -> Vec<u8> {
+            let bin = ffmpeg::ffmpeg_binary().unwrap();
+            let o = std::process::Command::new(bin)
+                .args(["-loglevel", "error", "-ss", at, "-i", out.to_str().unwrap(), "-frames:v", "1", "-vf", "crop=10:10:155:85,scale=1:1", "-f", "rawvideo", "-pix_fmt", "rgb24", "-"])
+                .output()
+                .unwrap();
+            o.stdout
+        };
+        let early = pixel("0.5");
+        let late = pixel("1.5");
+        assert!(early[2] > 150 && early[0] < 80, "expected blue before the title, got {early:?}");
+        assert!(late[0] > 150 && late[2] < 80, "expected the red title, got {late:?}");
         let _ = std::fs::remove_dir_all(&dir);
     }
 }

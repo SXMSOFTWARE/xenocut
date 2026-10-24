@@ -8,6 +8,7 @@ pub mod media;
 pub mod mediaserver;
 pub mod project;
 pub mod subtitles;
+pub mod textlayer;
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
@@ -18,6 +19,7 @@ pub fn run() {
         .setup(|app| {
             let handle = app.handle();
             diag::init_log(handle);
+            textlayer::clear_stale(&app::cache_root(handle));
             let roots = vec![app::cache_root(handle), app::audio_root(handle)];
             match mediaserver::start(roots) {
                 Ok(server) => diag::log("info", &format!("media server on {}", server.base_url().split('/').take(3).collect::<Vec<_>>().join("/"))),
@@ -46,6 +48,10 @@ pub fn run() {
             app::cache_clear,
             app::export_start,
             app::export_cancel,
+            app::text_layer_begin,
+            app::text_layer_frame,
+            app::text_layer_finish,
+            app::text_layer_discard,
             app::model_status,
             app::model_download,
             app::model_delete,
