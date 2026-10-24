@@ -593,3 +593,14 @@ input[type="range"]:disabled {
 html.mobile .modal-foot .btn {
   min-height: 44px;
 }
+
+html.mobile .modal {
+  width: min(560px, calc(100vw - 24px - var(--sa-left) - var(--sa-right)));
+  max-height: calc(100dvh - 24px - var(--sa-top) - var(--sa-bottom));
+}
+html.mobile .toasts {
+  left: 12px;
+  right: 12px;
+  bottom: calc(12px + var(--sa-bottom));
+  align-items: center;
+}

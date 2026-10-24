@@ -353,7 +353,7 @@
 }
 @media (max-width: 520px) {
   .settings-wrap {
-    padding: 16px 12px calc(32px + env(safe-area-inset-bottom));
+    padding: 16px 12px calc(32px + var(--sa-bottom));
     gap: 12px;
   }
   .settings-group {
@@ -373,7 +373,7 @@
 }
 /* phones: thumb-sized controls, safe areas */
 html.mobile .settings-page .page-top {
-  padding-top: max(10px, env(safe-area-inset-top));
+  padding-top: max(10px, var(--sa-top));
 }
 html.mobile .settings-page .btn-sm,
 html.mobile .settings-page .donate-pill {

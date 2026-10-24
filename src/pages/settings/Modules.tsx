@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { AudioWaveform, Captions, Clapperboard, Music2, Sparkles, Type, Trash2, Boxes } from "lucide-react";
 import { useT, type Key } from "../../i18n";
-import { api, isAndroid, openExternal } from "../../lib/backend";
+import { api, openExternal } from "../../lib/backend";
 import { bytes, messageOf } from "../../lib/format";
 import { CREDITS } from "../../lib/credits";
 import { toast } from "../../store/toast";
@@ -44,7 +44,6 @@ export function ModulesSection({ stemModel }: { stemModel: { installed: boolean;
 
   const status = (id: string) => {
     if (id === "stems") {
-      if (isAndroid) return <span className="status-pill">{t("modules.desktopOnly")}</span>;
       return stemModel?.installed ? (
         <span className="status-pill ok">{t("settings.installed")} · {bytes(stemModel.bytes)}</span>
       ) : (

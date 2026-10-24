@@ -5,10 +5,11 @@ import { useT, type Key } from "../../i18n";
 import { useRecent, type RecentEntry } from "../../store/recent";
 import { useRouter } from "../../store/router";
 import { useSettings } from "../../store/settings";
-import { fileSrc, isAndroid } from "../../lib/backend";
+import { fileSrc } from "../../lib/backend";
 import { shortTime } from "../../lib/format";
 import { openProjectDialog, openProjectPath } from "../../project/actions";
 import { NewProjectDialog } from "./NewProjectDialog";
+import { isMobileUi } from "../../lib/platform";
 
 const SOON_TOOLS: { icon: typeof Captions; title: Key; text: Key }[] = [
   { icon: Scissors, title: "tools.silence", text: "tools.silenceText" },
@@ -35,7 +36,7 @@ export function HomePage() {
         <div className="home-col">
           <section className="home-hero">
             <h1>{t("home.welcome")}</h1>
-            <p>{t("home.tagline")}</p>
+            <p>{t(isMobileUi ? "home.taglineMobile" : "home.tagline")}</p>
           </section>
 
           <section className="home-actions">
@@ -81,17 +82,17 @@ export function HomePage() {
 
         <aside className="home-side">
           <h3 className="section-title">{t("home.quickTools")}</h3>
-          <button className={`tool-card${isAndroid ? "" : " live"}`} disabled={isAndroid} onClick={() => go("music")}>
+          <button className="tool-card live" onClick={() => go("music")}>
             <span className="tool-icon">
               <AudioLines />
             </span>
             <span className="tool-text">
               <b>
-                {t("tools.musicSwap")} {isAndroid && <span className="soon">{t("common.soon")}</span>}
+                {t("tools.musicSwap")}
               </b>
               <small>{t("tools.musicSwapText")}</small>
             </span>
-            {!isAndroid && <Sparkles className="tool-spark" />}
+            <Sparkles className="tool-spark" />
           </button>
           <button className="tool-card live" onClick={() => setCreating("captions")}>
             <span className="tool-icon">

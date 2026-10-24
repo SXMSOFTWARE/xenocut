@@ -2,6 +2,7 @@ export const tr = {
   // home
   "home.welcome": "Tekrar hoş geldin",
   "home.tagline": "Videonu kur, kes, müziğini değiştir — hepsi kendi bilgisayarında.",
+  "home.taglineMobile": "Videonu kur, kes, müziğini değiştir — hepsi kendi cihazında.",
   "home.newProject": "Yeni proje",
   "home.newProjectText": "Boyut, çözünürlük ve kare hızını seç",
   "home.openProject": "Proje aç",

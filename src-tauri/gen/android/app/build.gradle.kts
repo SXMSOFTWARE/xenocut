@@ -57,6 +57,14 @@ android {
     // Legacy packaging extracts it into nativeLibraryDir, the one app location Android lets us exec.
     packaging {
         jniLibs.useLegacyPackaging = true
+        // ONNX Runtime (vocal separation): the app ships arm64 only and loads the C library from Rust,
+        // so drop the other ABIs and the unused Java JNI shim.
+        jniLibs.excludes += setOf(
+            "lib/x86/libonnxruntime*.so",
+            "lib/x86_64/libonnxruntime*.so",
+            "lib/armeabi-v7a/libonnxruntime*.so",
+            "lib/*/libonnxruntime4j_jni.so",
+        )
     }
 }
 
@@ -76,6 +84,8 @@ dependencies {
     implementation("androidx.activity:activity-ktx:1.10.1")
     implementation("com.google.android.material:material:1.12.0")
     implementation("androidx.lifecycle:lifecycle-process:2.10.0")
+    // libonnxruntime.so for vocal separation (MIT). Keep in step with the ort crate (ort-sys 2.0.0-rc.15 → ORT 1.31).
+    implementation("com.microsoft.onnxruntime:onnxruntime-android:1.31.0")
     testImplementation("junit:junit:4.13.2")
     androidTestImplementation("androidx.test.ext:junit:1.1.4")
     androidTestImplementation("androidx.test.espresso:espresso-core:3.5.0")

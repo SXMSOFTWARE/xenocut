@@ -100,3 +100,22 @@
   --shadow-1: none;
   --t-med: 0ms;
 }
+
+/* Safe areas: env() on iOS/desktop browsers; the Android shell overrides these with the real
+   system-bar insets (see lib/platform.ts). */
+:root {
+  --sa-top: env(safe-area-inset-top, 0px);
+  --sa-right: env(safe-area-inset-right, 0px);
+  --sa-bottom: env(safe-area-inset-bottom, 0px);
+  --sa-left: env(safe-area-inset-left, 0px);
+  --fs-k: 1;
+}
+/* Phones follow the OS font size (clamped 0.9–1.2 in platform.ts). */
+html.mobile {
+  --fs-xs: calc(11px * var(--fs-k));
+  --fs-sm: calc(12px * var(--fs-k));
+  --fs-md: calc(13px * var(--fs-k));
+  --fs-lg: calc(15px * var(--fs-k));
+  --fs-xl: calc(20px * var(--fs-k));
+  --fs-2xl: calc(28px * var(--fs-k));
+}

@@ -3,6 +3,7 @@ import type { tr } from "./tr";
 export const en: Record<keyof typeof tr, string> = {
   "home.welcome": "Welcome back",
   "home.tagline": "Cut your video and swap its music — all on your own machine.",
+  "home.taglineMobile": "Cut your video and swap its music — all on your own device.",
   "home.newProject": "New project",
   "home.newProjectText": "Pick size, resolution and frame rate",
   "home.openProject": "Open project",

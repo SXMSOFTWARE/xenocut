@@ -47,7 +47,7 @@ impl StemSeparator for OnnxMdxSeparator {
         let env = onnx_env()?;
         let mut builder = Session::builder(env)
             .map_err(|err| AudioError::Failed(err.to_string()))?
-            .with_intra_threads(2)
+            .with_intra_threads(intra_threads())
             .map_err(|err| AudioError::Failed(err.to_string()))?;
         let mut session = builder
             .commit_from_file(&model_path)
@@ -89,12 +89,27 @@ impl StemSeparator for OnnxMdxSeparator {
     }
 }
 
+/// Desktop keeps two threads so the editor stays responsive; phones have no other heavy work while
+/// separating, so use up to four cores (the big cluster on most arm64 SoCs).
+fn intra_threads() -> usize {
+    if cfg!(target_os = "android") {
+        std::thread::available_parallelism().map(|n| n.get().min(4)).unwrap_or(2)
+    } else {
+        2
+    }
+}
+
 fn onnx_env() -> Result<&'static ort::environment::Environment, AudioError> {
     static ENV: OnceLock<ort::environment::Environment> = OnceLock::new();
     if let Some(env) = ENV.get() {
         return Ok(env);
     }
-    let env = ort::init()
+    // Android loads libonnxruntime.so (onnxruntime-android AAR, packaged as a jniLib) at run time.
+    #[cfg(target_os = "android")]
+    let builder = ort::init_from("libonnxruntime.so").map_err(|err| AudioError::Failed(format!("ONNX Runtime: {err}")))?;
+    #[cfg(not(target_os = "android"))]
+    let builder = ort::init();
+    let env = builder
         .with_name("xenocut")
         .with_telemetry(false)
         .build()

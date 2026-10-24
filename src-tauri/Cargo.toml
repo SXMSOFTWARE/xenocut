@@ -28,9 +28,13 @@ candle-core = "0.11"
 candle-nn = "0.11"
 candle-transformers = "0.11"
 
-# ONNX Runtime has no prebuilt Android binaries; vocal separation is desktop-only for now.
+# ONNX Runtime: desktop links the prebuilt binaries; Android loads libonnxruntime.so from the
+# onnxruntime-android AAR (gen/android/app/build.gradle.kts) at run time.
 [target.'cfg(not(target_os = "android"))'.dependencies]
 ort = "=2.0.0-rc.15"
+
+[target.'cfg(target_os = "android")'.dependencies]
+ort = { version = "=2.0.0-rc.15", default-features = false, features = ["std", "ndarray", "load-dynamic"] }
 
 [profile.release]
 codegen-units = 1

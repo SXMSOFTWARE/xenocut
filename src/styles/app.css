@@ -435,3 +435,75 @@
     grid-template-columns: repeat(2, 1fr);
   }
 }
+
+/* ---------- phones (Android shell, edge-to-edge) ---------- */
+html.mobile .home,
+html.mobile .page {
+  height: 100dvh;
+  padding: var(--sa-top) var(--sa-right) 0 var(--sa-left);
+}
+html.mobile .home-main,
+html.mobile .page-body {
+  padding-bottom: calc(24px + var(--sa-bottom));
+  overscroll-behavior: contain;
+}
+html.mobile .home-top .icon-btn {
+  width: 44px;
+  height: 44px;
+}
+html.mobile .home-hero h1 {
+  font-size: var(--fs-xl);
+  line-height: 1.2;
+}
+html.mobile .home-hero p {
+  font-size: var(--fs-md);
+}
+html.mobile .action-card,
+html.mobile .tool-card {
+  min-height: 64px;
+}
+html.mobile .home-side {
+  overflow: visible;
+  flex: none;
+}
+/* recent projects as compact rows on phones (thumb left, title right, remove always reachable) */
+html.mobile .recent-grid {
+  grid-template-columns: minmax(0, 1fr);
+  gap: 8px;
+}
+html.mobile .recent-open {
+  flex-direction: row;
+  align-items: center;
+  min-height: 72px;
+  padding-right: 48px;
+}
+html.mobile .recent-thumb {
+  width: 104px;
+  height: 60px;
+  flex: none;
+  margin: 6px;
+}
+html.mobile .recent-badge {
+  left: 4px;
+  bottom: 4px;
+  height: 16px;
+  padding: 0 5px;
+  font-size: calc(9px * var(--fs-k));
+}
+html.mobile .recent-badge.right {
+  left: auto;
+  right: 4px;
+}
+html.mobile .recent-meta {
+  padding: 6px 4px;
+}
+html.mobile .recent-remove {
+  opacity: 1;
+  top: 50%;
+  right: 4px;
+  width: 44px;
+  height: 44px;
+  transform: translateY(-50%);
+  background: transparent;
+  color: var(--text-3);
+}
