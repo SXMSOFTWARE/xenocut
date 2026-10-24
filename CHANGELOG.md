@@ -2,6 +2,50 @@
 
 Tüm önemli değişiklikler bu dosyada. Sürümler GitHub'da ön sürüm (pre-release) olarak yayınlanır.
 
+## v0.6.0 — 2026-10-24
+
+Eklenti sistemi (LUT, görünüm, animasyon ve yazı stili paketleri), CapCut tarzı klip animasyonları ve Linux AppImage'da önizlemenin açılmaması (MediaError 4) sorununun düzeltmesi.
+
+### Düzeltme: Linux'ta önizleme açılmıyordu (MediaError 4)
+- Neden: AppImage, CI'daki Ubuntu GStreamer'ını paketliyor ama içinde gst-libav yok. Bu yüzden WebView H.264/AAC çözemiyor ve video "desteklenmeyen kaynak" hatasıyla siyah kalıyordu. Dışa aktarma etkilenmiyordu, çünkü FFmpeg kullanıyor.
+- Önizleme bir dosyayı çözemediğinde uygulama artık arka planda otomatik olarak VP8/Opus WebM önizleme kopyası üretir ve anlaşılır bir bilgi gösterir. Dışa aktarma her zaman orijinal dosyayı kullanır.
+
+### Eklentiler
+- Yeni "Eklentiler" sayfası (Ana sayfa, Ayarlar ve panellerdeki "Daha fazla" kutusundan açılır):
+  - **Kitaplık:** yüklü paketler; yazar, sürüm, lisans, boyut ve içerik bilgisi. Her paket için aç/kapat, ayrıntılar, web sayfası ve kaldırma.
+  - **Katalog:** hazır paketler tek dokunuşla yüklenir; yeni sürüm varsa "Güncelle" düğmesi çıkar.
+- Dosyadan yükleme: `.xcpack`, `.zip` veya tek bir `.cube` LUT dosyası. Masaüstünde dosyayı sayfaya sürükleyip bırakmak da yeterli.
+- Paketler yalnızca veri içerir (JSON + görseller + .cube), kod çalıştırmaz. Her girdi yerleşik efekt, animasyon ve yazı yapı taşlarına göre doğrulanır. Boyut ve dosya türü sınırlıdır, zip-slip korumalıdır. Katalog indirmeleri SHA-256 ile denetlenir.
+- Katalog uygulamanın içinde de gömülü geliyor, yani internet olmadan da çalışır ve paketler indirmeden yüklenir. GitHub'daki katalog erişilebilir olduğunda o kullanılır.
+- Panellerde eklenti içerikleri:
+  - **Renk → Klip LUT'u:** önizlemeli LUT kutuları ve yoğunluk ayarı. Önizlemede WebGL2 ile, dışa aktarmada FFmpeg lut3d ile uygulanır.
+  - **Efektler → Eklentiler** sekmesi: hazır görünümler.
+  - **Animasyon:** yapboz rozetli eklenti kutuları.
+  - **Metin → Eklenti stilleri:** hem yeni yazıda hem Stil sekmesinde.
+- Katalogda 5 paket var, hepsi CC0:
+  - Film Looks: 6 LUT;
+  - Creative Color: 6 LUT;
+  - Social Looks: 10 görünüm;
+  - Motion Essentials: 14 animasyon;
+  - Title Styles: 8 yazı stili.
+- Paket biçimi ve kuralları: [docs/plugins.md](docs/plugins.md).
+- v0.7'ye kalanlar: geçiş motoru ve GLSL (gl-transitions) geçişleri, Lottie, masaüstünde OpenFX barındırma (ayrı süreç, parametre arayüzü, çökme yalıtımı) ve Linux'ta frei0r. Bu biçimler şimdilik "v0.7'de" uyarısıyla reddedilir.
+
+### Klip animasyonları
+- CapCut tarzı Giriş / Çıkış / Kombo animasyonları. Örnekler:
+  - Giriş/Çıkış: solma, kayma, zoom, pop, dönme, girdap, zıplama, bulanıklıkla giriş, glitch;
+  - Kombo: nabız, kalp atışı, sallanma, salınım, süzülme, dönen döngü.
+- Her kutuda canlı önizleme var. Süre zaman çizelgesindeki tutamaçlarla ayarlanır. Önizleme ve dışa aktarma aynı tablodan üretilir.
+
+### Efekt önizlemeleri
+- Efekt kartlarındaki önizlemeler gerçek film görüntüsüyle yeniden üretildi (Tears of Steel, CC BY 3.0, kaynak belirtildi).
+
+### Telefon (Android)
+- Klip araç çubuğuna "Renk" eklendi (LUT ve renk ayarları). Eklentiler sayfası telefona uygun.
+
+### Güvenilirlik
+- Otomatik testlerde kullanılan sessize alma yalnızca `XENOCUT_AUTOTEST` ortamında çalışabilir, normal kullanımda asla devreye giremez. Bunu birim testi ve normal derlemede ses denetimi doğruluyor: önizleme sesi açık, ses düzeyi 1, dışa aktarımda ses akışı var.
+
 ## v0.5.0 — 2026-10-24
 
 CapCut tarzı efekt tarayıcısı, zaman aralıklı efektler, efekt katmanları ve telefonda ana sayfa düzeltmeleri.
