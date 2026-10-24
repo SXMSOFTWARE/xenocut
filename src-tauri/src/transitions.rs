@@ -98,6 +98,8 @@ pub const XFADE: &[&str] = &[
     "hrwind",
     "vuwind",
     "vdwind",
+    "hblur",
+    "distance",
 ];
 
 pub fn is_xfade(id: &str) -> bool {

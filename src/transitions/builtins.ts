@@ -123,4 +123,13 @@ export const XFADE_GLSL: Record<string, string> = {
   vdwind: wind("y / H", "vec2(x, 0.0)"),
   zoomin: T(`float zf = smoothstep(0.5, 1.0, pr); float u = 0.5 + (x / W - 0.5) * zf; float v = 0.5 + (y / H - 0.5) * zf;
     vec4 zv = A(vec2(ceil(u * (W - 1.0)), ceil(v * (H - 1.0)))); return cmix(zv, B(q), smoothstep(0.0, 0.5, pr));`),
+  // Pixels whose colours are already close switch first.
+  distance: T(`vec4 a = A(q); vec4 b = B(q); float d = length(a.rgb - b.rgb) <= pr ? 1.0 : 0.0;
+    return cmix(cmix(a, b, d), b, pr);`),
+  // Horizontal box blur that peaks mid-way (a running sum over [x, x + size) in the C code; here
+  // at most 64 evenly spaced taps).
+  hblur: T(`float prog = pr <= 0.5 ? pr * 2.0 : (1.0 - pr) * 2.0; float size = floor(1.0 + floor(W / 2.0) * prog);
+    float n = min(size, W - x); float st = max(1.0, ceil(n / 64.0)); vec4 s0 = vec4(0.0); vec4 s1 = vec4(0.0); float c = 0.0;
+    for (int i = 0; i < 64; i++) { float xx = x + float(i) * st; if (xx >= x + n) break; s0 += A(vec2(xx, y)); s1 += B(vec2(xx, y)); c += 1.0; }
+    return cmix(s0 / c, s1 / c, pr);`),
 };

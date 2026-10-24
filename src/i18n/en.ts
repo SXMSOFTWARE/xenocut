@@ -998,4 +998,6 @@ export const en: Record<keyof typeof tr, string> = {
   "anim.combo.kenBurns": "Ken Burns",
   "anim.combo.drift": "Drift",
   "anim.combo.glitchLoop": "Glitch loop",
+  "trans.n.hblur": "Blur Blend",
+  "trans.n.distance": "Color Distance",
 };

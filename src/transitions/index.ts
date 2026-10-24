@@ -88,6 +88,8 @@ export const BUILTINS: TransitionDef[] = [
   B("squeezeh", "Squeeze", "zoom"),
   B("squeezev", "Squeeze Side", "zoom"),
   B("zoomin", "Zoom In", "zoom"),
+  B("hblur", "Blur Blend", "smooth"),
+  B("distance", "Color Distance", "glitch"),
 ];
 export const BUILTIN = new Map(BUILTINS.map((d) => [d.id, d]));
 export const isXfade = (id: string) => BUILTIN.has(id);

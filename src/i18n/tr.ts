@@ -1008,4 +1008,6 @@ export const tr = {
   "anim.combo.kenBurns": "Ken Burns",
   "anim.combo.drift": "Süzül",
   "anim.combo.glitchLoop": "Glitch döngüsü",
+  "trans.n.hblur": "Bulanık geçiş",
+  "trans.n.distance": "Renk mesafesi",
 };
