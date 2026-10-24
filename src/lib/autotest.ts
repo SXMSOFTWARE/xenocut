@@ -22,6 +22,7 @@ import { applyTransitionDef, packTransitionDefs, resolveCut } from "../transitio
 import { BUILTINS } from "../transitions";
 import { addSticker, stickerDefs } from "../pages/editor/StickersPanel";
 import { drawLottie } from "../lottie/render";
+import { describeNative, useNativeFx } from "./nativefx";
 import type { ClipEffect, EffectKind } from "../project/effects";
 import type { Clip } from "../project/types";
 import { PRESETS } from "../project/presets";
@@ -98,6 +99,7 @@ export async function runAutotest(file: string) {
   await lutProbe();
   await transProbe();
   await lottieProbe();
+  await nativeFxProbe();
   await perfProbe();
 }
 
@@ -332,6 +334,54 @@ async function lottieProbe() {
   log("autotest", `LOTTIE ${JSON.stringify(report)}`);
   log("autotest", "anim-ready");
   await sleep(Number(o.hold ?? 0) * 1000 + 800);
+  await exportProbe(o.export);
+}
+
+/**
+ * nfx=<ofx:… | frei0r:… | catalog>[,p=name:v[:v…][;name:v…]][,at=2][,export=…]: lists the native
+ * effect plug-ins (OpenFX / frei0r) the host finds; with an id, puts it on the first video clip
+ * and logs whether the processed preview canvas took over plus a pixel from it and the source.
+ */
+async function nativeFxProbe() {
+  const o = opts();
+  if (!o.nfx) return;
+  const catalog = await useNativeFx.getState().load(true);
+  log("autotest", `NFX catalog ${JSON.stringify({ available: catalog?.available, count: catalog?.plugins.length, ofx: catalog?.plugins.filter((p) => p.kind === "ofx").length, blocked: catalog?.blocked, error: catalog?.error, dirs: catalog?.dirs.length })}`);
+  if (o.nfx === "catalog") return log("autotest", "anim-ready");
+  const plugin = catalog?.plugins.find((p) => p.id === o.nfx);
+  if (!plugin) return log("autotest", `NFX unknown ${o.nfx}`);
+  const params: Record<string, number[]> = {};
+  for (const kv of (o.p ?? "").split(";").filter(Boolean)) {
+    const [name, ...vals] = kv.split(":");
+    params[name] = vals.map(Number);
+  }
+  const described = await describeNative(plugin.id).catch((e) => String(e));
+  const project = useProject.getState().project!;
+  const clip = project.clips.find((c) => project.tracks.find((t) => t.id === c.trackId)?.kind === "video" && !c.text);
+  if (!clip) return log("autotest", "NFX no clip");
+  useProject.getState().commit((p) => updateClip(p, clip.id, { nativeFx: [{ id: plugin.id, params, enabled: true }] }));
+  useProject.getState().select([clip.id]);
+  useEditorUi.setState({ panel: "fx" });
+  engine.seek(clip.start + Number(o.at ?? 2));
+  await sleep(3000);
+  const read = (el: CanvasImageSource | null, w: number, h: number) => {
+    if (!el || !w) return null;
+    const probe = document.createElement("canvas");
+    probe.width = probe.height = 1;
+    const ctx = probe.getContext("2d")!;
+    ctx.drawImage(el, w / 2, h / 2, 1, 1, 0, 0, 1, 1);
+    return [...ctx.getImageData(0, 0, 1, 1).data];
+  };
+  const canvas = document.querySelector("canvas.stage-native") as HTMLCanvasElement | null;
+  const v = document.querySelector("video.stage-media") as HTMLVideoElement | null;
+  log(
+    "autotest",
+    `NFX ${JSON.stringify({ id: plugin.id, label: plugin.label, params: Array.isArray(described) ? described.length : described, visible: canvas ? getComputedStyle(canvas).visibility : null, size: canvas ? [canvas.width, canvas.height] : null, videoOpacity: v?.style.opacity, pixel: read(canvas, canvas?.width ?? 0, canvas?.height ?? 0), source: read(v, v?.videoWidth ?? 0, v?.videoHeight ?? 0) })}`,
+  );
+  document.querySelector("[data-native-fx]")?.scrollIntoView({ block: "start" });
+  await sleep(400);
+  log("autotest", "anim-ready");
+  await sleep(800);
   await exportProbe(o.export);
 }
 
