@@ -68,6 +68,9 @@ pub struct Track {
     pub muted: bool,
     #[serde(default)]
     pub hidden: bool,
+    /// What the track is for beyond its kind, e.g. `"subtitles"` for generated captions.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub role: Option<String>,
 }
 
 fn one() -> f64 {
@@ -205,7 +208,7 @@ mod tests {
             modified: "2026-10-23T00:00:00Z".into(),
             settings: ProjectSettings { aspect: "16:9".into(), resolution: "1080p".into(), width: 1920, height: 1080, fps: 30, grade: None },
             media: vec![],
-            tracks: vec![Track { id: "v1".into(), kind: TrackKind::Video, name: "Video 1".into(), muted: false, hidden: false }],
+            tracks: vec![Track { id: "v1".into(), kind: TrackKind::Video, name: "Video 1".into(), muted: false, hidden: false, role: None }],
             clips: vec![],
         }
     }

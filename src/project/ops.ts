@@ -221,7 +221,7 @@ export function newTextClip(trackId: string, start: number, text: TextContent, d
 
 /** The first text track, created when missing. Returns the project and the track id. */
 export function ensureTextTrack(project: Project, name?: string): { project: Project; trackId: string } {
-  const found = project.tracks.find((t) => t.kind === "text" && (!name || t.name === name));
+  const found = project.tracks.find((t) => t.kind === "text" && t.role !== "subtitles" && (!name || t.name === name));
   if (found) return { project, trackId: found.id };
   const track = makeTrack("text", project.tracks);
   if (name) track.name = name;
@@ -231,7 +231,7 @@ export function ensureTextTrack(project: Project, name?: string): { project: Pro
 /** Put a text clip on a text track at (or near) `at`; a new track is added when every one is busy. */
 export function addTextClip(project: Project, text: TextContent, at: number, duration = TEXT_DEFAULT_SECONDS): { project: Project; clipId: string } {
   let next = project;
-  let trackId = next.tracks.find((t) => t.kind === "text" && isFree(next, t.id, at, duration))?.id;
+  let trackId = next.tracks.find((t) => t.kind === "text" && t.role !== "subtitles" && isFree(next, t.id, at, duration))?.id;
   if (!trackId) {
     const track = makeTrack("text", next.tracks);
     next = { ...next, tracks: sortTracks([...next.tracks, track]) };

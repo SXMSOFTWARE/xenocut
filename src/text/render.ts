@@ -60,9 +60,9 @@ function setSpacing(ctx: Ctx, value: number) {
 
 export function displayText(text: TextContent): string {
   if (!text.style.uppercase) return text.content;
-  // Casing follows the UI language so Turkish "i" becomes "İ", not "I".
-  const lang = typeof document !== "undefined" ? document.documentElement.lang || undefined : undefined;
-  return text.content.toLocaleUpperCase(lang);
+  // Casing follows the text's language (else the UI's) so Turkish "i" becomes "İ" and English stays "I".
+  const lang = text.lang || (typeof document !== "undefined" ? document.documentElement.lang || undefined : undefined);
+  return text.content.toLocaleUpperCase(lang === "auto" ? undefined : lang);
 }
 
 export function layoutText(ctx: Ctx, text: TextContent, width: number, height: number): TextLayout {

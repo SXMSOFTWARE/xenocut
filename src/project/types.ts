@@ -38,6 +38,8 @@ export interface Track {
   name: string;
   muted: boolean;
   hidden: boolean;
+  /** Purpose beyond the kind: "subtitles" marks the track generated captions live on. */
+  role?: "subtitles";
 }
 
 export interface Clip {

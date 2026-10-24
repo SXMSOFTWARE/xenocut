@@ -406,10 +406,10 @@ pub(crate) mod tests {
             settings: ProjectSettings { aspect: "16:9".into(), resolution: "720p".into(), width: 1280, height: 720, fps: 30, grade: None },
             media,
             tracks: vec![
-                Track { id: "v2".into(), kind: TrackKind::Video, name: "Video 2".into(), muted: false, hidden: false },
-                Track { id: "v1".into(), kind: TrackKind::Video, name: "Video 1".into(), muted: false, hidden: false },
-                Track { id: "a1".into(), kind: TrackKind::Audio, name: "Audio 1".into(), muted: false, hidden: false },
-                Track { id: "m1".into(), kind: TrackKind::Music, name: "Music 1".into(), muted: false, hidden: false },
+                Track { id: "v2".into(), kind: TrackKind::Video, name: "Video 2".into(), muted: false, hidden: false, role: None },
+                Track { id: "v1".into(), kind: TrackKind::Video, name: "Video 1".into(), muted: false, hidden: false, role: None },
+                Track { id: "a1".into(), kind: TrackKind::Audio, name: "Audio 1".into(), muted: false, hidden: false, role: None },
+                Track { id: "m1".into(), kind: TrackKind::Music, name: "Music 1".into(), muted: false, hidden: false, role: None },
             ],
             clips,
         }
@@ -620,7 +620,7 @@ pub(crate) mod tests {
         let mut p = project(vec![], vec![]);
         let mut c = clip("t", "v1", "", 0.0, 0.0, 3.0);
         c.text = Some(serde_json::json!({"content": "Hi"}));
-        p.tracks.push(Track { id: "x1".into(), kind: TrackKind::Text, name: "Text 1".into(), muted: false, hidden: false });
+        p.tracks.push(Track { id: "x1".into(), kind: TrackKind::Text, name: "Text 1".into(), muted: false, hidden: false, role: None });
         c.track_id = "x1".into();
         p.clips.push(c);
         assert!(build(&p, &options()).is_err());

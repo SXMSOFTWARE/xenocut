@@ -59,6 +59,8 @@ export interface TextContent {
   preset: string;
   style: TextStyle;
   anim: TextAnim;
+  /** BCP 47 language of `content` (subtitles); casing follows it. Unset: the UI language. */
+  lang?: string;
 }
 
 export const BASE_STYLE: TextStyle = {
@@ -187,7 +189,7 @@ export function applyPreset(text: TextContent, presetId: string): TextContent {
     next.style.x = text.style.x;
     next.style.y = text.style.y;
   }
-  return next;
+  return text.lang ? { ...next, lang: text.lang } : next;
 }
 
 /** Older or hand-edited projects may miss fields; fill them so drawing never sees undefined. */

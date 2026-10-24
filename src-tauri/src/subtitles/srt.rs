@@ -62,8 +62,23 @@ fn strip_tags(line: &str) -> String {
 /// proportion to the characters of each piece. Short cues pass through unchanged.
 pub fn reflow(cues: &[Cue], max_chars: usize) -> Vec<Cue> {
     let max_chars = max_chars.max(8);
-    let mut out = Vec::new();
+    // Whisper sometimes ends a segment mid-sentence; rejoin the fragments of a sentence and
+    // break the whole again, so a lone "your country." never trails a line.
+    let mut joined: Vec<Cue> = Vec::with_capacity(cues.len());
     for cue in cues {
+        let text = cue.text.split_whitespace().collect::<Vec<_>>().join(" ");
+        if let Some(prev) = joined.last_mut() {
+            let open = !prev.text.ends_with(['.', '?', '!', '…']);
+            if open && cue.start - prev.end < 0.3 && prev.text.chars().count() + 1 + text.chars().count() <= max_chars * 4 {
+                prev.text = format!("{} {}", prev.text, text);
+                prev.end = prev.end.max(cue.end);
+                continue;
+            }
+        }
+        joined.push(Cue { start: cue.start, end: cue.end, text });
+    }
+    let mut out = Vec::new();
+    for cue in &joined {
         let text = cue.text.split_whitespace().collect::<Vec<_>>().join(" ");
         if text.is_empty() {
             continue;
@@ -72,40 +87,7 @@ pub fn reflow(cues: &[Cue], max_chars: usize) -> Vec<Cue> {
             out.push(Cue { start: cue.start, end: cue.end, text });
             continue;
         }
-        let mut pieces: Vec<String> = Vec::new();
-        let mut current = String::new();
-        for word in text.split(' ') {
-            let len = current.chars().count() + word.chars().count() + usize::from(!current.is_empty());
-            if !current.is_empty() && len > max_chars {
-                pieces.push(std::mem::take(&mut current));
-            }
-            if !current.is_empty() {
-                current.push(' ');
-            }
-            current.push_str(word);
-        }
-        if !current.is_empty() {
-            pieces.push(current);
-        }
-        // Balance the last two pieces so a cue never ends on a single orphan word.
-        if pieces.len() >= 2 {
-            let n = pieces.len();
-            let joined = format!("{} {}", pieces[n - 2], pieces[n - 1]);
-            let words: Vec<&str> = joined.split(' ').collect();
-            let total = joined.chars().count();
-            let mut best = (usize::MAX, 1);
-            for cut in 1..words.len() {
-                let left = words[..cut].join(" ").chars().count();
-                let right = total - left - 1;
-                if left <= max_chars && right <= max_chars {
-                    best = best.min((left.abs_diff(right), cut));
-                }
-            }
-            if best.0 != usize::MAX {
-                pieces[n - 2] = words[..best.1].join(" ");
-                pieces[n - 1] = words[best.1..].join(" ");
-            }
-        }
+        let pieces = break_lines(&text, max_chars);
         let weights: Vec<f64> = pieces.iter().map(|p| p.chars().count() as f64 + 1.0).collect();
         let sum: f64 = weights.iter().sum();
         let span = (cue.end - cue.start).max(0.0);
@@ -117,6 +99,45 @@ pub fn reflow(cues: &[Cue], max_chars: usize) -> Vec<Cue> {
         }
     }
     out
+}
+
+/// Splits `text` into the fewest pieces of at most `max_chars`, preferring breaks after
+/// punctuation and pieces of even length (a small dynamic program over word boundaries).
+fn break_lines(text: &str, max_chars: usize) -> Vec<String> {
+    let words: Vec<&str> = text.split(' ').collect();
+    let n = words.len();
+    let lens: Vec<usize> = words.iter().map(|w| w.chars().count()).collect();
+    // best[i] = (cost, start of the last piece) for words[..i].
+    let mut best: Vec<(u64, usize)> = vec![(u64::MAX, 0); n + 1];
+    best[0] = (0, 0);
+    for end in 1..=n {
+        let mut len = 0usize;
+        for start in (0..end).rev() {
+            len += lens[start] + usize::from(start + 1 != end);
+            // A single over-long word still has to stand alone.
+            if len > max_chars && start + 1 != end {
+                break;
+            }
+            if best[start].0 == u64::MAX {
+                continue;
+            }
+            let slack = max_chars.saturating_sub(len) as u64;
+            let ends_clause = end == n || words[end - 1].ends_with([',', '.', '?', '!', ';', ':', '…']);
+            let cost = best[start].0 + 10_000 + slack * slack + if ends_clause { 0 } else { 150 };
+            if cost < best[end].0 {
+                best[end] = (cost, start);
+            }
+        }
+    }
+    let mut pieces = Vec::new();
+    let mut end = n;
+    while end > 0 {
+        let start = best[end].1;
+        pieces.push(words[start..end].join(" "));
+        end = start;
+    }
+    pieces.reverse();
+    pieces
 }
 
 /// Whisper's segment timestamps are coarse: the first one of a window is often 0.00 even when
@@ -194,6 +215,24 @@ mod tests {
         assert_eq!(cues[0].text, "Hi there");
         assert!((cues[0].start - 1.0).abs() < 1e-9 && (cues[0].end - 2.5).abs() < 1e-9);
         assert_eq!(cues[1].text, "Top");
+    }
+
+    #[test]
+    fn line_breaks_prefer_clause_ends() {
+        let text = "And so my fellow Americans ask not what your country can do for you, ask what you can do for your country.";
+        let pieces = break_lines(text, 42);
+        assert_eq!(pieces, ["And so my fellow Americans ask not", "what your country can do for you,", "ask what you can do for your country."]);
+        assert_eq!(break_lines("short", 42), ["short"]);
+        let fragments = [
+            Cue { start: 1.0, end: 2.0, text: "ask what you can do for".into() },
+            Cue { start: 2.0, end: 2.6, text: "your country.".into() },
+            Cue { start: 2.6, end: 3.0, text: "Next.".into() },
+        ];
+        let joined = reflow(&fragments, 42);
+        assert_eq!(joined.len(), 2, "{joined:?}");
+        assert_eq!(joined[0].text, "ask what you can do for your country.");
+        assert_eq!((joined[0].start, joined[0].end), (1.0, 2.6));
+        assert_eq!(break_lines("supercalifragilisticexpialidocious word", 10), ["supercalifragilisticexpialidocious", "word"]);
     }
 
     #[test]
