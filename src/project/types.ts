@@ -74,6 +74,33 @@ export interface Clip {
   transition?: ClipTransition;
   /** User label on the timeline (defaults to the media name). */
   name?: string;
+  /** Lottie overlay clips (text tracks, mediaId ""): see lottie/render.ts. */
+  lottie?: ClipLottie;
+}
+
+export interface ClipLottie {
+  /** Bodymovin JSON inside an installed pack (absolute path). */
+  path: string;
+  name: string;
+  kind: "overlay" | "text";
+  packId?: string;
+  /** Composition size, frame rate and frame range from the JSON. */
+  w: number;
+  h: number;
+  fr: number;
+  ip: number;
+  op: number;
+  /** Centre as a fraction of the frame, size (1 = fits the frame), degrees. */
+  x: number;
+  y: number;
+  scale: number;
+  rotation: number;
+  /** Repeat the animation for the length of the clip (else hold the last frame). */
+  loop: boolean;
+  /** Playback rate of the animation itself. */
+  rate: number;
+  /** Replacement strings for the text layers, in document order. */
+  texts?: string[];
 }
 
 export interface ClipTransition {

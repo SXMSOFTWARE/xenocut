@@ -881,6 +881,7 @@ pub(crate) mod tests {
             lut: None,
             transition: None,
             name: None,
+            lottie: None,
         }
     }
 

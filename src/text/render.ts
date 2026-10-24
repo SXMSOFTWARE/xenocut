@@ -1,5 +1,6 @@
 // Draws text clips on a 2D canvas. The live preview and the export share this code, so the
 // rendered video matches the preview frame for frame.
+import { drawLottie, lottieFrameKey, lottieVersion } from "../lottie/render";
 import type { Clip, Project } from "../project/types";
 import { clipDuration, clipEnd } from "../project/ops";
 import type { AnimIn, AnimOut, TextContent, TextStyle } from "../project/text";
@@ -421,13 +422,37 @@ export function activeTexts(project: Project, t: number): ActiveText[] {
 
 /** Draw every visible text clip at `t`. The context must already be scaled to project pixels. */
 export function drawTexts(ctx: Ctx, project: Project, t: number, width: number, height: number) {
-  for (const a of activeTexts(project, t)) drawText(ctx, a.text, width, height, a.lt, a.duration);
+  for (const a of activeLayers(project, t)) {
+    if (a.clip.lottie) drawLottie(ctx as CanvasRenderingContext2D, a.clip, width, height, a.lt);
+    else if (a.clip.text) drawText(ctx, a.clip.text, width, height, a.lt, a.duration);
+  }
+}
+
+/** Text and Lottie clips under `t` in drawing order (bottom-most track first). */
+export function activeLayers(project: Project, t: number): { clip: Clip; lt: number; duration: number }[] {
+  const out: { clip: Clip; lt: number; duration: number }[] = [];
+  const tracks = project.tracks.filter((tr) => tr.kind === "text" && !tr.hidden);
+  for (let i = tracks.length - 1; i >= 0; i--) {
+    for (const clip of project.clips) {
+      if (clip.trackId !== tracks[i].id || (!clip.text && !clip.lottie)) continue;
+      if (t < clip.start - 1e-6 || t >= clipEnd(clip) - 1e-6) continue;
+      out.push({ clip, lt: t - clip.start, duration: clipDuration(clip) });
+    }
+  }
+  return out;
 }
 
 /** Key that changes whenever the text picture at `t` changes (frame index for animated phases). */
 export function textStateKey(project: Project, t: number, frame: number): string {
   const parts: string[] = [];
-  for (const a of activeTexts(project, t)) parts.push(isAnimatedAt(a.text, a.lt, a.duration) ? `${a.clip.id}@${frame}` : a.clip.id);
+  let lottie = false;
+  for (const a of activeLayers(project, t)) {
+    if (a.clip.lottie) {
+      lottie = true;
+      parts.push(`${a.clip.id}~${lottieFrameKey(a.clip.lottie, a.lt)}`);
+    } else if (a.clip.text) parts.push(isAnimatedAt(a.clip.text, a.lt, a.duration) ? `${a.clip.id}@${frame}` : a.clip.id);
+  }
+  if (lottie) parts.push(`v${lottieVersion()}`);
   return parts.join("|");
 }
 

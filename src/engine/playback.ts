@@ -1,6 +1,7 @@
 // Timeline preview. One <video>, one <img> and a small pool of <audio> elements are driven
 // from a requestAnimationFrame clock. While a video clip plays, its element is the master
 // clock (smooth A/V); in gaps or audio-only stretches the wall clock takes over.
+import { onLottieReady } from "../lottie/render";
 import { useSettings } from "../store/settings";
 import { useAssets } from "../store/assets";
 import { needsDecodeProxy } from "../lib/playable";
@@ -338,8 +339,11 @@ class PlaybackEngine {
   /** The transparent canvas over the stage that shows text clips (drawn above the grade). */
   attachText(canvas: HTMLCanvasElement | null) {
     this.textCanvas = canvas;
+    this.lottieOff?.();
+    this.lottieOff = canvas ? onLottieReady(() => this.invalidateText()) : null;
     this.invalidateText();
   }
+  private lottieOff: (() => void) | null = null;
 
   /** The WebGL canvas that shows the visible clip through its LUT (null detaches). */
   attachLut(canvas: HTMLCanvasElement | null) {

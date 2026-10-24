@@ -6,11 +6,12 @@ import { call, isTauri } from "../lib/backend";
 import { projectDuration } from "../project/ops";
 import type { Project } from "../project/types";
 import { ensureFonts } from "./fonts";
+import { preloadLotties } from "../lottie/render";
 import { activeTexts, drawTexts, textStateKey } from "./render";
 
 export function hasVisibleText(project: Project): boolean {
   const tracks = new Set(project.tracks.filter((t) => t.kind === "text" && !t.hidden).map((t) => t.id));
-  return project.clips.some((c) => tracks.has(c.trackId) && !!c.text && c.text.content.trim().length > 0);
+  return project.clips.some((c) => tracks.has(c.trackId) && ((!!c.text && c.text.content.trim().length > 0) || !!c.lottie));
 }
 
 export async function fontsFor(project: Project): Promise<void> {
@@ -37,6 +38,7 @@ export async function renderTextLayer(
 ): Promise<TextLayerJob | null> {
   if (!isTauri || !hasVisibleText(project)) return null;
   await fontsFor(project);
+  await preloadLotties(project);
   const duration = projectDuration(project);
   const total = Math.max(1, Math.ceil(duration * fps - 1e-6));
   const canvas = document.createElement("canvas");

@@ -125,6 +125,10 @@ pub struct Clip {
     /// User label shown on the timeline (defaults to the media name).
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub name: Option<String>,
+    /// Lottie overlay clips (text tracks, `media_id` ""): drawn by the front end into the
+    /// text layer, so the backend only keeps it for saving.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub lottie: Option<serde_json::Value>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
@@ -299,6 +303,7 @@ mod tests {
             lut: None,
             transition: None,
             name: None,
+            lottie: None,
         });
         let text = serde_json::to_string(&project).unwrap();
         assert!(text.contains("\"trackId\":\"v1\""));
@@ -321,6 +326,20 @@ mod tests {
         assert!(again.contains("\"content\":\"Merhaba\""));
         assert!(again.contains("\"in\":\"pop\""));
         assert!((project.duration() - 3.0).abs() < 1e-9);
+    }
+
+    #[test]
+    fn lottie_clips_survive_a_round_trip() {
+        let json = r#"{"version":1,"id":"p","name":"T","created":"","modified":"",
+            "settings":{"aspect":"16:9","resolution":"1080p","width":1920,"height":1080,"fps":30},
+            "media":[],"tracks":[{"id":"x1","kind":"text","name":"Text 1"}],
+            "clips":[{"id":"c","trackId":"x1","mediaId":"","start":0,"in":0,"out":3,
+              "lottie":{"path":"/p/a.json","name":"Stars","kind":"overlay","w":512,"h":512,"fr":30,"ip":0,"op":60,
+                "x":0.5,"y":0.5,"scale":0.5,"rotation":0,"loop":true,"rate":1,"texts":["Hi"]}}]}"#;
+        let project: Project = serde_json::from_str(json).unwrap();
+        let again: serde_json::Value = serde_json::to_value(&project).unwrap();
+        assert_eq!(again["clips"][0]["lottie"]["texts"][0], "Hi");
+        assert_eq!(again["clips"][0]["lottie"]["op"], 60);
     }
 
     #[test]
