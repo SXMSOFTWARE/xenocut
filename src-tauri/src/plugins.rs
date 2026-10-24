@@ -588,25 +588,91 @@ fn sniff(path: &Path) -> Option<String> {
 
 pub const CATALOG_URL: &str = "https://raw.githubusercontent.com/sxmsoft/xenocut/main/catalog/index.json";
 
-/// The pack catalog JSON. `XENOCUT_CATALOG` (an https URL or a local file) overrides it for tests.
-pub fn fetch_catalog() -> Result<Value, String> {
-    let source = std::env::var("XENOCUT_CATALOG").ok().filter(|s| !s.is_empty()).unwrap_or_else(|| CATALOG_URL.to_string());
-    let text = if source.starts_with("https://") {
-        let client = reqwest::blocking::Client::builder().user_agent("xenocut").timeout(std::time::Duration::from_secs(20)).build().map_err(|e| e.to_string())?;
-        let resp = client.get(&source).send().map_err(|e| format!("catalog unreachable: {e}"))?;
-        if !resp.status().is_success() {
-            return Err(format!("catalog returned {}", resp.status()));
+/// The catalog that ships inside the app: the same index, packs and card images as `catalog/`,
+/// so the Catalog page works offline and while the remote one is unreachable.
+const BUNDLED_INDEX: &str = include_str!("../../catalog/index.json");
+const BUNDLED_PACKS: &[(&str, &[u8])] = &[
+    ("xenocut.creative-color-1.0.0.xcpack", include_bytes!("../../catalog/packs/xenocut.creative-color-1.0.0.xcpack")),
+    ("xenocut.film-looks-1.0.0.xcpack", include_bytes!("../../catalog/packs/xenocut.film-looks-1.0.0.xcpack")),
+    ("xenocut.motion-essentials-1.0.0.xcpack", include_bytes!("../../catalog/packs/xenocut.motion-essentials-1.0.0.xcpack")),
+    ("xenocut.social-looks-1.0.0.xcpack", include_bytes!("../../catalog/packs/xenocut.social-looks-1.0.0.xcpack")),
+    ("xenocut.title-styles-1.0.0.xcpack", include_bytes!("../../catalog/packs/xenocut.title-styles-1.0.0.xcpack")),
+];
+const BUNDLED_THUMBS: &[(&str, &[u8])] = &[
+    ("xenocut.creative-color", include_bytes!("../../catalog/thumbs/xenocut.creative-color.jpg")),
+    ("xenocut.film-looks", include_bytes!("../../catalog/thumbs/xenocut.film-looks.jpg")),
+];
+
+fn base64(data: &[u8]) -> String {
+    const T: &[u8; 64] = b"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
+    let mut out = String::with_capacity(data.len().div_ceil(3) * 4);
+    for c in data.chunks(3) {
+        let n = (c[0] as u32) << 16 | (*c.get(1).unwrap_or(&0) as u32) << 8 | *c.get(2).unwrap_or(&0) as u32;
+        for i in 0..4 {
+            out.push(if i <= c.len() { T[(n >> (18 - 6 * i) & 63) as usize] as char } else { '=' });
         }
-        resp.text().map_err(|e| e.to_string())?
-    } else {
-        std::fs::read_to_string(&source).map_err(|e| format!("catalog {source}: {e}"))?
-    };
+    }
+    out
+}
+
+fn sha_hex(data: &[u8]) -> String {
+    Sha256::digest(data).iter().map(|b| format!("{b:02x}")).collect()
+}
+
+/// A bundled pack whose file name and checksum match a catalog entry.
+fn bundled_pack(url: &str, sha256: &str) -> Option<&'static [u8]> {
+    let name = url.rsplit('/').next()?;
+    BUNDLED_PACKS.iter().find(|(n, d)| *n == name && sha_hex(d).eq_ignore_ascii_case(sha256)).map(|(_, d)| *d)
+}
+
+fn parse_catalog(text: &str) -> Result<Value, String> {
     if text.len() > 4 << 20 {
         return Err("catalog too large".into());
     }
-    let v: Value = serde_json::from_str(&text).map_err(|e| format!("catalog: {e}"))?;
+    let v: Value = serde_json::from_str(text).map_err(|e| format!("catalog: {e}"))?;
     if v.get("format").and_then(|f| f.as_str()) != Some("xenocut-catalog/1") {
         return Err("unexpected catalog format".into());
+    }
+    Ok(v)
+}
+
+fn fetch_remote(source: &str) -> Result<String, String> {
+    let client = reqwest::blocking::Client::builder().user_agent("xenocut").timeout(std::time::Duration::from_secs(15)).build().map_err(|e| e.to_string())?;
+    let resp = client.get(source).send().map_err(|e| format!("catalog unreachable: {e}"))?;
+    if !resp.status().is_success() {
+        return Err(format!("catalog returned {}", resp.status()));
+    }
+    resp.text().map_err(|e| e.to_string())
+}
+
+/// The pack catalog JSON: the published one when reachable, else the copy built into the app.
+/// Card images that ship in the app are inlined so they show offline. `XENOCUT_CATALOG`
+/// (an https URL or a local file) overrides the source for tests.
+pub fn fetch_catalog() -> Result<Value, String> {
+    let custom = std::env::var("XENOCUT_CATALOG").ok().filter(|s| !s.is_empty());
+    let mut v = match &custom {
+        Some(source) if !source.starts_with("https://") => parse_catalog(&std::fs::read_to_string(source).map_err(|e| format!("catalog {source}: {e}"))?)?,
+        Some(source) => parse_catalog(&fetch_remote(source)?)?,
+        None => match fetch_remote(CATALOG_URL).and_then(|t| parse_catalog(&t)) {
+            Ok(mut v) => {
+                v["source"] = Value::from("remote");
+                v
+            }
+            Err(e) => {
+                crate::diag::log("info", &format!("catalog: using the bundled copy ({e})"));
+                let mut v = parse_catalog(BUNDLED_INDEX)?;
+                v["source"] = Value::from("bundled");
+                v
+            }
+        },
+    };
+    if let Some(packs) = v.get_mut("packs").and_then(|p| p.as_array_mut()) {
+        for p in packs {
+            let id = p.get("id").and_then(|i| i.as_str()).unwrap_or("").to_string();
+            if let Some((_, jpg)) = BUNDLED_THUMBS.iter().find(|(n, _)| *n == id) {
+                p["thumbnail"] = Value::from(format!("data:image/jpeg;base64,{}", base64(jpg)));
+            }
+        }
     }
     Ok(v)
 }
@@ -627,6 +693,15 @@ pub fn install_url(store: &Store, url: &str, sha256: &str) -> Result<Installed, 
     }
     if sha256.len() != 64 || !sha256.bytes().all(|c| c.is_ascii_hexdigit()) {
         return Err("catalog entry has no valid sha256".into());
+    }
+    // Packs that ship in the app install without the network.
+    if let Some(data) = bundled_pack(url, sha256) {
+        std::fs::create_dir_all(&store.root).map_err(|e| e.to_string())?;
+        let tmp = store.root.join(".bundled.xcpack");
+        std::fs::write(&tmp, data).map_err(|e| e.to_string())?;
+        let result = store.install_path(&tmp);
+        let _ = std::fs::remove_file(&tmp);
+        return result;
     }
     let client = reqwest::blocking::Client::builder()
         .redirect(reqwest::redirect::Policy::limited(5))
@@ -856,5 +931,26 @@ mod tests {
             }
         }
         assert_eq!(store.list().len(), packs.len());
+    }
+
+    /// The bundled catalog is the published one, and every entry installs from the app itself.
+    #[test]
+    fn bundled_catalog_matches_and_installs() {
+        let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../catalog");
+        assert_eq!(BUNDLED_INDEX, std::fs::read_to_string(root.join("index.json")).unwrap());
+        let index = parse_catalog(BUNDLED_INDEX).unwrap();
+        let packs = index["packs"].as_array().unwrap();
+        assert_eq!(packs.len(), BUNDLED_PACKS.len());
+        let store = Store::new(tmp("bundled").join("plugins"));
+        for e in packs {
+            let url = e["url"].as_str().unwrap();
+            assert!(bundled_pack(url, e["sha256"].as_str().unwrap()).is_some(), "{url}");
+            install_url(&store, url, e["sha256"].as_str().unwrap()).unwrap();
+        }
+        assert!(bundled_pack(packs[0]["url"].as_str().unwrap(), &"0".repeat(64)).is_none());
+        assert_eq!(store.list().len(), packs.len());
+        assert_eq!(base64(b"Man"), "TWFu");
+        assert_eq!(base64(b"Ma"), "TWE=");
+        assert_eq!(base64(b"M"), "TQ==");
     }
 }

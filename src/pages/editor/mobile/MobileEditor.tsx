@@ -18,6 +18,7 @@ import {
   Trash2,
   Type,
   Undo2,
+  Palette,
   Wand2,
   X,
 } from "lucide-react";
@@ -233,6 +234,7 @@ function ToolBar() {
     if (sel.clip && !sel.text) tools.push({ key: "adjust", icon: SlidersHorizontal, label: "mobile.adjust", run: () => useEditorUi.setState({ panel: "effects" }) });
     if (sel.visual) tools.push({ key: "fx", icon: Sparkles, label: "fx.title", run: () => useEditorUi.setState({ panel: "fx" }) });
     if (sel.visual) tools.push({ key: "anim", icon: Wand2, label: "anim.title", run: () => useEditorUi.setState({ panel: "anim" }) });
+    if (sel.visual && !sel.text) tools.push({ key: "color", icon: Palette, label: "rail.color", run: () => useEditorUi.setState({ panel: "color" }) });
     if (sel.text) tools.push({ key: "text", icon: Type, label: "mobile.editText", run: () => useEditorUi.setState({ panel: "text" }) });
     tools.push({ key: "delete", icon: Trash2, label: "inspector.delete", run: deleteSelection, danger: true });
     return (
