@@ -40,6 +40,8 @@
   display: flex;
   flex-direction: column;
   gap: 3px;
+  min-width: 0;
+  overflow-wrap: anywhere;
 }
 .settings-label b {
   display: flex;
@@ -66,6 +68,7 @@
   display: flex;
   align-items: center;
   gap: 8px;
+  min-width: 0;
 }
 .stat {
   font-weight: 600;
@@ -91,6 +94,7 @@
 }
 .settings-note {
   padding: 0 0 14px;
+  overflow-wrap: anywhere;
 }
 .about-head {
   display: flex;
@@ -114,6 +118,8 @@
   display: flex;
   flex-direction: column;
   gap: 3px;
+  min-width: 0;
+  overflow-wrap: anywhere;
 }
 .about-id b {
   font-weight: 600;
@@ -155,13 +161,6 @@
   background: #ff5e5b;
 }
 
-@media (max-width: 760px) {
-  .settings-row {
-    grid-template-columns: minmax(0, 1fr);
-    gap: 10px;
-  }
-}
-
 .oss-toggle svg {
   transition: transform var(--t-fast) var(--ease);
 }
@@ -173,7 +172,7 @@
   margin: 0 0 8px;
   padding: 0;
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 260px), 1fr));
   gap: 6px;
 }
 .oss-item {
@@ -232,7 +231,7 @@
   margin: 0 0 10px;
   padding: 0;
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 320px), 1fr));
   gap: 8px;
 }
 .module-card {
@@ -275,6 +274,8 @@
 }
 .module-head b {
   font-weight: 600;
+  min-width: 0;
+  overflow-wrap: anywhere;
 }
 .module-head .status-pill {
   height: 22px;
@@ -284,6 +285,8 @@
 }
 .module-models {
   display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
   gap: 4px;
 }
 .pill-x {
@@ -327,8 +330,68 @@
 }
 .module-credits .oss-license {
   margin-left: auto;
+  white-space: normal;
+  text-align: right;
 }
 .module-note {
   margin: 0;
   font-size: var(--fs-xs, 11px);
+}
+
+@media (max-width: 760px) {
+  .settings-row {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 10px;
+  }
+  /* a lone switch stays on the label's line */
+  .settings-row:has(> .settings-control > .switch:only-child) {
+    grid-template-columns: minmax(0, 1fr) auto;
+  }
+  .row-actions.wrap {
+    justify-content: flex-start;
+  }
+}
+@media (max-width: 520px) {
+  .settings-wrap {
+    padding: 16px 12px calc(32px + env(safe-area-inset-bottom));
+    gap: 12px;
+  }
+  .settings-group {
+    padding: 4px 14px;
+  }
+  .settings-control {
+    justify-content: flex-start;
+  }
+  .module-card {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 8px;
+    padding: 12px;
+  }
+  .module-icon {
+    display: none;
+  }
+}
+/* phones: thumb-sized controls, safe areas */
+html.mobile .settings-page .page-top {
+  padding-top: max(10px, env(safe-area-inset-top));
+}
+html.mobile .settings-page .btn-sm,
+html.mobile .settings-page .donate-pill {
+  min-height: 40px;
+  padding-inline: 16px;
+}
+html.mobile .settings-page .page-top .icon-btn {
+  width: 44px;
+  height: 44px;
+}
+html.mobile .settings-page .module-chip {
+  height: 30px;
+  padding: 0 12px;
+}
+html.mobile .settings-page .oss-item {
+  min-height: 48px;
+}
+html.mobile .settings-page .icon-btn.sm {
+  width: 40px;
+  height: 40px;
 }
