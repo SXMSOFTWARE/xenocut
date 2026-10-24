@@ -113,7 +113,7 @@ async function fxProbe() {
   await exportProbe(o.export);
 }
 
-/** page=settings[,scroll=bottom][,click=.selector]: shows a page instead of the editor run; logs "page-ready". */
+/** page=settings[,scroll=bottom|.selector][,click=.selector]: shows a page instead of the editor run; logs "page-ready". */
 async function pageProbe(): Promise<boolean> {
   const o = opts();
   if (!o.page) return false;
@@ -121,7 +121,8 @@ async function pageProbe(): Promise<boolean> {
   await sleep(1200);
   if (o.click) (document.querySelector(o.click) as HTMLElement | null)?.click();
   await sleep(300);
-  if (o.scroll === "bottom") document.querySelectorAll("*").forEach((el) => el.scrollHeight > el.clientHeight + 4 && (el.scrollTop = el.scrollHeight));
+  if (o.scroll?.startsWith(".")) document.querySelector(o.scroll)?.scrollIntoView({ block: "start" });
+  else if (o.scroll === "bottom") document.querySelectorAll("*").forEach((el) => el.scrollHeight > el.clientHeight + 4 && (el.scrollTop = el.scrollHeight));
   await sleep(600);
   log("autotest", "page-ready");
   return true;

@@ -220,3 +220,115 @@
   height: 13px;
   opacity: 0.6;
 }
+
+/* Modules */
+.module-intro {
+  margin: 0;
+  padding: 0 0 10px;
+  font-size: var(--fs-sm);
+}
+.module-list {
+  list-style: none;
+  margin: 0 0 10px;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
+  gap: 8px;
+}
+.module-card {
+  display: grid;
+  grid-template-columns: 34px minmax(0, 1fr);
+  gap: 12px;
+  padding: 12px 14px;
+  border-radius: var(--r-md);
+  border: 1px solid var(--line);
+  background: rgba(255, 255, 255, 0.03);
+}
+.module-icon {
+  width: 34px;
+  height: 34px;
+  display: grid;
+  place-items: center;
+  border-radius: var(--r-md);
+  background: var(--surface-3);
+  color: var(--text-2);
+}
+.module-icon svg {
+  width: 16px;
+  height: 16px;
+}
+.module-body {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+.module-body > .muted {
+  font-size: var(--fs-sm);
+}
+.module-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  min-height: 26px;
+}
+.module-head b {
+  font-weight: 600;
+}
+.module-head .status-pill {
+  height: 22px;
+  padding: 0 9px;
+  font-size: var(--fs-xs, 11px);
+  white-space: nowrap;
+}
+.module-models {
+  display: flex;
+  gap: 4px;
+}
+.pill-x {
+  display: inline-grid;
+  place-items: center;
+  margin: 0 -4px 0 4px;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  color: inherit;
+  opacity: 0.7;
+}
+.pill-x:hover {
+  opacity: 1;
+  background: rgba(255, 255, 255, 0.1);
+}
+.pill-x svg {
+  width: 10px;
+  height: 10px;
+}
+.module-credits {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px;
+  margin-top: 4px;
+}
+.module-chip {
+  height: 22px;
+  padding: 0 8px;
+  border-radius: var(--r-pill);
+  border: 1px solid var(--line);
+  background: transparent;
+  color: var(--text-2);
+  font-size: var(--fs-xs, 11px);
+  transition: background var(--t-fast) var(--ease);
+}
+.module-chip:hover {
+  background: rgba(255, 255, 255, 0.07);
+  color: var(--text);
+}
+.module-credits .oss-license {
+  margin-left: auto;
+}
+.module-note {
+  margin: 0;
+  font-size: var(--fs-xs, 11px);
+}

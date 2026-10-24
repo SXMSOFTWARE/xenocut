@@ -8,6 +8,7 @@ import { useRouter } from "../../store/router";
 import { useSettings, type Language } from "../../store/settings";
 import { toast } from "../../store/toast";
 import { CREDITS } from "../../lib/credits";
+import { ModulesSection } from "./Modules";
 import "../../styles/settings.css";
 
 type ModelStatus = Awaited<ReturnType<typeof api.modelStatus>>;
@@ -177,6 +178,8 @@ export default function SettingsPage() {
             </Row>
             {model && <p className="path-note settings-note">{model.name} · {model.path}</p>}
           </section>
+
+          <ModulesSection stemModel={model} />
 
           <section className="settings-group about-card">
             <h2 className="section-title">
