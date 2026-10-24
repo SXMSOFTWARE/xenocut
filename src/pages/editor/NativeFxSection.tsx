@@ -70,8 +70,8 @@ export function NativeFxSection() {
     <div className="inspector-section nfx-section" data-native-fx>
       <h3 className="section-title">
         <Puzzle size={13} /> {t("nfx.title")}
-        <button className="link-btn" onClick={() => void load(true)} disabled={loading} title={t("nfx.rescan")}>
-          <RefreshCw size={12} className={loading ? "spin" : undefined} /> {t("nfx.rescan")}
+        <button className="icon-btn xs nfx-rescan" onClick={() => void load(true)} disabled={loading} title={t("nfx.rescan")} aria-label={t("nfx.rescan")}>
+          <RefreshCw size={12} className={loading ? "spin" : undefined} />
         </button>
       </h3>
       <p className="sp-note">{t("nfx.sub")}</p>
