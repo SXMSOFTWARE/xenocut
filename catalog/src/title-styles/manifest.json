@@ -1,0 +1,118 @@
+{
+  "format": "xenocut-pack/1",
+  "version": "1.0.0",
+  "author": "XenoCut contributors",
+  "license": "CC0-1.0",
+  "homepage": "https://github.com/sxmsoft/xenocut/tree/main/catalog",
+  "id": "xenocut.title-styles",
+  "name": "Title Styles",
+  "description": "Eight text styles using the fonts bundled with XenoCut: bold caption, retro poster, minimal, comic burst, gold gradient, glass box, typewriter and big shadow.",
+  "textPresets": [
+    {
+      "id": "bold-caption",
+      "name": "Bold Caption",
+      "style": {
+        "font": "montserrat",
+        "weight": 800,
+        "size": 72,
+        "color": "#ffffff",
+        "stroke": 6,
+        "strokeColor": "#000000",
+        "shadow": 0.3,
+        "y": 0.78
+      }
+    },
+    {
+      "id": "retro-poster",
+      "name": "Retro Poster",
+      "style": {
+        "font": "bebas",
+        "weight": 400,
+        "size": 140,
+        "color": "#ffe9b0",
+        "color2": "#ff7a59",
+        "spacing": 0.08,
+        "shadow": 0.5
+      }
+    },
+    {
+      "id": "minimal",
+      "name": "Minimal",
+      "style": {
+        "font": "inter",
+        "weight": 300,
+        "size": 60,
+        "spacing": 0.2,
+        "uppercase": true,
+        "shadow": 0
+      }
+    },
+    {
+      "id": "comic-burst",
+      "name": "Comic Burst",
+      "style": {
+        "font": "bangers",
+        "weight": 400,
+        "size": 120,
+        "color": "#ffe14d",
+        "stroke": 10,
+        "strokeColor": "#1a1a1a",
+        "shadow": 0.6
+      }
+    },
+    {
+      "id": "gold",
+      "name": "Gold Gradient",
+      "style": {
+        "font": "playfair",
+        "weight": 700,
+        "size": 96,
+        "color": "#fff1b8",
+        "color2": "#c8902e",
+        "shadow": 0.35
+      }
+    },
+    {
+      "id": "glass-box",
+      "name": "Glass Box",
+      "style": {
+        "font": "inter",
+        "weight": 600,
+        "size": 56,
+        "background": "pill",
+        "bgColor": "#ffffff",
+        "bgOpacity": 0.22,
+        "shadow": 0
+      }
+    },
+    {
+      "id": "typewriter",
+      "name": "Typewriter",
+      "style": {
+        "font": "inter",
+        "weight": 500,
+        "size": 54,
+        "background": "box",
+        "bgColor": "#000000",
+        "bgOpacity": 0.7,
+        "align": "left",
+        "x": 0.3,
+        "y": 0.85,
+        "width": 0.5
+      }
+    },
+    {
+      "id": "big-shadow",
+      "name": "Big Shadow",
+      "style": {
+        "font": "anton",
+        "weight": 400,
+        "uppercase": true,
+        "size": 130,
+        "color": "#ffffff",
+        "shadow": 1,
+        "spacing": 0.02
+      }
+    }
+  ]
+}

@@ -1,0 +1,258 @@
+{
+  "format": "xenocut-pack/1",
+  "version": "1.0.0",
+  "author": "XenoCut contributors",
+  "license": "CC0-1.0",
+  "homepage": "https://github.com/sxmsoft/xenocut/tree/main/catalog",
+  "id": "xenocut.social-looks",
+  "name": "Social Looks",
+  "description": "Ten one-tap looks built from XenoCut's effect primitives: moody, clean pop, retro cam, summer, night drive, lo-fi, comic and more. Each stays editable as separate effects.",
+  "effects": [
+    {
+      "id": "moody",
+      "name": "Moody",
+      "category": "Mood",
+      "stack": [
+        [
+          "contrast",
+          0.3
+        ],
+        [
+          "saturation",
+          -0.35
+        ],
+        [
+          "brightness",
+          -0.08
+        ],
+        [
+          "temperature",
+          -0.2
+        ],
+        [
+          "vignette",
+          0.55
+        ]
+      ]
+    },
+    {
+      "id": "clean-pop",
+      "name": "Clean Pop",
+      "category": "Bright",
+      "stack": [
+        [
+          "contrast",
+          0.15
+        ],
+        [
+          "saturation",
+          0.3
+        ],
+        [
+          "brightness",
+          0.05
+        ],
+        [
+          "sharpen",
+          0.35
+        ]
+      ]
+    },
+    {
+      "id": "retro-cam",
+      "name": "Retro Cam",
+      "category": "Retro",
+      "stack": [
+        [
+          "sepia",
+          0.25
+        ],
+        [
+          "saturation",
+          -0.1
+        ],
+        [
+          "grain",
+          0.6
+        ],
+        [
+          "vignette",
+          0.4
+        ],
+        [
+          "blur",
+          0.04
+        ]
+      ]
+    },
+    {
+      "id": "summer",
+      "name": "Summer",
+      "category": "Bright",
+      "stack": [
+        [
+          "temperature",
+          0.45
+        ],
+        [
+          "saturation",
+          0.25
+        ],
+        [
+          "brightness",
+          0.08
+        ],
+        [
+          "contrast",
+          0.1
+        ]
+      ]
+    },
+    {
+      "id": "night-drive",
+      "name": "Night Drive",
+      "category": "Mood",
+      "stack": [
+        [
+          "temperature",
+          -0.5
+        ],
+        [
+          "contrast",
+          0.25
+        ],
+        [
+          "saturation",
+          0.15
+        ],
+        [
+          "vignette",
+          0.6
+        ],
+        [
+          "grain",
+          0.2
+        ]
+      ]
+    },
+    {
+      "id": "lofi",
+      "name": "Lo-fi",
+      "category": "Retro",
+      "stack": [
+        [
+          "contrast",
+          -0.25
+        ],
+        [
+          "saturation",
+          -0.25
+        ],
+        [
+          "grain",
+          0.55
+        ],
+        [
+          "scanlines",
+          0.25
+        ],
+        [
+          "blur",
+          0.05
+        ]
+      ]
+    },
+    {
+      "id": "comic",
+      "name": "Comic",
+      "category": "Stylised",
+      "stack": [
+        [
+          "contrast",
+          0.6
+        ],
+        [
+          "saturation",
+          0.6
+        ],
+        [
+          "sharpen",
+          0.8
+        ]
+      ]
+    },
+    {
+      "id": "ghost",
+      "name": "Ghost",
+      "category": "Stylised",
+      "stack": [
+        [
+          "bw",
+          0.7
+        ],
+        [
+          "brightness",
+          0.12
+        ],
+        [
+          "blur",
+          0.12
+        ],
+        [
+          "rgbSplit",
+          0.25
+        ]
+      ]
+    },
+    {
+      "id": "documentary",
+      "name": "Documentary",
+      "category": "Cinematic",
+      "stack": [
+        [
+          "contrast",
+          0.12
+        ],
+        [
+          "saturation",
+          -0.2
+        ],
+        [
+          "sharpen",
+          0.2
+        ],
+        [
+          "grain",
+          0.15
+        ]
+      ]
+    },
+    {
+      "id": "epic",
+      "name": "Epic",
+      "category": "Cinematic",
+      "stack": [
+        [
+          "contrast",
+          0.35
+        ],
+        [
+          "saturation",
+          -0.1
+        ],
+        [
+          "temperature",
+          0.15
+        ],
+        [
+          "vignette",
+          0.5
+        ],
+        [
+          "letterbox",
+          1
+        ]
+      ]
+    }
+  ]
+}

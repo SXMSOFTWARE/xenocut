@@ -1,0 +1,241 @@
+{
+  "format": "xenocut-pack/1",
+  "version": "1.0.0",
+  "author": "XenoCut contributors",
+  "license": "CC0-1.0",
+  "homepage": "https://github.com/sxmsoft/xenocut/tree/main/catalog",
+  "id": "xenocut.motion-essentials",
+  "name": "Motion Essentials",
+  "description": "Fourteen extra clip animations: drops, rolls, tilts, elastic pops, blur slides and loops like breathe, drift and rock.",
+  "animations": [
+    {
+      "id": "drop-in",
+      "name": "Drop In",
+      "slot": "in",
+      "spec": {
+        "ty": -0.6,
+        "alpha": true,
+        "alphaSpan": 0.3,
+        "curve": "bounce"
+      },
+      "duration": 0.7
+    },
+    {
+      "id": "roll-in",
+      "name": "Roll In",
+      "slot": "in",
+      "spec": {
+        "tx": -1,
+        "rot": -120,
+        "curve": "ease"
+      },
+      "duration": 0.6
+    },
+    {
+      "id": "tilt-in",
+      "name": "Tilt In",
+      "slot": "in",
+      "spec": {
+        "tx": -0.25,
+        "rot": -12,
+        "alpha": true,
+        "alphaSpan": 0.5,
+        "curve": "ease"
+      },
+      "duration": 0.5
+    },
+    {
+      "id": "elastic-pop",
+      "name": "Elastic Pop",
+      "slot": "in",
+      "spec": {
+        "s": 0.4,
+        "alpha": true,
+        "alphaSpan": 0.25,
+        "curve": "back"
+      },
+      "duration": 0.5
+    },
+    {
+      "id": "blur-slide",
+      "name": "Blur Slide",
+      "slot": "in",
+      "spec": {
+        "tx": 0.35,
+        "alpha": true,
+        "alphaSpan": 0.5,
+        "curve": "ease",
+        "fx": [
+          [
+            "blur",
+            0.8,
+            0.0,
+            0.7
+          ]
+        ]
+      },
+      "duration": 0.5
+    },
+    {
+      "id": "zoom-blur-in",
+      "name": "Zoom Blur In",
+      "slot": "in",
+      "spec": {
+        "s": 1.5,
+        "alpha": true,
+        "alphaSpan": 0.4,
+        "curve": "ease",
+        "fx": [
+          [
+            "blur",
+            0.7,
+            0.0,
+            0.6
+          ]
+        ]
+      },
+      "duration": 0.5
+    },
+    {
+      "id": "fall-out",
+      "name": "Fall Out",
+      "slot": "out",
+      "spec": {
+        "ty": 1,
+        "rot": 10,
+        "curve": "ease"
+      },
+      "duration": 0.5
+    },
+    {
+      "id": "shrink-out",
+      "name": "Shrink Out",
+      "slot": "out",
+      "spec": {
+        "s": 0.0,
+        "alpha": true,
+        "alphaSpan": 0.4,
+        "curve": "ease"
+      },
+      "duration": 0.4
+    },
+    {
+      "id": "glitch-out",
+      "name": "Glitch Out",
+      "slot": "out",
+      "spec": {
+        "alpha": true,
+        "alphaSpan": 0.3,
+        "curve": "linear",
+        "fx": [
+          [
+            "rgbSplit",
+            1.0,
+            0.0,
+            1.0
+          ],
+          [
+            "hitShake",
+            0.6,
+            0.0,
+            0.8
+          ]
+        ]
+      },
+      "duration": 0.4
+    },
+    {
+      "id": "whip-out",
+      "name": "Whip Out",
+      "slot": "out",
+      "spec": {
+        "tx": 1,
+        "curve": "ease",
+        "fx": [
+          [
+            "blur",
+            0.9,
+            0.0,
+            1.0
+          ]
+        ]
+      },
+      "duration": 0.35
+    },
+    {
+      "id": "breathe",
+      "name": "Breathe",
+      "slot": "combo",
+      "spec": {
+        "terms": [
+          [
+            "s",
+            0.035,
+            "bump"
+          ]
+        ]
+      },
+      "duration": 3.0
+    },
+    {
+      "id": "drift",
+      "name": "Drift",
+      "slot": "combo",
+      "spec": {
+        "terms": [
+          [
+            "tx",
+            0.02,
+            "sin"
+          ],
+          [
+            "ty",
+            0.012,
+            "bump"
+          ]
+        ]
+      },
+      "duration": 4.0
+    },
+    {
+      "id": "rock",
+      "name": "Rock",
+      "slot": "combo",
+      "spec": {
+        "terms": [
+          [
+            "rot",
+            5,
+            "sin"
+          ],
+          [
+            "ty",
+            0.015,
+            "bump"
+          ]
+        ]
+      },
+      "duration": 1.4
+    },
+    {
+      "id": "beat-bounce",
+      "name": "Beat Bounce",
+      "slot": "combo",
+      "spec": {
+        "terms": [
+          [
+            "s",
+            0.09,
+            "beat"
+          ],
+          [
+            "ty",
+            0.02,
+            "beat"
+          ]
+        ]
+      },
+      "duration": 0.5
+    }
+  ]
+}

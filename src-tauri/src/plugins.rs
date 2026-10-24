@@ -799,4 +799,30 @@ mod tests {
         assert_eq!(p.manifest.id, "lut.teal-orange");
         assert_eq!(p.manifest.luts[0].name, "Ident");
     }
+
+    /// Every pack in the published catalog installs, and its index entry matches the file.
+    #[test]
+    fn catalog_packs_install() {
+        let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../catalog");
+        let index: Value = serde_json::from_str(&std::fs::read_to_string(root.join("index.json")).unwrap()).unwrap();
+        let store = Store::new(tmp("catalog").join("plugins"));
+        let packs = index["packs"].as_array().unwrap();
+        assert!(packs.len() >= 5);
+        for e in packs {
+            let name = e["url"].as_str().unwrap().rsplit('/').next().unwrap();
+            let file = root.join("packs").join(name);
+            let data = std::fs::read(&file).unwrap();
+            let digest: String = Sha256::digest(&data).iter().map(|b| format!("{b:02x}")).collect();
+            assert_eq!(digest, e["sha256"].as_str().unwrap(), "{name}");
+            assert_eq!(data.len() as u64, e["bytes"].as_u64().unwrap());
+            let p = store.install_path(&file).unwrap_or_else(|err| panic!("{name}: {err}"));
+            assert_eq!(p.manifest.id, e["id"].as_str().unwrap());
+            assert_eq!(p.manifest.license, "CC0-1.0");
+            for lut in &p.manifest.luts {
+                let cube = store.lut(&Path::new(&p.dir).join(&lut.file)).unwrap();
+                assert_eq!(cube.size, 25);
+            }
+        }
+        assert_eq!(store.list().len(), packs.len());
+    }
 }

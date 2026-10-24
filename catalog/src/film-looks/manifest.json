@@ -1,0 +1,42 @@
+{
+  "format": "xenocut-pack/1",
+  "version": "1.0.0",
+  "author": "XenoCut contributors",
+  "license": "CC0-1.0",
+  "homepage": "https://github.com/sxmsoft/xenocut/tree/main/catalog",
+  "id": "xenocut.film-looks",
+  "name": "Film Looks",
+  "description": "Six cinematic colour LUTs: teal & orange, warm film, bleach bypass, silver mono, 70s vintage and matte fade. Standard .cube files, usable in any editor.",
+  "luts": [
+    {
+      "id": "teal-orange",
+      "name": "Teal & Orange",
+      "file": "luts/teal_orange.cube"
+    },
+    {
+      "id": "warm-film",
+      "name": "Warm Film",
+      "file": "luts/warm_film.cube"
+    },
+    {
+      "id": "bleach-bypass",
+      "name": "Bleach Bypass",
+      "file": "luts/bleach_bypass.cube"
+    },
+    {
+      "id": "mono-silver",
+      "name": "Silver Mono",
+      "file": "luts/mono_silver.cube"
+    },
+    {
+      "id": "vintage-70s",
+      "name": "Vintage 70s",
+      "file": "luts/vintage_70s.cube"
+    },
+    {
+      "id": "matte-fade",
+      "name": "Matte Fade",
+      "file": "luts/matte_fade.cube"
+    }
+  ]
+}

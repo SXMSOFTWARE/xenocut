@@ -1,0 +1,42 @@
+{
+  "format": "xenocut-pack/1",
+  "version": "1.0.0",
+  "author": "XenoCut contributors",
+  "license": "CC0-1.0",
+  "homepage": "https://github.com/sxmsoft/xenocut/tree/main/catalog",
+  "id": "xenocut.creative-color",
+  "name": "Creative Color",
+  "description": "Six bolder LUTs for music videos and travel edits: cool night, cross process, golden hour, neon night, forest green and desert dust.",
+  "luts": [
+    {
+      "id": "cool-night",
+      "name": "Cool Night",
+      "file": "luts/cool_night.cube"
+    },
+    {
+      "id": "cross-process",
+      "name": "Cross Process",
+      "file": "luts/cross_process.cube"
+    },
+    {
+      "id": "golden-hour",
+      "name": "Golden Hour",
+      "file": "luts/golden_hour.cube"
+    },
+    {
+      "id": "neon-night",
+      "name": "Neon Night",
+      "file": "luts/neon_night.cube"
+    },
+    {
+      "id": "forest-green",
+      "name": "Forest Green",
+      "file": "luts/forest_green.cube"
+    },
+    {
+      "id": "desert-dust",
+      "name": "Desert Dust",
+      "file": "luts/desert_dust.cube"
+    }
+  ]
+}

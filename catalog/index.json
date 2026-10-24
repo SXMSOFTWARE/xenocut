@@ -1,0 +1,85 @@
+{
+  "format": "xenocut-catalog/1",
+  "packs": [
+    {
+      "id": "xenocut.creative-color",
+      "name": "Creative Color",
+      "version": "1.0.0",
+      "author": "XenoCut contributors",
+      "license": "CC0-1.0",
+      "homepage": "https://github.com/sxmsoft/xenocut/tree/main/catalog",
+      "description": "Six bolder LUTs for music videos and travel edits: cool night, cross process, golden hour, neon night, forest green and desert dust.",
+      "url": "https://raw.githubusercontent.com/sxmsoft/xenocut/main/catalog/packs/xenocut.creative-color-1.0.0.xcpack",
+      "sha256": "3395d1108e57b98c0fff8d2e5011474c9878aa86ee82556dae36ae63c0171750",
+      "bytes": 838500,
+      "thumbnail": "https://raw.githubusercontent.com/sxmsoft/xenocut/main/catalog/thumbs/xenocut.creative-color.jpg",
+      "contents": {
+        "luts": 6
+      }
+    },
+    {
+      "id": "xenocut.film-looks",
+      "name": "Film Looks",
+      "version": "1.0.0",
+      "author": "XenoCut contributors",
+      "license": "CC0-1.0",
+      "homepage": "https://github.com/sxmsoft/xenocut/tree/main/catalog",
+      "description": "Six cinematic colour LUTs: teal & orange, warm film, bleach bypass, silver mono, 70s vintage and matte fade. Standard .cube files, usable in any editor.",
+      "url": "https://raw.githubusercontent.com/sxmsoft/xenocut/main/catalog/packs/xenocut.film-looks-1.0.0.xcpack",
+      "sha256": "e66009b8ffbcad2ad61c58ab86cc26b55a3ccdec48f275362afa544be17d18a7",
+      "bytes": 823786,
+      "thumbnail": "https://raw.githubusercontent.com/sxmsoft/xenocut/main/catalog/thumbs/xenocut.film-looks.jpg",
+      "contents": {
+        "luts": 6
+      }
+    },
+    {
+      "id": "xenocut.motion-essentials",
+      "name": "Motion Essentials",
+      "version": "1.0.0",
+      "author": "XenoCut contributors",
+      "license": "CC0-1.0",
+      "homepage": "https://github.com/sxmsoft/xenocut/tree/main/catalog",
+      "description": "Fourteen extra clip animations: drops, rolls, tilts, elastic pops, blur slides and loops like breathe, drift and rock.",
+      "url": "https://raw.githubusercontent.com/sxmsoft/xenocut/main/catalog/packs/xenocut.motion-essentials-1.0.0.xcpack",
+      "sha256": "fbe9f102b6130107342fcbca4666b825e750784161bdbc32edfd10d06d9143f3",
+      "bytes": 934,
+      "thumbnail": null,
+      "contents": {
+        "animations": 14
+      }
+    },
+    {
+      "id": "xenocut.social-looks",
+      "name": "Social Looks",
+      "version": "1.0.0",
+      "author": "XenoCut contributors",
+      "license": "CC0-1.0",
+      "homepage": "https://github.com/sxmsoft/xenocut/tree/main/catalog",
+      "description": "Ten one-tap looks built from XenoCut's effect primitives: moody, clean pop, retro cam, summer, night drive, lo-fi, comic and more. Each stays editable as separate effects.",
+      "url": "https://raw.githubusercontent.com/sxmsoft/xenocut/main/catalog/packs/xenocut.social-looks-1.0.0.xcpack",
+      "sha256": "ff331ae4a2eaba1a6d3f696c46fa9f2fb24013ab491962b908bfd4b8b9a801f8",
+      "bytes": 898,
+      "thumbnail": null,
+      "contents": {
+        "effects": 10
+      }
+    },
+    {
+      "id": "xenocut.title-styles",
+      "name": "Title Styles",
+      "version": "1.0.0",
+      "author": "XenoCut contributors",
+      "license": "CC0-1.0",
+      "homepage": "https://github.com/sxmsoft/xenocut/tree/main/catalog",
+      "description": "Eight text styles using the fonts bundled with XenoCut: bold caption, retro poster, minimal, comic burst, gold gradient, glass box, typewriter and big shadow.",
+      "url": "https://raw.githubusercontent.com/sxmsoft/xenocut/main/catalog/packs/xenocut.title-styles-1.0.0.xcpack",
+      "sha256": "ffeb9bede3c0b72abdf0f1954534bae7784c5eb050ec2d8c9648f72205bd96d0",
+      "bytes": 858,
+      "thumbnail": null,
+      "contents": {
+        "textPresets": 8
+      }
+    }
+  ]
+}
