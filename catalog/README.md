@@ -1,7 +1,10 @@
 # XenoCut plugin catalog
 
 The in-app **Plugins → Catalog** page reads `index.json` from this folder (raw GitHub) and
-installs packs from `packs/` after checking their SHA-256. Every pack here is data only
+installs packs from `packs/` after checking their SHA-256. The same index, packs and thumbnails
+are compiled into the app, which uses them when GitHub is unreachable and to install without a
+download. After rebuilding, keep `BUNDLED_PACKS` / `BUNDLED_THUMBS` in `src-tauri/src/plugins.rs`
+in sync (`cargo test --lib plugins` fails otherwise). Every pack here is data only
 (see [docs/plugins.md](../docs/plugins.md)) and released under **CC0 1.0**.
 
 | Pack | Contents |
@@ -30,4 +33,4 @@ name its author and license in the manifest, and pass the same test.
 
 `thumbs/` shows LUT packs on a frame of *Big Buck Bunny* (© Blender Foundation,
 [CC BY 3.0](https://creativecommons.org/licenses/by/3.0/), peach.blender.org). The thumbnails
-are not part of the packs.
+are also embedded in their packs as the Library card image (`thumb.jpg`).
