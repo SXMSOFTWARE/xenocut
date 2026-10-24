@@ -1,4 +1,5 @@
 // Hidden self-test, enabled only by the XENOCUT_AUTOTEST=<media file> environment variable.
+import { perfSkip } from "./perfSkip";
 // Imports the file into a fresh project, plays it and logs what the <video> element reports,
 // so playback can be verified on a headless machine (Xvfb) from the log file.
 import { engine, setSilent } from "../engine/playback";
@@ -153,6 +154,7 @@ async function perfProbe() {
   if (!o.secs) return;
   if (o.perf !== undefined) useSettings.getState().update({ performanceMode: o.perf === "1" });
   if (o.pubms !== undefined) engine.publishMs = Number(o.pubms);
+  for (const k of (o.skip ?? "").split("+")) if (k) perfSkip.add(k);
   if (o.proxy === "1") {
     useSettings.getState().update({ previewProxy: true });
     const started = performance.now();

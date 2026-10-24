@@ -1,4 +1,5 @@
 import { useEffect, useRef } from "react";
+import { perfSkip } from "../../../lib/perfSkip";
 import { usePlayback } from "../../../store/playback";
 import { useEditorUi } from "../../../store/editorUi";
 import { engine } from "../../../engine/playback";
@@ -31,7 +32,7 @@ export function Playhead({ pps, scroller, headerWidth }: { pps: number; scroller
     };
     onScroll();
     scroller?.addEventListener("scroll", onScroll, { passive: true });
-    const unsub = usePlayback.subscribe((next) => place(next.time, next.playing));
+    const unsub = usePlayback.subscribe((next) => !perfSkip.has("ph") && place(next.time, next.playing));
     return () => {
       unsub();
       scroller?.removeEventListener("scroll", onScroll);

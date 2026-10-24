@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState, type ComponentType, type ReactNode } from "react";
+import { perfSkip } from "../../lib/perfSkip";
 import { Check, ChevronDown, Share, RectangleVertical, RectangleHorizontal, Square, Star, Timer, SlidersHorizontal, PanelBottomClose, PanelBottomOpen, Pause, Play, Redo2, Settings2, SkipBack, SkipForward, Undo2 } from "lucide-react";
 import { engine } from "../../engine/playback";
 import { useT } from "../../i18n";
@@ -224,7 +225,7 @@ function TimeReadout({ fps, duration }: { fps: number; duration: number }) {
       if (ref.current) ref.current.textContent = timecode(time, fps);
     };
     paint(usePlayback.getState().time);
-    return usePlayback.subscribe((s, prev) => s.time !== prev.time && paint(s.time));
+    return usePlayback.subscribe((s, prev) => s.time !== prev.time && !perfSkip.has("tc") && paint(s.time));
   }, [fps]);
   return (
     <span className="timecode tnum" title={`${timecode(duration, fps)}`}>

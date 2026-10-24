@@ -1,4 +1,5 @@
 import { useEffect, useRef } from "react";
+import { perfSkip } from "../../../lib/perfSkip";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { engine } from "../../../engine/playback";
 import { usePlayback } from "../../../store/playback";
@@ -17,7 +18,7 @@ export function Scrubber({ duration }: { duration: number }) {
       if (fill.current) fill.current.style.width = `${f * 100}%`;
     };
     place(usePlayback.getState().time);
-    return usePlayback.subscribe((s, prev) => s.time !== prev.time && place(s.time));
+    return usePlayback.subscribe((s, prev) => s.time !== prev.time && !perfSkip.has("sc") && place(s.time));
   }, [total]);
 
   const seekAt = (x: number) => {

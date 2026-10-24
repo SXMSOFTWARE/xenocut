@@ -1,4 +1,5 @@
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
+import { perfSkip } from "../../lib/perfSkip";
 import { engine } from "../../engine/playback";
 import { useT } from "../../i18n";
 import { gradeFilter, tintDefs } from "../../project/grade";
@@ -214,7 +215,7 @@ export function Preview() {
 
 /** Dashed box around the selected text clip while it is on screen. */
 function TextSelection({ width, height }: { width: number; height: number }) {
-  const time = usePlayback((s) => s.time);
+  const time = usePlayback((s) => (perfSkip.has("pv") ? 0 : s.time));
   const playing = usePlayback((s) => s.playing);
   const project = useProject((s) => s.project);
   const selection = useProject((s) => s.selection);
