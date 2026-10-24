@@ -529,7 +529,7 @@ pub fn build(project: &Project, options: &ExportOptions) -> Result<ExportPlan, S
 
     let (handles, joins) = plan_transitions(&layers);
     // The open run of clips joined by transitions: (label, start, accumulated length).
-    let mut run: Option<(String, f64, f64)> = None;
+    let mut run: Option<(String, f64, f64, usize)> = None;
     let mut extra_inputs: Vec<Vec<String>> = Vec::new();
     let mut run_count = 0usize;
     for (index, layer) in layers.iter().enumerate() {
@@ -560,12 +560,12 @@ pub fn build(project: &Project, options: &ExportOptions) -> Result<ExportPlan, S
             let own = h.pre + length + h.post;
             let (label, start, acc) = match run.take() {
                 None => (format!("v{index}"), clip.start, own),
-                Some((prev, start, acc)) => {
+                Some((prev, start, acc, last)) => {
                     // Join the run so far with this clip over the incoming transition.
                     let d = 2.0 * h.pre;
                     let offset = acc - d;
                     let out = format!("x{index}");
-                    let previous = &layers[index - 1];
+                    let previous = &layers[last];
                     let t = previous.clip.transition.as_ref();
                     let frames = options
                         .transition_frames
@@ -604,7 +604,7 @@ pub fn build(project: &Project, options: &ExportOptions) -> Result<ExportPlan, S
                 }
             };
             if joins[index].is_some() {
-                run = Some((label, start, acc));
+                run = Some((label, start, acc, index));
             } else {
                 let placed = if single {
                     label
@@ -720,6 +720,89 @@ pub fn build(project: &Project, options: &ExportOptions) -> Result<ExportPlan, S
         options.output_path.clone(),
     ]);
     Ok(ExportPlan { args, duration })
+}
+
+/// The two sides of one shader transition, rendered by FFmpeg through the clips' own chains
+/// (effects, LUT, animations) so the frontend only has to blend them with the GLSL.
+#[derive(Debug, Clone, serde::Serialize, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub struct TransitionSource {
+    /// Outgoing clip (its `transition` holds the shader); the key of `transition_frames`.
+    pub clip_id: String,
+    pub next_id: String,
+    pub frames: u32,
+    pub duration: f64,
+    /// `from_00000.png`... and `to_00000.png`... in this directory.
+    pub dir: String,
+}
+
+/// Render the source frames of every shader transition on the timeline into `dir`.
+pub fn transition_sources(
+    project: &Project,
+    width: u32,
+    height: u32,
+    fps: u32,
+    dir: &Path,
+) -> Result<Vec<TransitionSource>, AudioError> {
+    let width = even(width);
+    let height = even(height);
+    let fps = fps.clamp(1, 240);
+    let layers = collect_layers(project, true, false).map_err(AudioError::Failed)?;
+    let (handles, joins) = plan_transitions(&layers);
+    let mut out = Vec::new();
+    for (a, d) in joins.iter().enumerate() {
+        let Some(d) = *d else { continue };
+        if !layers[a].clip.transition.as_ref().is_some_and(|t| t.is_shader()) {
+            continue;
+        }
+        let Some(b) = (a + 1..layers.len()).find(|&k| {
+            layers[k].with_video && layers[k].clip.track_id == layers[a].clip.track_id
+        }) else {
+            continue;
+        };
+        cancel::check()?;
+        let frames = ((d * fps as f64).round() as u32).max(1);
+        let sub = dir.join(format!("t{}", out.len()));
+        std::fs::create_dir_all(&sub).map_err(|e| AudioError::Failed(e.to_string()))?;
+        for (side, k, start) in [
+            ("from", a, handles[a].pre + layers[a].clip.duration() + handles[a].post - d),
+            ("to", b, 0.0),
+        ] {
+            let layer = &layers[k];
+            let media_duration = project
+                .media(&layer.clip.media_id)
+                .map(|m| m.duration)
+                .unwrap_or(0.0);
+            let (input, pre_src) = layer_input(layer, handles[k], media_duration, fps);
+            let mut chain = video_chain(layer, handles[k], pre_src, media_duration, width, height, fps);
+            chain.push(format!("trim=start={start:.6}:duration={d:.6}"));
+            chain.push("setpts=PTS-STARTPTS".into());
+            chain.push(format!("tpad=stop={frames}:stop_mode=clone"));
+            chain.push("format=rgba".into());
+            let mut args: Vec<String> = vec!["-hide_banner".into(), "-y".into(), "-loglevel".into(), "error".into()];
+            args.extend(input);
+            args.extend([
+                "-filter_complex".into(),
+                format!("[0:v]{}[o]", chain.join(",")),
+                "-map".into(),
+                "[o]".into(),
+                "-frames:v".into(),
+                frames.to_string(),
+                "-start_number".into(),
+                "0".into(),
+                sub.join(format!("{side}_%05d.png")).display().to_string(),
+            ]);
+            ffmpeg::run(&args, None, None, "Transition")?;
+        }
+        out.push(TransitionSource {
+            clip_id: layers[a].clip.id.clone(),
+            next_id: layers[b].clip.id.clone(),
+            frames,
+            duration: d,
+            dir: sub.display().to_string(),
+        });
+    }
+    Ok(out)
 }
 
 /// Build and run an export. Progress is 0..1 of the timeline length.

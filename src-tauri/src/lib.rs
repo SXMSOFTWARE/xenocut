@@ -79,6 +79,7 @@ pub fn run() {
             app::text_layer_frame,
             app::text_layer_finish,
             app::text_layer_discard,
+            app::transition_sources,
             app::model_status,
             app::model_download,
             app::model_delete,

@@ -351,8 +351,37 @@ pub fn text_layer_finish(
     app: AppHandle,
     session: String,
     entries: Vec<textlayer::Entry>,
+    name: Option<String>,
 ) -> Result<String, String> {
-    textlayer::finish(&cache_root(&app), &session, &entries)
+    let name = name.unwrap_or_else(|| "layer".into());
+    textlayer::finish_named(&cache_root(&app), &session, &name, &entries)
+}
+
+/// Render the two sides of every shader transition into the frame session `session`
+/// (`<session>/src/tN/from_*.png`, `to_*.png`); the frontend blends them with the GLSL.
+#[tauri::command]
+pub async fn transition_sources(
+    app: AppHandle,
+    project: Project,
+    session: String,
+    width: u32,
+    height: u32,
+    fps: u32,
+) -> Result<Vec<export::TransitionSource>, String> {
+    if !textlayer::valid_session(&session) {
+        return Err("bad session".into());
+    }
+    let dir = textlayer::root(&cache_root(&app)).join(&session);
+    if !dir.is_dir() {
+        return Err("session expired".into());
+    }
+    cancel::begin();
+    tauri::async_runtime::spawn_blocking(move || {
+        export::transition_sources(&project, width, height, fps, &dir.join("src"))
+            .map_err(|e| e.to_string())
+    })
+    .await
+    .map_err(|e| e.to_string())?
 }
 
 #[tauri::command]

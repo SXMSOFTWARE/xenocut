@@ -85,6 +85,19 @@ pub fn concat_list(entries: &[Entry]) -> String {
 
 /// Write the list; returns its path, which goes into `ExportOptions::text_overlay`.
 pub fn finish(cache: &Path, session: &str, entries: &[Entry]) -> Result<String, String> {
+    finish_named(cache, session, "layer", entries)
+}
+
+/// Like `finish`, with a list name (letters, digits, `-`) so one session can hold several lists.
+pub fn finish_named(
+    cache: &Path,
+    session: &str,
+    name: &str,
+    entries: &[Entry],
+) -> Result<String, String> {
+    if !valid_session(name) {
+        return Err("bad list name".into());
+    }
     if entries.is_empty() {
         return Err("empty text layer".into());
     }
@@ -94,7 +107,7 @@ pub fn finish(cache: &Path, session: &str, entries: &[Entry]) -> Result<String, 
             return Err(format!("text frame {} is missing", entry.frame));
         }
     }
-    let list = dir.join("layer.ffconcat");
+    let list = dir.join(format!("{name}.ffconcat"));
     std::fs::write(&list, concat_list(entries)).map_err(|e| e.to_string())?;
     Ok(list.display().to_string())
 }
