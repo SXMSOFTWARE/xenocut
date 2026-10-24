@@ -1,0 +1,1 @@
+openfx 2303ff811bee3ffe085287602f684fe5fe5357e0 (NatronGitHub/openfx, BSD-3-Clause); expat 2.4.3 lib (MIT)
