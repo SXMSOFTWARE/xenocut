@@ -27,6 +27,15 @@ pub const RGB_SPLIT: f64 = 0.01;
 pub const VIGNETTE_ANGLE: f64 = 1.3;
 pub const GRAIN_STRENGTH: f64 = 40.0;
 pub const SHARPEN_AMOUNT: f64 = 2.0;
+/// Beat hits play at the start of a clip (AMV cuts land on beats). Flash: white that fades
+/// linearly from `amount` to nothing over `amount * FLASH_DECAY` seconds.
+pub const FLASH_DECAY: f64 = 0.25;
+/// Punch: a zoom kick of up to PUNCH_RANGE easing out over PUNCH_DECAY seconds.
+pub const PUNCH_RANGE: f64 = 0.12;
+pub const PUNCH_DECAY: f64 = 0.35;
+/// Hit shake: shake of up to HIT_SHAKE_RANGE easing out over HIT_SHAKE_DECAY seconds.
+pub const HIT_SHAKE_RANGE: f64 = 0.04;
+pub const HIT_SHAKE_DECAY: f64 = 0.4;
 
 /// Shake: two sines per axis as (weight, frequency in Hz, phase).
 pub const SHAKE_X: [(f64, f64, f64); 2] = [(0.6, 7.3, 0.0), (0.4, 11.1, 1.3)];
@@ -102,6 +111,13 @@ pub fn picture(effects: &[Effect], height: u32) -> Vec<String> {
     if grain > 0 {
         out.push(format!("format=yuv444p,noise=c0s={grain}:c0f=t+u"));
     }
+    let flash = amount(effects, "flash").clamp(0.0, 1.0);
+    if flash > 0.0 {
+        // fade=in from white, started (1 - amount) of the way through: white = amount - t / FLASH_DECAY.
+        // `fade` refuses a negative start, so shift the clock instead (microsecond timebase: exact).
+        let k = (1.0 - flash) * FLASH_DECAY;
+        out.push(format!("settb=AVTB,setpts=PTS+{k:.4}/TB,fade=t=in:st=0:d={FLASH_DECAY}:color=white,setpts=PTS-{k:.4}/TB"));
+    }
     if !out.is_empty() {
         out.push("format=yuva420p".into());
     }
@@ -114,7 +130,9 @@ pub fn motion(effects: &[Effect], length: f64, fps: u32) -> Option<String> {
     let zin = amount(effects, "zoomIn").clamp(0.0, 1.0) * ZOOM_RANGE;
     let zout = amount(effects, "zoomOut").clamp(0.0, 1.0) * ZOOM_RANGE;
     let shake = amount(effects, "shake").clamp(0.0, 1.0) * SHAKE_RANGE;
-    if zin <= 0.0 && zout <= 0.0 && shake <= 0.0 {
+    let punch = amount(effects, "punch").clamp(0.0, 1.0) * PUNCH_RANGE;
+    let hit = amount(effects, "hitShake").clamp(0.0, 1.0) * HIT_SHAKE_RANGE;
+    if zin <= 0.0 && zout <= 0.0 && shake <= 0.0 && punch <= 0.0 && hit <= 0.0 {
         return None;
     }
     let t = format!("(in/{fps})");
@@ -126,15 +144,26 @@ pub fn motion(effects: &[Effect], length: f64, fps: u32) -> Option<String> {
     if zout > 0.0 {
         z = format!("{z}*(1+{zout:.4}*(1-{p}))");
     }
+    let ease = |decay: f64| format!("pow(max(0,1-{t}/{decay}),2)");
+    if punch > 0.0 {
+        z = format!("{z}*(1+{punch:.4}*{})", ease(PUNCH_DECAY));
+    }
+    // Shake amplitude: the steady shake plus the hit that eases out.
+    let amp = match (shake > 0.0, hit > 0.0) {
+        (true, true) => format!("({shake:.4}+{hit:.4}*{})", ease(HIT_SHAKE_DECAY)),
+        (true, false) => format!("{shake:.4}"),
+        (false, true) => format!("{hit:.4}*{}", ease(HIT_SHAKE_DECAY)),
+        _ => String::new(),
+    };
     let wave = |parts: &[(f64, f64, f64); 2]| {
         let terms: Vec<String> = parts
             .iter()
             .map(|(w, f, ph)| format!("{w}*sin({:.5}*{t}+{ph})", 2.0 * std::f64::consts::PI * f))
             .collect();
-        format!("{shake:.4}*({})", terms.join("+"))
+        format!("{amp}*({})", terms.join("+"))
     };
-    let (dx, dy) = if shake > 0.0 {
-        z = format!("{z}*{:.4}", 1.0 + 2.2 * shake);
+    let (dx, dy) = if !amp.is_empty() {
+        z = format!("{z}*(1+2.2*{amp})");
         (wave(&SHAKE_X), wave(&SHAKE_Y))
     } else {
         ("0".to_string(), "0".to_string())
@@ -187,7 +216,16 @@ mod tests {
         let f = motion(&[fx("zoomIn", 1.0), fx("shake", 1.0)], 4.0, 30).unwrap();
         assert!(f.starts_with("perspective="));
         assert!(f.contains("clip((in/30)/4.0000,0,1)"));
-        assert!(f.contains("1.0550")); // shake margin: 1 + 2.2 * 0.025
+        assert!(f.contains("(1+2.2*0.0250)")); // shake margin
         assert!(f.ends_with("eval=frame"));
+    }
+
+    #[test]
+    fn beat_hits() {
+        let f = motion(&[fx("punch", 1.0), fx("hitShake", 0.5)], 2.0, 30).unwrap();
+        assert!(f.contains("(1+0.1200*pow(max(0,1-(in/30)/0.35),2))"), "{f}");
+        assert!(f.contains("0.0200*pow(max(0,1-(in/30)/0.4),2)"), "{f}");
+        let chain = picture(&[fx("flash", 0.6)], 720).join(",");
+        assert!(chain.contains("setpts=PTS+0.1000/TB,fade=t=in:st=0:d=0.25:color=white,setpts=PTS-0.1000/TB"), "{chain}");
     }
 }

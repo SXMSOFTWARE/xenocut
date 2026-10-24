@@ -21,7 +21,10 @@ export type EffectKind =
   | "flip"
   | "zoomIn"
   | "zoomOut"
-  | "shake";
+  | "shake"
+  | "flash"
+  | "punch"
+  | "hitShake";
 
 export interface ClipEffect {
   kind: EffectKind;
@@ -29,7 +32,7 @@ export interface ClipEffect {
   amount: number;
 }
 
-export type EffectGroup = "adjust" | "look" | "motion";
+export type EffectGroup = "adjust" | "look" | "motion" | "hit";
 
 export interface EffectDef {
   kind: EffectKind;
@@ -60,6 +63,9 @@ export const EFFECTS: EffectDef[] = [
   { kind: "shake", group: "motion", initial: 0.5 },
   { kind: "mirror", group: "motion", toggle: true, initial: 1 },
   { kind: "flip", group: "motion", toggle: true, initial: 1 },
+  { kind: "flash", group: "hit", initial: 0.7 },
+  { kind: "punch", group: "hit", initial: 0.6 },
+  { kind: "hitShake", group: "hit", initial: 0.6 },
 ];
 
 export const EFFECT_DEF = Object.fromEntries(EFFECTS.map((d) => [d.kind, d])) as Record<EffectKind, EffectDef>;
@@ -71,6 +77,12 @@ export const RGB_SPLIT = 0.01;
 export const VIGNETTE_ANGLE = 1.3;
 export const GRAIN_STRENGTH = 40;
 export const SHARPEN_AMOUNT = 2;
+/** Beat hits play at the clip start: white flash fading over `amount * FLASH_DECAY` s. */
+export const FLASH_DECAY = 0.25;
+export const PUNCH_RANGE = 0.12;
+export const PUNCH_DECAY = 0.35;
+export const HIT_SHAKE_RANGE = 0.04;
+export const HIT_SHAKE_DECAY = 0.4;
 const SHAKE_X: [number, number, number][] = [
   [0.6, 7.3, 0],
   [0.4, 11.1, 1.3],
@@ -192,23 +204,35 @@ export interface Motion {
   dy: number;
 }
 
+/** White flash opacity at local time `tau` (export: `fade` from white, see effects.rs). */
+export function flashAt(effects: ClipEffect[], tau: number): number {
+  const a = clamp(amount(effects, "flash"), 0, 1);
+  return a > 0 ? clamp(a - Math.max(0, tau) / FLASH_DECAY, 0, 1) : 0;
+}
+
+const ease = (tau: number, decay: number) => Math.max(0, 1 - Math.max(0, tau) / decay) ** 2;
+
 /** Zoom / shake / flips at local time `tau` (seconds from the clip start) of a clip `length` long. */
 export function motionAt(effects: ClipEffect[], tau: number, length: number): Motion | null {
   const zin = clamp(amount(effects, "zoomIn"), 0, 1) * ZOOM_RANGE;
   const zout = clamp(amount(effects, "zoomOut"), 0, 1) * ZOOM_RANGE;
   const shake = clamp(amount(effects, "shake"), 0, 1) * SHAKE_RANGE;
+  const punch = clamp(amount(effects, "punch"), 0, 1) * PUNCH_RANGE;
+  const hit = clamp(amount(effects, "hitShake"), 0, 1) * HIT_SHAKE_RANGE;
   const mirror = has(effects, "mirror");
   const flip = has(effects, "flip");
-  if (zin <= 0 && zout <= 0 && shake <= 0 && !mirror && !flip) return null;
+  if (zin <= 0 && zout <= 0 && shake <= 0 && punch <= 0 && hit <= 0 && !mirror && !flip) return null;
   const p = clamp(tau / Math.max(1e-3, length), 0, 1);
   let z = 1;
   if (zin > 0) z *= 1 + zin * p;
   if (zout > 0) z *= 1 + zout * (1 - p);
+  if (punch > 0) z *= 1 + punch * ease(tau, PUNCH_DECAY);
   let dx = 0;
   let dy = 0;
-  if (shake > 0) {
-    z *= 1 + 2.2 * shake;
-    const wave = (parts: [number, number, number][]) => shake * parts.reduce((s, [w, f, ph]) => s + w * Math.sin(2 * Math.PI * f * tau + ph), 0);
+  const amp = shake + (hit > 0 ? hit * ease(tau, HIT_SHAKE_DECAY) : 0);
+  if (shake > 0 || hit > 0) {
+    z *= 1 + 2.2 * amp;
+    const wave = (parts: [number, number, number][]) => amp * parts.reduce((s, [w, f, ph]) => s + w * Math.sin(2 * Math.PI * f * tau + ph), 0);
     dx = wave(SHAKE_X);
     dy = wave(SHAKE_Y);
   }
@@ -223,5 +247,5 @@ export function motionCss(m: Motion | null): string {
 
 /** Is anything animated (needs a re-render every frame while paused scrubbing)? */
 export function hasMotion(effects: ClipEffect[]): boolean {
-  return effects.some((e) => e.kind === "zoomIn" || e.kind === "zoomOut" || e.kind === "shake");
+  return effects.some((e) => ["zoomIn", "zoomOut", "shake", "flash", "punch", "hitShake"].includes(e.kind));
 }

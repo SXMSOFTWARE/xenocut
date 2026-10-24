@@ -25,6 +25,7 @@ export function Preview() {
   const textRef = useRef<HTMLCanvasElement>(null);
   const layerRef = useRef<HTMLDivElement>(null);
   const vignetteRef = useRef<HTMLDivElement>(null);
+  const flashRef = useRef<HTMLDivElement>(null);
   const grainRef = useRef<HTMLDivElement>(null);
   const fxSvgRef = useRef<SVGFilterElement>(null);
   const stageRef = useRef<HTMLDivElement>(null);
@@ -57,7 +58,7 @@ export function Preview() {
   useEffect(() => {
     engine.attach(videoRef.current!, imageRef.current!);
     engine.attachText(textRef.current);
-    engine.attachFx({ layer: layerRef.current!, vignette: vignetteRef.current!, grain: grainRef.current!, svg: fxSvgRef.current! });
+    engine.attachFx({ layer: layerRef.current!, vignette: vignetteRef.current!, grain: grainRef.current!, flash: flashRef.current!, svg: fxSvgRef.current! });
     return () => {
       engine.attachFx(null);
       engine.detach();
@@ -179,6 +180,7 @@ export function Preview() {
           <img ref={imageRef} className="stage-media" alt="" draggable={false} />
           <div ref={vignetteRef} className="stage-fx" />
           <div ref={grainRef} className="stage-fx stage-grain" />
+          <div ref={flashRef} className="stage-fx stage-flash" />
         </div>
         <canvas ref={textRef} className="stage-text" aria-hidden="true" />
         <TextSelection width={width} height={height} />

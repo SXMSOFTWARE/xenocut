@@ -1,4 +1,5 @@
 import {
+  Activity,
   Aperture,
   Blend,
   CircleDot,
@@ -7,6 +8,7 @@ import {
   FlipHorizontal2,
   FlipVertical2,
   Layers,
+  Maximize2,
   Focus,
   Scissors,
   SlidersHorizontal,
@@ -18,6 +20,7 @@ import {
   Vibrate,
   Wand2,
   X,
+  Zap,
   ZoomIn,
   ZoomOut,
   type LucideIcon,
@@ -244,9 +247,12 @@ const FX_ICONS: Record<EffectKind, LucideIcon> = {
   shake: Vibrate,
   mirror: FlipHorizontal2,
   flip: FlipVertical2,
+  flash: Zap,
+  punch: Maximize2,
+  hitShake: Activity,
 };
 
-const FX_GROUPS: EffectGroup[] = ["adjust", "look", "motion"];
+const FX_GROUPS: EffectGroup[] = ["adjust", "look", "motion", "hit"];
 
 /** Per-clip effects: chips add / remove, applied ones get an amount slider. */
 function EffectsSection({ clip }: { clip: Clip }) {

@@ -9,7 +9,7 @@ import type { Clip, MediaItem, Project, Track } from "../project/types";
 import { usePlayback } from "../store/playback";
 import { useProject } from "../store/project";
 import { drawTexts, textStateKey } from "../text/render";
-import { motionAt, motionCss, previewFx, vignetteGradient } from "../project/effects";
+import { flashAt, motionAt, motionCss, previewFx, vignetteGradient } from "../project/effects";
 
 const HARD_DRIFT = 0.3;
 const PAUSED_EPS = 1 / 120;
@@ -70,6 +70,8 @@ export interface FxElements {
   layer: HTMLElement;
   vignette: HTMLElement;
   grain: HTMLElement;
+  /** White beat-hit flash over the fitted picture. */
+  flash: HTMLElement;
   /** `<filter id="xc-fx-svg">`: sharpen and RGB split. */
   svg: SVGFilterElement;
 }
@@ -156,6 +158,7 @@ class PlaybackEngine {
         setStyle(fx.layer, "transform", "");
         setStyle(fx.vignette, "display", "none");
         setStyle(fx.grain, "display", "none");
+        setStyle(fx.flash, "display", "none");
       }
       return;
     }
@@ -182,7 +185,7 @@ class PlaybackEngine {
     const key = `${visual.clip.id}|${rect}|${look.vignette}|${look.grain}`;
     if (key !== this.fxKey) {
       this.fxKey = key;
-      for (const o of [fx.vignette, fx.grain]) {
+      for (const o of [fx.vignette, fx.grain, fx.flash]) {
         o.style.left = `${(100 - rw) / 2}%`;
         o.style.top = `${(100 - rh) / 2}%`;
         o.style.width = `${rw}%`;
@@ -201,6 +204,9 @@ class PlaybackEngine {
       fx.grain.style.backgroundPosition = `${x}px ${y}px`;
     }
     const local = t - visual.clip.start;
+    const flash = flashAt(effects, local);
+    setStyle(fx.flash, "display", flash > 0 ? "block" : "none");
+    if (flash > 0) setStyle(fx.flash, "opacity", flash.toFixed(3));
     setStyle(fx.layer, "transform", motionCss(motionAt(effects, local, clipDuration(visual.clip))));
   }
 

@@ -442,6 +442,7 @@ export const en: Record<keyof typeof tr, string> = {
   "fx.group.adjust": "Adjust",
   "fx.group.look": "Look",
   "fx.group.motion": "Motion",
+  "fx.group.hit": "Beat hits",
   "fx.brightness": "Brightness",
   "fx.contrast": "Contrast",
   "fx.saturation": "Saturation",
@@ -457,6 +458,9 @@ export const en: Record<keyof typeof tr, string> = {
   "fx.zoomIn": "Zoom in",
   "fx.zoomOut": "Zoom out",
   "fx.shake": "Shake",
+  "fx.flash": "Flash",
+  "fx.punch": "Zoom punch",
+  "fx.hitShake": "Hit shake",
   "fx.mirror": "Mirror",
   "fx.flip": "Flip",
 };

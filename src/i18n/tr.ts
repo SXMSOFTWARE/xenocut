@@ -452,6 +452,7 @@ export const tr = {
   "fx.group.adjust": "Ayar",
   "fx.group.look": "Görünüm",
   "fx.group.motion": "Hareket",
+  "fx.group.hit": "Vuruş efektleri",
   "fx.brightness": "Parlaklık",
   "fx.contrast": "Kontrast",
   "fx.saturation": "Doygunluk",
@@ -467,6 +468,9 @@ export const tr = {
   "fx.zoomIn": "Yakınlaş",
   "fx.zoomOut": "Uzaklaş",
   "fx.shake": "Sarsıntı",
+  "fx.flash": "Flaş",
+  "fx.punch": "Zoom vuruşu",
+  "fx.hitShake": "Vuruş sarsıntısı",
   "fx.mirror": "Ayna",
   "fx.flip": "Ters çevir",
 };
