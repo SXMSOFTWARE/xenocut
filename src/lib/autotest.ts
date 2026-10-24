@@ -19,6 +19,7 @@ import { useAssets } from "../store/assets";
 import type { Grade } from "../project/grade";
 import { addEffectLayer, addTextClip, projectDuration, updateClip } from "../project/ops";
 import type { ClipEffect, EffectKind } from "../project/effects";
+import type { Clip } from "../project/types";
 import { PRESETS } from "../project/presets";
 import { textFromPreset } from "../project/text";
 import { renderTextLayer, discardTextLayer } from "../text/exportLayer";
@@ -87,6 +88,7 @@ export async function runAutotest(file: string) {
   await amvProbe();
   await layoutProbe();
   await fxProbe();
+  await animProbe();
   await perfProbe();
 }
 
@@ -149,6 +151,32 @@ async function fxProbe() {
   document.querySelector(".fx-section")?.scrollIntoView({ block: "start" });
   await sleep(300);
   log("autotest", "fx-ready");
+  await sleep(800);
+  await exportProbe(o.export);
+}
+
+/** anim=in:slideLeft:0.6+out:spin:0.5 (or combo:pulse:1)[,at=0.3][,tab=in][,export=…]: animates the first video clip. */
+async function animProbe() {
+  const o = opts();
+  if (!o.anim) return;
+  const anim: Record<string, { kind: string; duration: number }> = {};
+  for (const part of o.anim.split("+")) {
+    const [slot, kind, d] = part.split(":");
+    anim[slot] = { kind, duration: Number(d ?? 0.5) };
+  }
+  const project = useProject.getState().project!;
+  const clip = project.clips.find((c) => project.tracks.find((t) => t.id === c.trackId)?.kind === "video" && !c.text);
+  if (!clip) return log("autotest", "ANIM no clip");
+  useProject.getState().commit((p) => updateClip(p, clip.id, { anim: anim as Clip["anim"] }));
+  useProject.getState().select([clip.id]);
+  useEditorUi.setState({ panel: "anim" });
+  await sleep(400);
+  if (o.tab) (document.querySelector(`.anim-panel .fx-tab:nth-child(${["in", "out", "combo"].indexOf(o.tab) + 1})`) as HTMLElement | null)?.click();
+  engine.seek(clip.start + Number(o.at ?? 0.3));
+  await sleep(1200);
+  const v = document.querySelector("video.stage-media") as HTMLElement | null;
+  log("autotest", `ANIM ${JSON.stringify({ anim, transform: (document.querySelector(".stage-fxwrap") as HTMLElement | null)?.style.transform, opacity: v?.style.opacity })}`);
+  log("autotest", "anim-ready");
   await sleep(800);
   await exportProbe(o.export);
 }

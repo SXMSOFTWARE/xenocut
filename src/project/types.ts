@@ -1,4 +1,5 @@
 import type { ClipEffect } from "./effects";
+import type { ClipAnim } from "./anims";
 import type { Grade } from "./grade";
 import type { TextContent } from "./text";
 
@@ -63,6 +64,8 @@ export interface Clip {
   text?: TextContent;
   /** Video effects (see project/effects.ts). */
   effects?: ClipEffect[];
+  /** In / Out / Combo animations (see project/anims.ts). */
+  anim?: ClipAnim;
 }
 
 export interface Project {

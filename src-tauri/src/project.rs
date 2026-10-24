@@ -110,6 +110,9 @@ pub struct Clip {
     /// Video effects (see `effects.rs`), applied in a fixed order.
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub effects: Vec<crate::effects::Effect>,
+    /// In / Out / Combo animations (see `anims.rs`).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub anim: Option<crate::anims::ClipAnim>,
 }
 
 impl Clip {
@@ -235,6 +238,7 @@ mod tests {
             fade_out: 0.0,
             text: None,
             effects: vec![],
+            anim: None,
         });
         let text = serde_json::to_string(&project).unwrap();
         assert!(text.contains("\"trackId\":\"v1\""));

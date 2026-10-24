@@ -2223,3 +2223,44 @@ body.is-resizing .title-row {
   color: rgba(255, 255, 255, 0.86);
   word-break: normal;
 }
+
+/* Clip animations on the timeline: In / Out windows (inner edge drags the duration), Combo line. */
+.clip-anim {
+  position: absolute;
+  bottom: 0;
+  height: 5px;
+  background: rgba(255, 214, 92, 0.85);
+  pointer-events: none;
+  z-index: 2;
+}
+.clip-anim.in {
+  left: 0;
+  border-radius: 0 3px 0 0;
+}
+.clip-anim.out {
+  right: 0;
+  border-radius: 3px 0 0 0;
+}
+.clip-anim.combo {
+  left: 0;
+  right: 0;
+  height: 3px;
+  background: repeating-linear-gradient(90deg, rgba(255, 214, 92, 0.85) 0 6px, transparent 6px 10px);
+}
+.clip-anim-h {
+  position: absolute;
+  top: -6px;
+  width: 9px;
+  height: 11px;
+  border-radius: 3px;
+  background: #ffd65c;
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.5);
+  cursor: ew-resize;
+  pointer-events: auto;
+}
+.clip-anim.in .clip-anim-h {
+  right: -4px;
+}
+.clip-anim.out .clip-anim-h {
+  left: -4px;
+}

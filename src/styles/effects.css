@@ -326,3 +326,23 @@
 .m-editor .fx-range-row {
   gap: 8px;
 }
+
+/* Animation tiles: the picture moves inside a dark frame. */
+.anim-thumb {
+  background: #0c0c0e;
+}
+.anim-thumb img {
+  will-change: transform, opacity;
+}
+.anim-thumb.none {
+  color: rgba(255, 255, 255, 0.45);
+}
+.fx-tab .anim-dot {
+  display: inline-block;
+  width: 5px;
+  height: 5px;
+  margin-left: 5px;
+  border-radius: 50%;
+  background: #ffd65c;
+  vertical-align: middle;
+}

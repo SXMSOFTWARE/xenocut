@@ -1,0 +1,33 @@
+{
+  "_comment": "Clip animations (In / Out / Combo). Read by src/project/anims.ts (preview) and src-tauri/src/anims.rs (export), so both compute the same curves. In/Out entries describe the hidden state: s = scale, tx/ty = offset in frame widths/heights, rot = degrees, alpha = fades with it (alphaSpan = share of the window the fade takes). curve: ease | back | bounce | linear. fx: extra effects [kind, amount, from, to] with from/to as shares of the window counted from the hidden moment (may exceed 1). An Out animation is its In animation played backwards. Combo entries loop over the whole clip: terms [param, amplitude, wave] with param s|tx|ty|rot and wave sin | bump | beat | turn (one turn per period) | ramp (0 to 1 over the clip) | ramp1 (1 to 0); duration = the loop period.",
+  "in": {
+    "fade": { "alpha": true, "curve": "linear" },
+    "slideLeft": { "tx": -1, "curve": "ease" },
+    "slideRight": { "tx": 1, "curve": "ease" },
+    "slideUp": { "ty": 1, "curve": "ease" },
+    "slideDown": { "ty": -1, "curve": "ease" },
+    "rise": { "ty": 0.12, "alpha": true, "curve": "ease" },
+    "zoomIn": { "s": 0.3, "alpha": true, "alphaSpan": 0.6, "curve": "ease" },
+    "zoomOut": { "s": 1.8, "alpha": true, "alphaSpan": 0.6, "curve": "ease" },
+    "pop": { "s": 0.0, "alpha": true, "alphaSpan": 0.3, "curve": "back" },
+    "spin": { "s": 0.2, "rot": -180, "alpha": true, "alphaSpan": 0.5, "curve": "ease" },
+    "swirl": { "s": 1.6, "rot": 90, "alpha": true, "alphaSpan": 0.6, "curve": "ease" },
+    "bounce": { "ty": -1, "curve": "bounce" },
+    "blurIn": { "alpha": true, "alphaSpan": 0.4, "curve": "ease", "fx": [["blur", 1.0, 0.0, 0.5], ["blur", 0.45, 0.5, 0.8]] },
+    "glitchIn": { "alpha": true, "alphaSpan": 0.25, "curve": "linear", "fx": [["rgbSplit", 1.0, 0.0, 1.0], ["hitShake", 0.7, 0.0, 0.6], ["flash", 0.5, 0.0, 0.15]] },
+    "shakeIn": { "s": 1.15, "curve": "ease", "fx": [["hitShake", 1.0, 1.0, 2.5]] },
+    "flashIn": { "curve": "linear", "fx": [["flash", 1.0, 0.0, 1.0]] }
+  },
+  "combo": {
+    "pulse": { "terms": [["s", 0.06, "bump"]], "duration": 1.0 },
+    "heartbeat": { "terms": [["s", 0.12, "beat"]], "duration": 0.8 },
+    "wobble": { "terms": [["rot", 4, "sin"]], "duration": 1.2 },
+    "swing": { "terms": [["rot", 9, "sin"], ["s", 0.08, "bump"]], "duration": 1.6 },
+    "float": { "terms": [["ty", 0.025, "sin"]], "duration": 2.0 },
+    "sway": { "terms": [["tx", 0.03, "sin"]], "duration": 2.0 },
+    "spinLoop": { "terms": [["rot", 360, "turn"]], "duration": 3.0 },
+    "zoomPush": { "terms": [["s", 0.15, "ramp"]], "duration": 1.0 },
+    "zoomPull": { "terms": [["s", 0.15, "ramp1"]], "duration": 1.0 },
+    "jitter": { "terms": [], "duration": 1.0, "fx": [["shake", 0.45, 0.0, 1.0]] }
+  }
+}

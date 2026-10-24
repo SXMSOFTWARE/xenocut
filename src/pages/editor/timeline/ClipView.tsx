@@ -1,6 +1,7 @@
 import { memo, type PointerEvent as ReactPointerEvent } from "react";
 import { fileSrc } from "../../../lib/backend";
 import { clipDuration, updateClip } from "../../../project/ops";
+import { windows } from "../../../project/anims";
 import type { Clip, MediaAssets, MediaItem, Project, TrackKind } from "../../../project/types";
 import { useAssets } from "../../../store/assets";
 import { ChevronLeft, ChevronRight, Sparkles, Type } from "lucide-react";
@@ -54,6 +55,7 @@ export const ClipView = memo(function ClipView({ clip, media, trackKind, pps, se
         {clip.fadeIn > 0 && <span className="clip-fade in" style={{ width: Math.min(width / 2, clip.fadeIn * pps) }} />}
         {clip.fadeOut > 0 && <span className="clip-fade out" style={{ width: Math.min(width / 2, clip.fadeOut * pps) }} />}
       </div>
+      {visual && clip.anim && <AnimBars clip={clip} pps={pps} selected={selected} />}
       {selected && <FxRangeBar clip={clip} pps={pps} />}
       <span className="clip-handle start" onPointerDown={(e) => beginClipDrag(e, clip.id, "trim-start")} />
       <span className="clip-handle end" onPointerDown={(e) => beginClipDrag(e, clip.id, "trim-end")} />
@@ -70,6 +72,52 @@ export const ClipView = memo(function ClipView({ clip, media, trackKind, pps, se
     </div>
   );
 });
+
+/** In / Out animation windows over the clip (a combo spans it all); the inner edge sets the duration. */
+function AnimBars({ clip, pps, selected }: { clip: Clip; pps: number; selected: boolean }) {
+  const length = clipDuration(clip);
+  const { din, dout } = windows(clip.anim, length);
+  const drag = (e: ReactPointerEvent, side: "in" | "out") => {
+    e.stopPropagation();
+    e.preventDefault();
+    const slot = clip.anim?.[side];
+    if (!slot) return;
+    const x0 = e.clientX;
+    const d0 = side === "in" ? din : dout;
+    const room = side === "in" ? length - dout : length - din;
+    const store = useProject.getState();
+    store.beginGesture();
+    const move = (ev: PointerEvent) => {
+      const dx = (ev.clientX - x0) / pps;
+      const d = Math.round(Math.max(0.1, Math.min(room, d0 + (side === "in" ? dx : -dx))) * 100) / 100;
+      store.transient((p) => updateClip(p, clip.id, { anim: { ...clip.anim, [side]: { ...slot, duration: d } } }));
+      engine.seek(clip.start + (side === "in" ? d : length - d));
+    };
+    const up = () => {
+      window.removeEventListener("pointermove", move);
+      window.removeEventListener("pointerup", up);
+      store.endGesture();
+    };
+    window.addEventListener("pointermove", move);
+    window.addEventListener("pointerup", up);
+  };
+  const label = (side: "in" | "out") => t(`anim.edge.${clip.anim![side]!.kind}` as Key);
+  return (
+    <>
+      {din > 0 && (
+        <span className="clip-anim in" style={{ width: din * pps }} title={label("in")}>
+          {selected && <i className="clip-anim-h" onPointerDown={(e) => drag(e, "in")} />}
+        </span>
+      )}
+      {dout > 0 && (
+        <span className="clip-anim out" style={{ width: dout * pps }} title={label("out")}>
+          {selected && <i className="clip-anim-h" onPointerDown={(e) => drag(e, "out")} />}
+        </span>
+      )}
+      {clip.anim?.combo && <span className="clip-anim combo" title={t(`anim.combo.${clip.anim.combo.kind}` as Key)} />}
+    </>
+  );
+}
 
 /** A text clip: a teal pill that shows its words. */
 export const TextClipView = memo(function TextClipView({ clip, pps, selected }: { clip: Clip; pps: number; selected: boolean }) {

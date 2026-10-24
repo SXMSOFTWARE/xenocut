@@ -16,6 +16,7 @@ import { useRouter } from "../../store/router";
 import { addTrack, toggleTrack } from "./commands";
 import { Inspector } from "./Inspector";
 import { EffectsPanel } from "./EffectBrowser";
+import { AnimPanel } from "./AnimPanel";
 import { TextPanel } from "./TextPanel";
 import { LyricsPanel } from "./LyricsPanel";
 import { AmvPanel } from "./AmvPanel";
@@ -36,6 +37,7 @@ const TITLES: Record<PanelId, Key> = {
   lyrics: "lyrics.title",
   amv: "amv.title",
   fx: "fx.title",
+  anim: "anim.title",
   format: "mobile.format",
 };
 
@@ -57,6 +59,7 @@ export function SidePanel() {
         {panel === "media" && <MediaBin />}
         {panel === "effects" && <Inspector />}
         {panel === "fx" && <EffectsPanel />}
+        {panel === "anim" && <AnimPanel />}
         {panel === "voice" && <VoicePanel />}
         {panel === "music" && <MusicPanel />}
         {panel === "audio" && <AudioPanel />}

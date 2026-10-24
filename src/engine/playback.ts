@@ -10,6 +10,7 @@ import type { Clip, MediaItem, Project, Track } from "../project/types";
 import { usePlayback } from "../store/playback";
 import { useProject } from "../store/project";
 import { drawTexts, textStateKey } from "../text/render";
+import { animAt, animCss, animEffects } from "../project/anims";
 import { fxAt, letterboxBackground, motionCss, scanlineBackground, vignetteGradient, type FxState } from "../project/effects";
 
 /** How often playback pushes the time to the store (and so to the playhead painters). */
@@ -31,6 +32,11 @@ function fadeGain(clip: Clip, t: number) {
   if (clip.fadeIn > 0 && local < clip.fadeIn) g = Math.min(g, local / clip.fadeIn);
   if (clip.fadeOut > 0 && local > dur - clip.fadeOut) g = Math.min(g, (dur - local) / clip.fadeOut);
   return Math.max(0, Math.min(1, g));
+}
+
+/** Opacity from the clip's In / Out animations (picture only; audio ignores it). */
+function animAlpha(clip: Clip, t: number) {
+  return clip.anim ? animAt(clip.anim, t - clip.start, clipDuration(clip)).alpha : 1;
 }
 
 function sourceTime(clip: Clip, t: number) {
@@ -211,16 +217,19 @@ class PlaybackEngine {
     const H = p.settings.height;
 
     // The clip.
-    const effects = visual?.clip.effects ?? [];
+    const dur = visual ? clipDuration(visual.clip) : 0;
+    const anim = visual?.clip.anim;
+    const effects = [...(visual?.clip.effects ?? []), ...animEffects(anim, dur)];
+    const animTransform = visual && anim ? animCss(animAt(anim, t - visual.clip.start, dur)) : "";
     const other = el === this.video ? this.image : this.video;
     if (other) setStyle(other, "filter", "");
     if (!visual || !el || effects.length === 0) {
       if (el) setStyle(el, "filter", "");
-      setStyle(fx.clip, "transform", "");
+      setStyle(fx.clip, "transform", animTransform);
       this.paintOverlays(fx.clipOverlays, null, t, p, scale);
     } else {
       const local = t - visual.clip.start;
-      const look = fxAt(effects, local, clipDuration(visual.clip), H, scale, "xc-fx-svg");
+      const look = fxAt(effects, local, dur, H, scale, "xc-fx-svg");
       setStyle(el, "filter", look.filter);
       if (look.svg) {
         const key = `${look.svg.sharpen}|${look.svg.split}`;
@@ -242,7 +251,7 @@ class PlaybackEngine {
       setStyle(box, "width", `${rw}%`);
       setStyle(box, "height", `${rh}%`);
       this.paintOverlays(fx.clipOverlays, look, t, p, scale);
-      setStyle(fx.clip, "transform", motionCss(look.motion));
+      setStyle(fx.clip, "transform", [animTransform, motionCss(look.motion)].filter(Boolean).join(" "));
     }
 
     // Effect layers on tracks above the visible clip (all of them over a gap).
@@ -475,12 +484,12 @@ class PlaybackEngine {
       video.style.visibility = "hidden";
       setSrc(image, visual.media.path);
       image.style.visibility = "visible";
-      image.style.opacity = opacityCss(visual.clip.opacity * fadeGain(visual.clip, t));
+      image.style.opacity = opacityCss(visual.clip.opacity * fadeGain(visual.clip, t) * animAlpha(visual.clip, t));
     } else {
       image.style.visibility = "hidden";
       setSrc(video, previewPath(visual.media.path));
       video.style.visibility = "visible";
-      video.style.opacity = opacityCss(visual.clip.opacity * fadeGain(visual.clip, t));
+      video.style.opacity = opacityCss(visual.clip.opacity * fadeGain(visual.clip, t) * animAlpha(visual.clip, t));
       const muted = silent || visual.track.muted || !visual.media.hasAudio;
       video.muted = muted;
       video.volume = Math.min(1, visual.clip.volume * fadeGain(visual.clip, t));

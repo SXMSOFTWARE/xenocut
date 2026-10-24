@@ -281,7 +281,11 @@ pub fn build(project: &Project, options: &ExportOptions) -> Result<ExportPlan, S
                 format!("setpts=(PTS-STARTPTS)/{speed:.4}")
             }];
             chain.push(format!("fps={fps}"));
-            let effects = &clip.effects;
+            let mut all_effects = clip.effects.clone();
+            if let Some(anim) = &clip.anim {
+                all_effects.extend(crate::anims::effects(anim, length));
+            }
+            let effects = &all_effects;
             chain.extend(crate::effects::pre_scale(effects, length, None));
             chain.push(format!("scale={width}:{height}:force_original_aspect_ratio=decrease:out_range=tv"));
             chain.extend(crate::effects::picture(effects, height, length, None));
@@ -290,6 +294,9 @@ pub fn build(project: &Project, options: &ExportOptions) -> Result<ExportPlan, S
             chain.push("format=yuva420p".into());
             if let Some(motion) = crate::effects::motion(effects, length, fps, None) {
                 chain.push(motion);
+            }
+            if let Some(anim) = &clip.anim {
+                chain.extend(crate::anims::chain(anim, length, fps));
             }
             if clip.opacity < 0.999 {
                 chain.push(format!("colorchannelmixer=aa={:.3}", clip.opacity.clamp(0.0, 1.0)));
@@ -439,6 +446,7 @@ pub(crate) mod tests {
             fade_out: 0.0,
             text: None,
             effects: vec![],
+            anim: None,
         }
     }
 

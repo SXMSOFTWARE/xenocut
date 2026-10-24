@@ -156,8 +156,17 @@ export function splitClip(project: Project, clipId: string, at: number): { proje
   const offset = at - clip.start;
   if (offset < MIN_CLIP_SECONDS || clipEnd(clip) - at < MIN_CLIP_SECONDS) return { project, rightId: null };
   const cut = clip.in + offset * clip.speed;
-  const left: Clip = { ...clip, out: cut, fadeOut: 0 };
-  const right: Clip = { ...clip, id: uid("c"), start: at, in: cut, fadeIn: 0 };
+  // The In animation stays on the left part, the Out animation goes to the right one.
+  const keep = (anim: Clip["anim"], drop: "in" | "out") => {
+    if (!anim) return undefined;
+    const rest: NonNullable<Clip["anim"]> = { ...anim };
+    delete rest[drop];
+    return rest.in || rest.out || rest.combo ? rest : undefined;
+  };
+  const left: Clip = { ...clip, out: cut, fadeOut: 0, anim: keep(clip.anim, "out") };
+  const right: Clip = { ...clip, id: uid("c"), start: at, in: cut, fadeIn: 0, anim: keep(clip.anim, "in") };
+  if (!left.anim) delete left.anim;
+  if (!right.anim) delete right.anim;
   const clips = project.clips.flatMap((c) => (c.id === clipId ? [left, right] : [c]));
   return { project: { ...project, clips }, rightId: right.id };
 }
