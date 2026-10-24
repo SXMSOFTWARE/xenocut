@@ -1000,4 +1000,10 @@ export const en: Record<keyof typeof tr, string> = {
   "anim.combo.glitchLoop": "Glitch loop",
   "trans.n.hblur": "Blur Blend",
   "trans.n.distance": "Color Distance",
+  "text.preset.glitchTitle": "Glitch title",
+  "text.preset.rainbowPop": "Rainbow pop",
+  "text.preset.loveNote": "Love note",
+  "text.preset.spinTitle": "Spin title",
+  "text.preset.storyTitle": "Story title",
+  "text.preset.stretchBanner": "Stretch banner",
 };

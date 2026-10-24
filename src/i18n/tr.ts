@@ -1010,4 +1010,10 @@ export const tr = {
   "anim.combo.glitchLoop": "Glitch döngüsü",
   "trans.n.hblur": "Bulanık geçiş",
   "trans.n.distance": "Renk mesafesi",
+  "text.preset.glitchTitle": "Glitch başlık",
+  "text.preset.rainbowPop": "Gökkuşağı",
+  "text.preset.loveNote": "Aşk notu",
+  "text.preset.spinTitle": "Dönen başlık",
+  "text.preset.storyTitle": "Hikâye",
+  "text.preset.stretchBanner": "Esnek bant",
 };

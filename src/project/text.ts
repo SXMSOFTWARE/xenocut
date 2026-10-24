@@ -148,6 +148,42 @@ export const TEXT_PRESETS: TextPreset[] = [
     anim: { in: "pop", out: "pop", inDur: 0.35, outDur: 0.25, emphasis: "wave" },
   },
   {
+    id: "glitchTitle",
+    role: "title",
+    style: { font: "oswald", weight: 700, uppercase: true, size: 110, color: "#e8fbff", stroke: 0, shadow: 0.3, glow: 0.45, spacing: 0.08 },
+    anim: { in: "glitch", out: "glitch", inDur: 0.5, outDur: 0.35, emphasis: "jitter" },
+  },
+  {
+    id: "rainbowPop",
+    role: "title",
+    style: { font: "bangers", weight: 400, size: 128, stroke: 8, strokeColor: "#1b1030", shadow: 0.4, spacing: 0.03 },
+    anim: { in: "bounce", out: "pop", inDur: 0.8, outDur: 0.25, emphasis: "rainbow" },
+  },
+  {
+    id: "loveNote",
+    role: "title",
+    style: { font: "caveat", weight: 700, size: 124, color: "#ff6b9a", glow: 0.5, shadow: 0.2 },
+    anim: { in: "pop", out: "fade", inDur: 0.45, outDur: 0.4, emphasis: "heartbeat" },
+  },
+  {
+    id: "spinTitle",
+    role: "title",
+    style: { font: "anton", weight: 400, uppercase: true, size: 118, color: "#ffffff", color2: "#7cc8ff", stroke: 6, strokeColor: "#0b1a33", shadow: 0.35 },
+    anim: { in: "spin", out: "spin", inDur: 0.55, outDur: 0.4 },
+  },
+  {
+    id: "storyTitle",
+    role: "title",
+    style: { font: "bebas", weight: 400, size: 140, color: "#ffffff", spacing: 0.12, shadow: 0.3 },
+    anim: { in: "wordsRise", out: "flyUp", inDur: 0.8, outDur: 0.45, emphasis: "breathe" },
+  },
+  {
+    id: "stretchBanner",
+    role: "title",
+    style: { font: "montserrat", weight: 800, uppercase: true, size: 70, background: "pill", bgColor: "#111111", bgOpacity: 0.85, color: "#ffd400", shadow: 0, spacing: 0.05 },
+    anim: { in: "stretch", out: "stretch", inDur: 0.45, outDur: 0.3, emphasis: "swing" },
+  },
+  {
     id: "subtitle",
     role: "subtitle",
     style: { weight: 600, size: 46, shadow: 0, background: "box", bgOpacity: 0.6, y: 0.88, width: 0.8, lineHeight: 1.2 },
