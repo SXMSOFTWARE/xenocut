@@ -129,9 +129,34 @@ interface Motion {
   chars: number;
   /** Per-word reveal progress for the "words" animation; null = all visible. */
   wordP: ((index: number) => number) | null;
+  /** How a revealing word appears: pop (scale) or rise (slides up). */
+  wordMode: "pop" | "rise";
+  /** Rotation in radians and an extra horizontal scale. */
+  rot: number;
+  sx: number;
 }
 
-function inMotion(kind: AnimIn, p: number, m: Motion, layout: TextLayout, width: number) {
+/** Bounce easing (lands with two smaller hops). */
+function bounceOut(p: number) {
+  const n = 7.5625;
+  const d = 2.75;
+  if (p < 1 / d) return n * p * p;
+  if (p < 2 / d) return n * (p -= 1.5 / d) * p + 0.75;
+  if (p < 2.5 / d) return n * (p -= 2.25 / d) * p + 0.9375;
+  return n * (p -= 2.625 / d) * p + 0.984375;
+}
+
+/** Glitchy entrance / exit at progress `p` (1 = settled): jumps sideways and blinks, calming down. */
+function glitchMotion(p: number, m: Motion, layout: TextLayout) {
+  const slot = Math.floor(p * 18);
+  const k = 1 - p;
+  m.tx += (hash(slot + 1) - 0.5) * layout.px * 0.9 * k;
+  m.ty += (hash(slot + 5) - 0.5) * layout.px * 0.25 * k;
+  m.sx *= 1 + (hash(slot + 9) - 0.5) * 0.5 * k;
+  m.alpha *= hash(slot + 3) < 0.35 + p ? 1 : 0.2;
+}
+
+function inMotion(kind: AnimIn, p: number, m: Motion, layout: TextLayout, width: number, height: number) {
   if (p >= 1 || kind === "none") return;
   const e = easeOut(p);
   const d = layout.px * 1.1;
@@ -172,10 +197,37 @@ function inMotion(kind: AnimIn, p: number, m: Motion, layout: TextLayout, width:
       m.wordP = (i) => clamp01((p - i * span * 0.85) / Math.max(0.15, span * 1.6));
       break;
     }
+    case "wordsRise": {
+      const n = Math.max(1, layout.words);
+      const span = 1 / n;
+      m.wordP = (i) => clamp01((p - i * span * 0.8) / Math.max(0.2, span * 2));
+      m.wordMode = "rise";
+      break;
+    }
+    case "spin":
+      m.rot -= (1 - e) * Math.PI;
+      m.scale *= 0.2 + 0.8 * e;
+      m.alpha *= clamp01(p * 2.5);
+      break;
+    case "bounce":
+      m.ty -= (1 - bounceOut(p)) * Math.max(d * 2.5, height * 0.18);
+      m.alpha *= clamp01(p * 5);
+      break;
+    case "flyUp":
+      m.ty += (1 - e) * height * 0.4;
+      m.alpha *= clamp01(p * 2);
+      break;
+    case "stretch":
+      m.sx *= 0.04 + 0.96 * backOut(p);
+      m.alpha *= clamp01(p * 3);
+      break;
+    case "glitch":
+      glitchMotion(p, m, layout);
+      break;
   }
 }
 
-function outMotion(kind: AnimOut, p: number, m: Motion, layout: TextLayout, width: number) {
+function outMotion(kind: AnimOut, p: number, m: Motion, layout: TextLayout, width: number, height: number) {
   // p runs 1 -> 0 as the clip ends.
   if (p >= 1 || kind === "none") return;
   const e = easeOut(p);
@@ -207,6 +259,25 @@ function outMotion(kind: AnimOut, p: number, m: Motion, layout: TextLayout, widt
     case "zoom":
       m.scale *= 1 + (1 - e) * 0.5;
       m.alpha *= e;
+      break;
+    case "spin":
+      m.rot += (1 - e) * Math.PI;
+      m.scale *= 0.2 + 0.8 * e;
+      m.alpha *= clamp01(p * 2.5);
+      break;
+    case "flyUp":
+      m.ty -= (1 - e) * height * 0.4;
+      m.alpha *= clamp01(p * 2);
+      break;
+    case "stretch":
+      m.sx *= 0.04 + 0.96 * e;
+      m.alpha *= clamp01(p * 3);
+      break;
+    case "erase":
+      m.chars = Math.min(m.chars, Math.ceil(layout.chars * p));
+      break;
+    case "glitch":
+      glitchMotion(p, m, layout);
       break;
   }
 }
@@ -253,12 +324,12 @@ export function drawText(ctx: Ctx, text: TextContent, width: number, height: num
   const L = layout ?? layoutText(ctx, text, width, height);
   if (!L.chars) return;
   const unit = unitFor(width, height);
-  const m: Motion = { alpha: 1, tx: 0, ty: 0, scale: 1, chars: Number.POSITIVE_INFINITY, wordP: null };
+  const m: Motion = { alpha: 1, tx: 0, ty: 0, scale: 1, chars: Number.POSITIVE_INFINITY, wordP: null, wordMode: "pop", rot: 0, sx: 1 };
   const a = text.anim;
   const inDur = Math.min(a.inDur, duration * 0.6);
   const outDur = Math.min(a.outDur, duration * 0.6);
-  inMotion(a.in, inDur > 0 ? clamp01(lt / inDur) : 1, m, L, width);
-  outMotion(a.out, outDur > 0 ? clamp01((duration - lt) / outDur) : 1, m, L, width);
+  inMotion(a.in, inDur > 0 ? clamp01(lt / inDur) : 1, m, L, width, height);
+  outMotion(a.out, outDur > 0 ? clamp01((duration - lt) / outDur) : 1, m, L, width, height);
 
   let flicker = 1;
   switch (a.emphasis) {
@@ -276,9 +347,34 @@ export function drawText(ctx: Ctx, text: TextContent, width: number, height: num
       flicker = hash(slot) < 0.12 ? 0.35 + 0.4 * hash(slot + 7) : 1;
       break;
     }
+    case "bounce":
+      m.ty -= Math.abs(Math.sin(lt * Math.PI * 1.3)) * L.px * 0.2;
+      break;
+    case "swing":
+      m.rot += Math.sin(lt * Math.PI * 2 * 0.7) * 0.08;
+      break;
+    case "heartbeat": {
+      // Two quick beats, then a rest (about 66 bpm).
+      const ph = (lt * 1.1) % 1;
+      const bump = (c: number, w: number) => (Math.abs(ph - c) < w ? Math.cos(((ph - c) / w) * (Math.PI / 2)) : 0);
+      m.scale *= 1 + 0.09 * bump(0.08, 0.08) + 0.06 * bump(0.3, 0.08);
+      break;
+    }
+    case "breathe":
+      flicker = 0.6 + 0.4 * (0.5 + 0.5 * Math.cos(lt * Math.PI * 2 * 0.5));
+      m.scale *= 1 + 0.02 * Math.cos(lt * Math.PI * 2 * 0.5);
+      break;
+    case "jitter": {
+      const slot = Math.floor(lt * 12);
+      if (hash(slot) < 0.3) {
+        m.tx += (hash(slot + 1) - 0.5) * L.px * 0.3;
+        m.ty += (hash(slot + 2) - 0.5) * L.px * 0.12;
+      }
+      break;
+    }
   }
   const alpha = clamp01(m.alpha * flicker);
-  if (alpha <= 0.002 || m.scale <= 0.01) return;
+  if (alpha <= 0.002 || m.scale <= 0.01 || m.sx <= 0.01) return;
 
   // Karaoke progress through the characters, finishing as the out animation starts.
   const singEnd = Math.max(0.1, duration - (a.out !== "none" ? outDur : 0) - 0.05);
@@ -289,7 +385,8 @@ export function drawText(ctx: Ctx, text: TextContent, width: number, height: num
   const cx = L.left + L.w / 2 + m.tx;
   const cy = L.top + L.h / 2 + m.ty;
   ctx.translate(cx, cy);
-  ctx.scale(m.scale, m.scale);
+  if (m.rot) ctx.rotate(m.rot);
+  ctx.scale(m.scale * m.sx, m.scale);
   ctx.translate(-L.w / 2, -L.h / 2);
   ctx.font = L.font;
   setSpacing(ctx, L.spacing);
@@ -342,9 +439,10 @@ export function drawText(ctx: Ctx, text: TextContent, width: number, height: num
         const p = m.wordP(word.index);
         if (p <= 0) continue;
         wordAlpha = clamp01(p * 2.5);
-        wordScale = 0.55 + 0.45 * backOut(p);
+        if (m.wordMode === "rise") dy += (1 - easeOut(p)) * L.px * 0.6;
+        else wordScale = 0.55 + 0.45 * backOut(p);
       }
-      if (a.emphasis === "wave") dy = Math.sin(lt * 5.5 + word.index * 0.75) * L.px * 0.09;
+      if (a.emphasis === "wave") dy += Math.sin(lt * 5.5 + word.index * 0.75) * L.px * 0.09;
 
       ctx.save();
       if (wordAlpha < 1) ctx.globalAlpha = alpha * wordAlpha;
@@ -377,7 +475,7 @@ export function drawText(ctx: Ctx, text: TextContent, width: number, height: num
         ctx.strokeText(shown, wx, wy);
         ctx.shadowColor = "transparent";
       }
-      ctx.fillStyle = fill(line);
+      ctx.fillStyle = a.emphasis === "rainbow" ? `hsl(${(lt * 120 + word.index * 40) % 360}, 90%, 62%)` : fill(line);
       ctx.fillText(shown, wx, wy);
       ctx.shadowColor = "transparent";
       // Karaoke: repaint the sung part in the highlight colour, clipped to the progress.

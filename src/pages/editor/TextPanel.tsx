@@ -24,9 +24,9 @@ import { ensureFonts, FONTS, fontSpec, type FontId } from "../../text/fonts";
 import { drawText } from "../../text/render";
 import { deleteSelection } from "./commands";
 
-const ANIM_IN: AnimIn[] = ["none", "fade", "rise", "drop", "slideLeft", "slideRight", "pop", "zoom", "typewriter", "words"];
-const ANIM_OUT: AnimOut[] = ["none", "fade", "rise", "sink", "slideLeft", "slideRight", "pop", "zoom"];
-const EMPHASIS: Emphasis[] = ["none", "pulse", "shake", "wave", "karaoke", "flicker"];
+const ANIM_IN: AnimIn[] = ["none", "fade", "rise", "drop", "slideLeft", "slideRight", "pop", "zoom", "typewriter", "words", "wordsRise", "spin", "bounce", "flyUp", "stretch", "glitch"];
+const ANIM_OUT: AnimOut[] = ["none", "fade", "rise", "sink", "slideLeft", "slideRight", "pop", "zoom", "spin", "flyUp", "stretch", "erase", "glitch"];
+const EMPHASIS: Emphasis[] = ["none", "pulse", "shake", "wave", "karaoke", "flicker", "bounce", "swing", "heartbeat", "breathe", "jitter", "rainbow"];
 const BACKGROUNDS: TextBackground[] = ["none", "box", "pill", "band"];
 /** 3×3 placement grid: centre points as fractions of the canvas. */
 const PLACES = [0.14, 0.5, 0.86];

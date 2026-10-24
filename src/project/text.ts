@@ -3,9 +3,9 @@
 import type { FontId } from "../text/fonts";
 
 export type TextRole = "title" | "subtitle" | "lyric";
-export type AnimIn = "none" | "fade" | "rise" | "drop" | "slideLeft" | "slideRight" | "pop" | "zoom" | "typewriter" | "words";
-export type AnimOut = "none" | "fade" | "rise" | "sink" | "slideLeft" | "slideRight" | "pop" | "zoom";
-export type Emphasis = "none" | "pulse" | "shake" | "wave" | "karaoke" | "flicker";
+export type AnimIn = "none" | "fade" | "rise" | "drop" | "slideLeft" | "slideRight" | "pop" | "zoom" | "typewriter" | "words" | "spin" | "bounce" | "flyUp" | "stretch" | "wordsRise" | "glitch";
+export type AnimOut = "none" | "fade" | "rise" | "sink" | "slideLeft" | "slideRight" | "pop" | "zoom" | "spin" | "flyUp" | "stretch" | "erase" | "glitch";
+export type Emphasis = "none" | "pulse" | "shake" | "wave" | "karaoke" | "flicker" | "bounce" | "swing" | "heartbeat" | "breathe" | "jitter" | "rainbow";
 export type TextBackground = "none" | "box" | "pill" | "band";
 export type TextAlign = "left" | "center" | "right";
 
