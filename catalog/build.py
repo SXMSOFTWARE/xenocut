@@ -41,6 +41,11 @@ def main():
     for src in sorted(p for p in (ROOT / "src").iterdir() if p.is_dir()):
         manifest = json.loads((src / "manifest.json").read_text())
         files = pack_files(src, manifest)
+        thumb = ROOT / "thumbs" / f"{manifest['id']}.jpg"
+        if thumb.exists():
+            # Ship the card image inside the pack too, so the Library shows it offline.
+            files["thumb.jpg"] = thumb.read_bytes()
+            files["manifest.json"] = (json.dumps({**manifest, "thumbnail": "thumb.jpg"}, indent=2, ensure_ascii=False) + "\n").encode()
         name = f"{manifest['id']}-{manifest['version']}.xcpack"
         target = out_dir / name
         with zipfile.ZipFile(target, "w", zipfile.ZIP_DEFLATED, compresslevel=9) as z:
@@ -50,7 +55,6 @@ def main():
                 info.external_attr = 0o644 << 16
                 z.writestr(info, files[rel])
         data = target.read_bytes()
-        thumb = ROOT / "thumbs" / f"{manifest['id']}.jpg"
         entries.append(
             {
                 "id": manifest["id"],

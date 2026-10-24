@@ -10,8 +10,8 @@
       "homepage": "https://github.com/sxmsoft/xenocut/tree/main/catalog",
       "description": "Six bolder LUTs for music videos and travel edits: cool night, cross process, golden hour, neon night, forest green and desert dust.",
       "url": "https://raw.githubusercontent.com/sxmsoft/xenocut/main/catalog/packs/xenocut.creative-color-1.0.0.xcpack",
-      "sha256": "3395d1108e57b98c0fff8d2e5011474c9878aa86ee82556dae36ae63c0171750",
-      "bytes": 838500,
+      "sha256": "5d058d5785f42dbb32eb6906899019adf43b6f51a9a928f45f852e296c5a254f",
+      "bytes": 905833,
       "thumbnail": "https://raw.githubusercontent.com/sxmsoft/xenocut/main/catalog/thumbs/xenocut.creative-color.jpg",
       "contents": {
         "luts": 6
@@ -26,8 +26,8 @@
       "homepage": "https://github.com/sxmsoft/xenocut/tree/main/catalog",
       "description": "Six cinematic colour LUTs: teal & orange, warm film, bleach bypass, silver mono, 70s vintage and matte fade. Standard .cube files, usable in any editor.",
       "url": "https://raw.githubusercontent.com/sxmsoft/xenocut/main/catalog/packs/xenocut.film-looks-1.0.0.xcpack",
-      "sha256": "e66009b8ffbcad2ad61c58ab86cc26b55a3ccdec48f275362afa544be17d18a7",
-      "bytes": 823786,
+      "sha256": "6992bc712a5d67c99d573027d5e91915a22eef30735e74eae4db41854b6a4452",
+      "bytes": 889680,
       "thumbnail": "https://raw.githubusercontent.com/sxmsoft/xenocut/main/catalog/thumbs/xenocut.film-looks.jpg",
       "contents": {
         "luts": 6

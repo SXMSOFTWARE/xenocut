@@ -27,3 +27,4 @@ agent-tools/
 src-tauri/binaries/
 *.tsbuildinfo
 /.android-ffmpeg
+__pycache__/

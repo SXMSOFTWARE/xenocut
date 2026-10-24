@@ -29,6 +29,46 @@ const read = <T,>(k: string): T | null => {
 };
 const write = (k: string, v: unknown) => localStorage.setItem(KEY + k, JSON.stringify(v));
 
+// Plugins: VITE_XENOCUT_PLUGINS points at {installed: Installed[], catalog: index.json} written by
+// /workspace/tools/devplugins.sh (packs unzipped under a folder in XENOCUT_DEV_FS_ALLOW).
+interface PluginFixture {
+  installed: { manifest: { id: string }; enabled: boolean; dir: string; bytes: number }[];
+  available?: PluginFixture["installed"];
+  catalog: unknown;
+}
+let pluginFx: Promise<PluginFixture> | null = null;
+function plugins(): Promise<PluginFixture> {
+  const path = import.meta.env.VITE_XENOCUT_PLUGINS as string | undefined;
+  if (!path) return Promise.resolve({ installed: [], catalog: { format: "xenocut-catalog/1", packs: [] } });
+  pluginFx ??= fetch(`/@fs${path}`)
+    .then((r) => r.json() as Promise<PluginFixture>)
+    .then((f) => {
+      const state = read<Record<string, boolean>>("plugins");
+      const all = [...f.installed, ...(f.available ?? [])];
+      const installed = state ? all.filter((p) => p.manifest.id in state).map((p) => ({ ...p, enabled: state[p.manifest.id] })) : f.installed;
+      return { ...f, available: all, installed };
+    });
+  return pluginFx;
+}
+const savePlugins = (f: PluginFixture) => write("plugins", Object.fromEntries(f.installed.map((p) => [p.manifest.id, p.enabled])));
+
+function parseCube(text: string) {
+  let size = 0;
+  const domainMin = [0, 0, 0];
+  const domainMax = [1, 1, 1];
+  const data: number[] = [];
+  for (const line of text.split(/\r?\n/)) {
+    const l = line.trim();
+    if (!l || l.startsWith("#") || l.startsWith("TITLE")) continue;
+    const parts = l.split(/\s+/);
+    if (parts[0] === "LUT_3D_SIZE") size = Number(parts[1]);
+    else if (parts[0] === "DOMAIN_MIN") parts.slice(1).forEach((v, i) => (domainMin[i] = Number(v)));
+    else if (parts[0] === "DOMAIN_MAX") parts.slice(1).forEach((v, i) => (domainMax[i] = Number(v)));
+    else if (/^[-\d.]/.test(parts[0])) data.push(Number(parts[0]), Number(parts[1]), Number(parts[2]));
+  }
+  return { size, domainMin, domainMax, data };
+}
+
 const needsDesktop = () => Promise.reject(new Error("Bu işlem masaüstü uygulamasını gerektirir (dev tarayıcı modu)."));
 
 export async function invoke<T>(command: string, args: Record<string, unknown> = {}): Promise<T> {
@@ -65,6 +105,33 @@ export async function invoke<T>(command: string, args: Record<string, unknown> =
         return null;
       case "model_status":
         return { installed: false, bytes: 0, path: "/home/enes/.local/share/xenocut/audio/models/UVR-MDX-NET-Voc_FT.onnx", name: "UVR-MDX-NET-Voc_FT.onnx" };
+      case "plugin_list":
+        return (await plugins()).installed;
+      case "plugin_catalog":
+        return (await plugins()).catalog;
+      case "plugin_install_url": {
+        const f = await plugins();
+        const id = decodeURIComponent(String(args.url)).split("/").pop()!.replace(/-[\d.]+\.xcpack$/, "");
+        const pack = f.available?.find((p) => p.manifest.id === id);
+        if (!pack) return needsDesktop();
+        f.installed = [...f.installed.filter((p) => p.manifest.id !== id), { ...pack, enabled: true }];
+        savePlugins(f);
+        return pack;
+      }
+      case "plugin_set_enabled": {
+        const f = await plugins();
+        f.installed = f.installed.map((p) => (p.manifest.id === args.id ? { ...p, enabled: Boolean(args.enabled) } : p));
+        savePlugins(f);
+        return null;
+      }
+      case "plugin_remove": {
+        const f = await plugins();
+        f.installed = f.installed.filter((p) => p.manifest.id !== args.id);
+        savePlugins(f);
+        return null;
+      }
+      case "plugin_lut":
+        return parseCube(await (await fetch(`/@fs${args.path as string}`)).text());
       case "export_cancel":
       case "audio_cancel":
         return null;
