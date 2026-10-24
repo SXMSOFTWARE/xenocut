@@ -9,6 +9,7 @@ pub mod grade;
 pub mod export;
 pub mod media;
 pub mod mediaserver;
+pub mod plugins;
 pub mod project;
 pub mod subtitles;
 pub mod textlayer;
@@ -23,7 +24,7 @@ pub fn run() {
             let handle = app.handle();
             diag::init_log(handle);
             textlayer::clear_stale(&app::cache_root(handle));
-            let roots = vec![app::cache_root(handle), app::audio_root(handle)];
+            let roots = vec![app::cache_root(handle), app::audio_root(handle), app::plugins_root(handle)];
             match mediaserver::start(roots) {
                 Ok(server) => diag::log("info", &format!("media server on {}", server.base_url().split('/').take(3).collect::<Vec<_>>().join("/"))),
                 Err(err) => diag::log("error", &format!("media server failed: {err}")),
@@ -69,6 +70,12 @@ pub fn run() {
             subtitles::commands::subtitle_read,
             subtitles::commands::subtitle_write,
             beats::beat_detect,
+            app::plugin_list,
+            app::plugin_install,
+            app::plugin_install_url,
+            app::plugin_remove,
+            app::plugin_set_enabled,
+            app::plugin_lut,
         ])
         .run(tauri::generate_context!())
         .expect("error while running XenoCut");

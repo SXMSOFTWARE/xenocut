@@ -29,6 +29,13 @@ pub fn audio_root(app: &AppHandle) -> PathBuf {
     data_dir(app).join("xenocut")
 }
 
+/// Installed plugin packs (see `plugins.rs`); served by the media server for thumbnails.
+pub fn plugins_root(app: &AppHandle) -> PathBuf {
+    let root = data_dir(app).join("plugins");
+    let _ = std::fs::create_dir_all(&root);
+    root
+}
+
 pub(crate) fn model_dir(app: &AppHandle) -> PathBuf {
     audio_root(app).join("models")
 }
@@ -331,3 +338,39 @@ pub fn model_delete(app: AppHandle) -> Result<(), String> {
     Ok(())
 }
 
+
+fn plugin_store(app: &AppHandle) -> crate::plugins::Store {
+    crate::plugins::Store::new(plugins_root(app))
+}
+
+#[tauri::command]
+pub fn plugin_list(app: AppHandle) -> Vec<crate::plugins::Installed> {
+    plugin_store(&app).list()
+}
+
+#[tauri::command]
+pub async fn plugin_install(app: AppHandle, path: String) -> Result<crate::plugins::Installed, String> {
+    let store = plugin_store(&app);
+    tauri::async_runtime::spawn_blocking(move || store.install_path(std::path::Path::new(&path))).await.map_err(|e| e.to_string())?
+}
+
+#[tauri::command]
+pub async fn plugin_install_url(app: AppHandle, url: String, sha256: String) -> Result<crate::plugins::Installed, String> {
+    let store = plugin_store(&app);
+    tauri::async_runtime::spawn_blocking(move || crate::plugins::install_url(&store, &url, &sha256)).await.map_err(|e| e.to_string())?
+}
+
+#[tauri::command]
+pub fn plugin_remove(app: AppHandle, id: String) -> Result<(), String> {
+    plugin_store(&app).remove(&id)
+}
+
+#[tauri::command]
+pub fn plugin_set_enabled(app: AppHandle, id: String, enabled: bool) -> Result<(), String> {
+    plugin_store(&app).set_enabled(&id, enabled)
+}
+
+#[tauri::command]
+pub fn plugin_lut(app: AppHandle, path: String) -> Result<crate::plugins::Cube, String> {
+    plugin_store(&app).lut(std::path::Path::new(&path))
+}
