@@ -50,7 +50,8 @@ jobs:
             gstreamer1.0-plugins-base \
             gstreamer1.0-plugins-good \
             gstreamer1.0-plugins-bad \
-            gstreamer1.0-libav
+            gstreamer1.0-libav \
+            gstreamer1.0-tools
           # The AppImage bundles the runner's GStreamer plugins (bundleMediaFramework). gst-libav and
           # plugins-good/bad give the preview native H.264/AAC/HEVC decoding (avdec_*, qtdemux,
           # h264parse); the app's WebM preview copy stays as the fallback for anything else.
