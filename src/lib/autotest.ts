@@ -175,7 +175,7 @@ async function animProbe() {
   engine.seek(clip.start + Number(o.at ?? 0.3));
   await sleep(1200);
   const v = document.querySelector("video.stage-media") as HTMLElement | null;
-  log("autotest", `ANIM ${JSON.stringify({ anim, transform: (document.querySelector(".stage-fxwrap") as HTMLElement | null)?.style.transform, opacity: v?.style.opacity })}`);
+  log("autotest", `ANIM ${JSON.stringify({ anim, transforms: [...document.querySelectorAll(".stage-fxwrap")].map((e) => (e as HTMLElement).style.transform).filter(Boolean), opacity: v?.style.opacity })}`);
   log("autotest", "anim-ready");
   await sleep(800);
   await exportProbe(o.export);
