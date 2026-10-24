@@ -604,3 +604,110 @@ html.mobile .toasts {
   bottom: calc(12px + var(--sa-bottom));
   align-items: center;
 }
+
+/* ---- keyboard shortcuts ---- */
+.combo {
+  display: inline-flex;
+  gap: 3px;
+}
+.combo .kbd {
+  min-width: 20px;
+  height: 20px;
+  font-size: 10.5px;
+  font-family: var(--font-ui, inherit);
+}
+.sc-sheet {
+  columns: 3 250px;
+  column-gap: 22px;
+  column-fill: balance;
+  max-height: calc(100vh - 220px);
+  overflow: auto;
+}
+.sc-group {
+  break-inside: avoid;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin-bottom: 8px;
+}
+.sc-group .section-title {
+  margin: 6px 0 4px;
+}
+.sc-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  min-height: 28px;
+  font-size: 12.5px;
+  border-radius: 8px;
+  padding: 0 6px;
+}
+.sc-row:hover {
+  background: rgba(255, 255, 255, 0.05);
+}
+.sc-keys {
+  display: inline-flex;
+  flex-wrap: wrap;
+  row-gap: 3px;
+  max-width: 62%;
+  justify-content: flex-end;
+  gap: 6px;
+}
+.sc-editor {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
+  gap: 4px 22px;
+  padding: 4px 4px 8px;
+}
+.sc-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  padding: 2px 2px 2px 4px;
+  border-radius: 7px;
+  background: rgba(255, 255, 255, 0.06);
+}
+.sc-x,
+.sc-add {
+  display: inline-grid;
+  place-items: center;
+  min-width: 20px;
+  height: 20px;
+  border-radius: 6px;
+  color: var(--text-2);
+  font-size: 11px;
+}
+.sc-x svg,
+.sc-add svg {
+  width: 12px;
+  height: 12px;
+}
+.sc-x:hover,
+.sc-add:hover {
+  background: rgba(255, 255, 255, 0.12);
+  color: var(--text-1);
+}
+.sc-add.rec {
+  padding: 0 8px;
+  background: var(--accent, #ff7a45);
+  color: #fff;
+}
+.sc-row.clash > span:first-child {
+  color: #ffb4a0;
+}
+.sc-clash {
+  margin-left: 6px;
+  font-size: 10px;
+  opacity: 0.8;
+}
+.sc-keys .combo + .combo::before {
+  content: "/";
+  align-self: center;
+  margin-right: 3px;
+  opacity: 0.4;
+  font-size: 11px;
+}
+.combo .kbd {
+  font-family: var(--font-ui, inherit), "DejaVu Sans", system-ui, sans-serif;
+}

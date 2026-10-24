@@ -11,8 +11,10 @@ import { useProject } from "../../store/project";
 import { useRouter } from "../../store/router";
 import { useSettings } from "../../store/settings";
 import { toast } from "../../store/toast";
-import { deleteSelection, jumpToEdge, splitAtPlayhead, zoomBy } from "./commands";
+import { handleShortcut, onSaved } from "./shortcuts";
 import { ExportDialog } from "./ExportDialog";
+import { RenameDialog } from "./RenameDialog";
+import { ShortcutsDialog } from "./ShortcutsDialog";
 import { Ambient } from "./Ambient";
 import { BottomBar } from "./BottomBar";
 import { MediaDragGhost } from "./MediaDragGhost";
@@ -32,6 +34,8 @@ export default function EditorPage() {
   const t = useT();
   const hasProject = useProject((s) => !!s.project);
   const exportOpen = useEditorUi((s) => s.exportOpen);
+  const shortcutsOpen = useEditorUi((s) => s.shortcutsOpen);
+  const renaming = useEditorUi((s) => s.rename?.id);
   const panelOpen = useEditorUi((s) => s.panel !== null);
   const [dropping, setDropping] = useState(false);
   const rootRef = useRef<HTMLDivElement>(null);
@@ -71,51 +75,12 @@ export default function EditorPage() {
   }, []);
 
   useEffect(() => {
-    const onKey = (e: KeyboardEvent) => {
-      const target = e.target as HTMLElement | null;
-      if (target && (target.tagName === "INPUT" || target.tagName === "TEXTAREA" || target.isContentEditable)) {
-        if (!(e.ctrlKey || e.metaKey) || e.key.toLowerCase() !== "s") return;
-      }
-      if (useEditorUi.getState().exportOpen) return;
-      const mod = e.ctrlKey || e.metaKey;
-      const key = e.key.toLowerCase();
-      const fps = useProject.getState().project?.settings.fps ?? 30;
-      const now = engine.now();
-      let handled = true;
-      if (mod && key === "z" && !e.shiftKey) useProject.getState().undo();
-      else if (mod && (key === "y" || (key === "z" && e.shiftKey))) useProject.getState().redo();
-      else if (mod && key === "s") {
-        void useProject.getState().save().then((ok) => ok && toast(t("editor.saved"), "success"));
-      } else if (mod && (key === "=" || key === "+")) zoomBy(1.25);
-      else if (mod && key === "-") zoomBy(0.8);
-      else if (mod && key === "e") {
-        if (useProject.getState().project?.clips.length) useEditorUi.setState({ exportOpen: true });
-      }
-      else if (mod) handled = false;
-      else if (key === " ") engine.toggle();
-      else if (key === "k") engine.pause();
-      else if (key === "l") engine.play();
-      else if (key === "j") {
-        engine.pause();
-        engine.seek(now - 1);
-      } else if (key === "arrowleft") {
-        engine.pause();
-        engine.seek(now - (e.shiftKey ? 1 : 1 / fps));
-      } else if (key === "arrowright") {
-        engine.pause();
-        engine.seek(now + (e.shiftKey ? 1 : 1 / fps));
-      } else if (key === "arrowup") jumpToEdge(-1);
-      else if (key === "arrowdown") jumpToEdge(1);
-      else if (key === "home") engine.seek(0);
-      else if (key === "end") engine.seek(engine.duration());
-      else if (key === "s") splitAtPlayhead();
-      else if (key === "delete" || key === "backspace") deleteSelection();
-      else if (key === "escape") useProject.getState().select([]);
-      else handled = false;
-      if (handled) e.preventDefault();
+    onSaved((ok) => ok && toast(t("editor.saved"), "success"));
+    window.addEventListener("keydown", handleShortcut);
+    return () => {
+      window.removeEventListener("keydown", handleShortcut);
+      onSaved(null);
     };
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
   }, [t]);
 
   // Save on leave.
@@ -135,6 +100,8 @@ export default function EditorPage() {
       <>
         <MobileEditor />
         {exportOpen && <ExportDialog />}
+      {shortcutsOpen && <ShortcutsDialog />}
+      {renaming && <RenameDialog key={renaming} />}
       </>
     );
   }
@@ -160,6 +127,8 @@ export default function EditorPage() {
         </div>
       )}
       {exportOpen && <ExportDialog />}
+      {shortcutsOpen && <ShortcutsDialog />}
+      {renaming && <RenameDialog key={renaming} />}
     </div>
   );
 }

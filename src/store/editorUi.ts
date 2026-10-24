@@ -17,6 +17,10 @@ interface EditorUiState {
   dropHint: { trackId: string | null; start: number; duration: number } | null;
   /** Effect whose time range is being edited on the timeline (handles on the clip). */
   fxFocus: { clipId: string; index: number } | null;
+  /** Keyboard shortcut cheat sheet (?). */
+  shortcutsOpen: boolean;
+  /** Rename dialog for a clip or a track. */
+  rename: { kind: "clip" | "track"; id: string; value: string } | null;
   setZoom: (pps: number) => void;
 }
 
@@ -30,5 +34,7 @@ export const useEditorUi = create<EditorUiState>((set) => ({
   dragMedia: null,
   dropHint: null,
   fxFocus: null,
+  shortcutsOpen: false,
+  rename: null,
   setZoom: (pps) => set({ pxPerSec: Math.min(MAX_PPS, Math.max(MIN_PPS, pps)) }),
 }));

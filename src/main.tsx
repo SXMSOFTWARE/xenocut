@@ -20,6 +20,9 @@ import { initDeviceMetrics, isMobileUi } from "./lib/platform";
 document.documentElement.classList.toggle("mobile", isMobileUi);
 initDeviceMetrics();
 
+// Dev builds expose the stores to the browser test harness.
+if (import.meta.env.DEV) void import("./store/project").then(({ useProject }) => Object.assign(window, { __xcProject: () => useProject.getState().project, __xcStore: useProject }));
+
 window.addEventListener("error", (e) => log("error", `window error: ${e.message} @ ${e.filename}:${e.lineno}`));
 window.addEventListener("unhandledrejection", (e) => log("error", `unhandled rejection: ${String(e.reason)}`));
 

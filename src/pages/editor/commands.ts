@@ -10,7 +10,8 @@ export function splitAtPlayhead() {
   const { project, selection, commit, select } = useProject.getState();
   if (!project) return;
   const time = engine.now();
-  const under = clipsAt(project, time);
+  const locked = new Set(project.tracks.filter((t) => t.locked).map((t) => t.id));
+  const under = clipsAt(project, time).filter((c) => !locked.has(c.trackId));
   const targets = selection.length ? under.filter((c) => selection.includes(c.id)) : under;
   if (!targets.length) return;
   const newIds: string[] = [];
@@ -29,8 +30,9 @@ export function splitAtPlayhead() {
 export function deleteSelection() {
   const { project, selection, commit, select } = useProject.getState();
   if (!project || !selection.length) return;
+  const locked = new Set(project.tracks.filter((t) => t.locked).map((t) => t.id));
   const ids = new Set(selection);
-  commit((p) => ({ ...p, clips: p.clips.filter((c) => !ids.has(c.id)) }));
+  commit((p) => ({ ...p, clips: p.clips.filter((c) => !ids.has(c.id) || locked.has(c.trackId)) }));
   select([]);
 }
 
@@ -49,7 +51,7 @@ export function removeTrack(trackId: string) {
   }));
 }
 
-export function toggleTrack(trackId: string, key: "muted" | "hidden") {
+export function toggleTrack(trackId: string, key: "muted" | "hidden" | "locked") {
   useProject.getState().commit((p) => ({
     ...p,
     tracks: p.tracks.map((t) => (t.id === trackId ? { ...t, [key]: !t[key] } : t)),

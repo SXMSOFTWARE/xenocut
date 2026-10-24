@@ -9,6 +9,7 @@ import { useSettings, type Language } from "../../store/settings";
 import { toast } from "../../store/toast";
 import { CREDITS } from "../../lib/credits";
 import { ModulesSection } from "./Modules";
+import { ShortcutsSection } from "./ShortcutsSection";
 import "../../styles/settings.css";
 
 type ModelStatus = Awaited<ReturnType<typeof api.modelStatus>>;
@@ -116,6 +117,8 @@ export default function SettingsPage() {
               />
             </Row>
           </section>
+
+          <ShortcutsSection />
 
           <section className="settings-group">
             <h2 className="section-title">

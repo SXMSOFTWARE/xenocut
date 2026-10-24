@@ -23,11 +23,13 @@ export interface Settings {
   panelWidth: number;
   /** Timeline height as a fraction of the editor hero; 0 = fit the tracks. */
   timelineFrac: number;
+  /** Keyboard shortcut overrides: action id -> combos (see `editor/shortcuts.ts`). */
+  shortcuts: Record<string, string[]>;
 }
 
 export type SubtitleModel = "tiny" | "base" | "small";
 
-const KEYS: (keyof Settings)[] = ["language", "outputDir", "projectDir", "performanceMode", "previewProxy", "autosave", "subtitleModel", "subtitleLanguage", "subtitleStyle", "panelSide", "panelWidth", "timelineFrac"];
+const KEYS: (keyof Settings)[] = ["language", "outputDir", "projectDir", "performanceMode", "previewProxy", "autosave", "subtitleModel", "subtitleLanguage", "subtitleStyle", "panelSide", "panelWidth", "timelineFrac", "shortcuts"];
 
 interface SettingsState extends Settings {
   ready: boolean;
@@ -49,6 +51,15 @@ export function clampTimelineFrac(f: unknown): number {
   return n <= 0 ? 0 : Math.min(TIMELINE_FRAC.max, Math.max(TIMELINE_FRAC.min, +n.toFixed(3)));
 }
 
+function cleanShortcuts(v: unknown): Record<string, string[]> {
+  if (!v || typeof v !== "object") return {};
+  const out: Record<string, string[]> = {};
+  for (const [k, combos] of Object.entries(v as Record<string, unknown>)) {
+    if (Array.isArray(combos)) out[k] = combos.filter((c): c is string => typeof c === "string" && c.length > 0).slice(0, 4);
+  }
+  return out;
+}
+
 function apply(settings: Settings) {
   const root = document.documentElement;
   root.classList.toggle("perf", settings.performanceMode);
@@ -68,6 +79,7 @@ export const useSettings = create<SettingsState>((set, get) => ({
   panelSide: "right",
   panelWidth: 0,
   timelineFrac: 0,
+  shortcuts: {},
   ready: false,
   info: null,
   load: async () => {
@@ -88,6 +100,7 @@ export const useSettings = create<SettingsState>((set, get) => ({
       panelSide: saved.panelSide === "left" ? "left" : "right",
       panelWidth: clampPanelWidth(saved.panelWidth),
       timelineFrac: clampTimelineFrac(saved.timelineFrac),
+      shortcuts: cleanShortcuts(saved.shortcuts),
     };
     apply(settings);
     set({ ...settings, info, ready: true });
