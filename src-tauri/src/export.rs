@@ -87,15 +87,16 @@ struct Layer<'a> {
     with_audio: bool,
 }
 
-pub fn build(project: &Project, options: &ExportOptions) -> Result<ExportPlan, String> {
-    let width = even(options.width);
-    let height = even(options.height);
-    let fps = options.fps.clamp(1, 240);
-
-    // Collect renderable clips in compositing order: bottom video track first.
+/// Renderable clips in compositing order: bottom video track first, then the sound-only tracks.
+/// `video` false drops pictures (sound of video clips is kept); `music` false skips music tracks.
+fn collect_layers(project: &Project, video: bool, music: bool) -> Result<Vec<Layer<'_>>, String> {
     let mut layers: Vec<Layer> = Vec::new();
     let video_tracks: Vec<_> = project.tracks.iter().filter(|t| t.kind == TrackKind::Video).rev().collect();
-    let audio_tracks: Vec<_> = project.tracks.iter().filter(|t| matches!(t.kind, TrackKind::Audio | TrackKind::Music)).collect();
+    let audio_tracks: Vec<_> = project
+        .tracks
+        .iter()
+        .filter(|t| t.kind == TrackKind::Audio || (music && t.kind == TrackKind::Music))
+        .collect();
     for track in video_tracks.iter().chain(audio_tracks.iter()) {
         let mut clips: Vec<&Clip> = project.clips.iter().filter(|c| c.track_id == track.id).collect();
         clips.sort_by(|a, b| a.start.total_cmp(&b.start));
@@ -105,7 +106,7 @@ pub fn build(project: &Project, options: &ExportOptions) -> Result<ExportPlan, S
             }
             let media = project.media(&clip.media_id).ok_or_else(|| format!("Clip {} points at missing media", clip.id))?;
             let is_video_track = track.kind == TrackKind::Video;
-            let with_video = is_video_track && !track.hidden && media.kind != MediaKind::Audio && clip.opacity > 0.001;
+            let with_video = video && is_video_track && !track.hidden && media.kind != MediaKind::Audio && clip.opacity > 0.001;
             let with_audio = !track.muted && media.has_audio && media.kind != MediaKind::Image && clip.volume > 0.0001;
             if !with_video && !with_audio {
                 continue;
@@ -113,6 +114,83 @@ pub fn build(project: &Project, options: &ExportOptions) -> Result<ExportPlan, S
             layers.push(Layer { clip, kind: media.kind, path: &media.path, with_video, with_audio });
         }
     }
+    Ok(layers)
+}
+
+/// Trim, retime, gain, fades and placement of one clip's sound, as a 48 kHz stereo chain.
+fn audio_chain(clip: &Clip) -> String {
+    let speed = clip.speed.clamp(0.0625, 16.0);
+    let length = clip.duration();
+    let fade_in = clip.fade_in.clamp(0.0, length);
+    let fade_out = clip.fade_out.clamp(0.0, (length - fade_in).max(0.0));
+    let mut chain = vec!["asetpts=PTS-STARTPTS".to_string()];
+    chain.extend(atempo_chain(speed));
+    if (clip.volume - 1.0).abs() > 1e-4 {
+        chain.push(format!("volume={:.4}", clip.volume.max(0.0)));
+    }
+    if fade_in > 0.0 {
+        chain.push(format!("afade=t=in:st=0:d={}", secs(fade_in)));
+    }
+    if fade_out > 0.0 {
+        chain.push(format!("afade=t=out:st={}:d={}", secs(length - fade_out), secs(fade_out)));
+    }
+    chain.push("aresample=48000".into());
+    chain.push("aformat=sample_fmts=fltp:channel_layouts=stereo".into());
+    let delay = (clip.start * 1000.0).round() as i64;
+    if delay > 0 {
+        chain.push(format!("adelay={delay}:all=1"));
+    }
+    chain.join(",")
+}
+
+/// The timeline's sound (speech tracks, optionally music) mixed to 16 kHz mono float WAV, the
+/// input format of speech recognition. Times in the file are timeline times.
+pub fn build_speech_mix(project: &Project, output: &str, music: bool) -> Result<ExportPlan, String> {
+    let layers = collect_layers(project, false, music)?;
+    let duration = project.duration();
+    if duration < 0.05 || layers.is_empty() {
+        return Err("There is no sound on the timeline to transcribe.".into());
+    }
+    let mut args: Vec<String> = vec!["-hide_banner".into(), "-y".into()];
+    let mut graph = vec![format!("anullsrc=r=48000:cl=stereo,atrim=0:{}[bed]", secs(duration))];
+    let mut labels = vec!["[bed]".to_string()];
+    for (index, layer) in layers.iter().enumerate() {
+        args.extend([
+            "-ss".into(),
+            secs(layer.clip.in_point),
+            "-t".into(),
+            secs(layer.clip.source_duration()),
+            "-i".into(),
+            layer.path.to_string(),
+        ]);
+        graph.push(format!("[{index}:a]{}[a{index}]", audio_chain(layer.clip)));
+        labels.push(format!("[a{index}]"));
+    }
+    graph.push(format!(
+        "{}amix=inputs={}:normalize=0:duration=first:dropout_transition=0,pan=mono|c0=0.5*c0+0.5*c1,aresample=16000[aout]",
+        labels.join(""),
+        labels.len()
+    ));
+    args.extend([
+        "-filter_complex".into(),
+        graph.join(";"),
+        "-map".into(),
+        "[aout]".into(),
+        "-c:a".into(),
+        "pcm_f32le".into(),
+        "-t".into(),
+        secs(duration),
+        output.to_string(),
+    ]);
+    Ok(ExportPlan { args, duration })
+}
+
+pub fn build(project: &Project, options: &ExportOptions) -> Result<ExportPlan, String> {
+    let width = even(options.width);
+    let height = even(options.height);
+    let fps = options.fps.clamp(1, 240);
+
+    let layers = collect_layers(project, true, true)?;
 
     let duration = project.duration();
     let text_overlay = options.text_overlay.as_deref().filter(|path| !path.is_empty());
@@ -191,24 +269,7 @@ pub fn build(project: &Project, options: &ExportOptions) -> Result<ExportPlan, S
         }
 
         if layer.with_audio {
-            let mut chain = vec!["asetpts=PTS-STARTPTS".to_string()];
-            chain.extend(atempo_chain(speed));
-            if (clip.volume - 1.0).abs() > 1e-4 {
-                chain.push(format!("volume={:.4}", clip.volume.max(0.0)));
-            }
-            if fade_in > 0.0 {
-                chain.push(format!("afade=t=in:st=0:d={}", secs(fade_in)));
-            }
-            if fade_out > 0.0 {
-                chain.push(format!("afade=t=out:st={}:d={}", secs(length - fade_out), secs(fade_out)));
-            }
-            chain.push("aresample=48000".into());
-            chain.push("aformat=sample_fmts=fltp:channel_layouts=stereo".into());
-            let delay = (start * 1000.0).round() as i64;
-            if delay > 0 {
-                chain.push(format!("adelay={delay}:all=1"));
-            }
-            graph.push(format!("[{index}:a]{}[a{index}]", chain.join(",")));
+            graph.push(format!("[{index}:a]{}[a{index}]", audio_chain(clip)));
             audio_labels.push(format!("[a{index}]"));
         }
     }
@@ -299,11 +360,11 @@ pub fn run(project: &Project, options: &ExportOptions, progress: &dyn ProgressSi
 }
 
 #[cfg(test)]
-mod tests {
+pub(crate) mod tests {
     use super::*;
     use crate::project::{MediaItem, ProjectSettings, Track};
 
-    fn media(id: &str, kind: MediaKind, path: &str, duration: f64, has_audio: bool) -> MediaItem {
+    pub fn media(id: &str, kind: MediaKind, path: &str, duration: f64, has_audio: bool) -> MediaItem {
         MediaItem {
             id: id.into(),
             path: path.into(),
@@ -318,7 +379,7 @@ mod tests {
         }
     }
 
-    fn clip(id: &str, track: &str, media: &str, start: f64, inp: f64, out: f64) -> Clip {
+    pub fn clip(id: &str, track: &str, media: &str, start: f64, inp: f64, out: f64) -> Clip {
         Clip {
             id: id.into(),
             track_id: track.into(),
@@ -533,6 +594,25 @@ mod tests {
         assert!(f.contains("[1:v]fps=30,format=rgba"));
         let graded = f.find("[graded]").unwrap();
         assert!(f.find("[graded][text]overlay").unwrap() > graded);
+    }
+
+    #[test]
+    fn speech_mix_keeps_sound_drops_pictures_and_music_on_request() {
+        let p = project(
+            vec![media("v", MediaKind::Video, "/v.mp4", 10.0, true), media("m", MediaKind::Audio, "/m.mp3", 60.0, true)],
+            vec![clip("c1", "v1", "v", 2.0, 1.0, 5.0), clip("c2", "m1", "m", 0.0, 0.0, 8.0)],
+        );
+        let plan = build_speech_mix(&p, "/tmp/s.wav", false).unwrap();
+        let graph = filter(&plan);
+        assert!(!graph.contains(":v]"), "{graph}");
+        assert!(graph.contains("[0:a]") && !graph.contains("[1:a]"), "{graph}");
+        assert!(graph.contains("adelay=2000:all=1"));
+        assert!(graph.contains("aresample=16000[aout]"));
+        assert!(plan.args.iter().any(|a| a == "pcm_f32le"));
+        let with_music = build_speech_mix(&p, "/tmp/s.wav", true).unwrap();
+        assert!(filter(&with_music).contains("[1:a]"));
+        let silent = project(vec![media("i", MediaKind::Image, "/i.png", 0.0, false)], vec![clip("c", "v1", "i", 0.0, 0.0, 3.0)]);
+        assert!(build_speech_mix(&silent, "/tmp/s.wav", true).is_err());
     }
 
     #[test]

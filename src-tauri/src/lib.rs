@@ -59,6 +59,12 @@ pub fn run() {
             audio::commands::audio_import_music,
             audio::commands::audio_mix_render,
             audio::commands::audio_cancel,
+            subtitles::commands::subtitle_models,
+            subtitles::commands::subtitle_model_delete,
+            subtitles::commands::subtitle_transcribe,
+            subtitles::commands::subtitle_cancel,
+            subtitles::commands::subtitle_read,
+            subtitles::commands::subtitle_write,
         ])
         .run(tauri::generate_context!())
         .expect("error while running XenoCut");

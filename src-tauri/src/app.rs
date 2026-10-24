@@ -29,7 +29,7 @@ pub fn audio_root(app: &AppHandle) -> PathBuf {
     data_dir(app).join("xenocut")
 }
 
-fn model_dir(app: &AppHandle) -> PathBuf {
+pub(crate) fn model_dir(app: &AppHandle) -> PathBuf {
     audio_root(app).join("models")
 }
 
@@ -225,9 +225,9 @@ struct ExportProgress {
     message: String,
 }
 
-struct ExportSink {
-    app: AppHandle,
-    event: &'static str,
+pub(crate) struct ExportSink {
+    pub(crate) app: AppHandle,
+    pub(crate) event: &'static str,
 }
 
 impl ProgressSink for ExportSink {
