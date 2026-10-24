@@ -1,4 +1,4 @@
-import { ArrowLeft, AudioWaveform, Captions, Clapperboard, Mic, AudioLines, MicVocal, Music, Type } from "lucide-react";
+import { ArrowLeft, AudioWaveform, Captions, Clapperboard, Mic, AudioLines, MicVocal, Music, Sparkles, Type } from "lucide-react";
 import type { ComponentType } from "react";
 import { useT, type Key } from "../../i18n";
 import { useEditorUi, type PanelId } from "../../store/editorUi";
@@ -10,6 +10,7 @@ const ITEMS: { id: PanelId; icon: ComponentType<{ size?: number; strokeWidth?: n
   { id: "voice", icon: Mic, label: "rail.voice" },
   { id: "music", icon: Music, label: "rail.music" },
   { id: "effects", icon: TransitionsIcon, label: "rail.effects" },
+  { id: "fx", icon: Sparkles, label: "rail.fx" },
   { id: "audio", icon: AudioWaveform, label: "rail.audio" },
   { id: "color", icon: ThreeCirclesIcon, label: "rail.color" },
   { id: "text", icon: Type, label: "rail.text" },

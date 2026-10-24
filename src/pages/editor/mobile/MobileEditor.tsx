@@ -31,7 +31,8 @@ import { useRouter } from "../../../store/router";
 import { Ambient } from "../Ambient";
 import { ASPECTS, RESOLUTIONS, setFormat, TimeReadout } from "../BottomBar";
 import { deleteSelection, fitTimeline, leaveEditor, splitAtPlayhead } from "../commands";
-import { EffectsSection, Inspector } from "../Inspector";
+import { Inspector } from "../Inspector";
+import { EffectsPanel } from "../EffectBrowser";
 import { MediaBin } from "../MediaBin";
 import { Preview } from "../Preview";
 import { AudioPanel, ColorPanel, MusicPanel, VoicePanel } from "../SidePanel";
@@ -315,9 +316,8 @@ function Sheet({ panel }: { panel: PanelId }) {
   );
 }
 
-/** Effects + edit presets for one visual clip; picks the clip under the playhead if none is selected. */
+/** Effect browser; picks the clip under the playhead if nothing is selected (layers need no clip). */
 function FxPane() {
-  const t = useT();
   const project = useProject((s) => s.project);
   const selection = useProject((s) => s.selection);
   const target = useMemo(() => {
@@ -342,29 +342,7 @@ function FxPane() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  if (!target) {
-    return (
-      <div className="m-empty">
-        <Sparkles size={26} strokeWidth={1.6} />
-        <p>{t("mobile.pickClip")}</p>
-      </div>
-    );
-  }
-  return (
-    <div className="inspector">
-      <div className="inspector-body">
-        <div className="inspector-stack">
-          <div className="inspector-title">
-            <span className={`kind-dot kind-${target.media.kind}`} />
-            <div>
-              <b>{target.media.name}</b>
-            </div>
-          </div>
-          <EffectsSection clip={target.clip} />
-        </div>
-      </div>
-    </div>
-  );
+  return <EffectsPanel compact />;
 }
 
 /** Project format: aspect and resolution as big tiles, plus timeline fit and settings. */

@@ -1,6 +1,6 @@
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { perfSkip } from "../../lib/perfSkip";
-import { engine } from "../../engine/playback";
+import { engine, type FxOverlays } from "../../engine/playback";
 import { useT } from "../../i18n";
 import { gradeFilter, tintDefs } from "../../project/grade";
 import { temperatureMatrix, temperatureValues } from "../../project/effects";
@@ -25,10 +25,13 @@ export function Preview() {
   const imageRef = useRef<HTMLImageElement>(null);
   const textRef = useRef<HTMLCanvasElement>(null);
   const layerRef = useRef<HTMLDivElement>(null);
-  const vignetteRef = useRef<HTMLDivElement>(null);
-  const flashRef = useRef<HTMLDivElement>(null);
-  const grainRef = useRef<HTMLDivElement>(null);
+  const layerFxRef = useRef<HTMLDivElement>(null);
+  const layerPicRef = useRef<HTMLDivElement>(null);
+  const clipFxRef = useRef<HTMLDivElement>(null);
+  const clipOvRef = useRef<HTMLDivElement>(null);
+  const layerOvRef = useRef<HTMLDivElement>(null);
   const fxSvgRef = useRef<SVGFilterElement>(null);
+  const fxSvg2Ref = useRef<SVGFilterElement>(null);
   const stageRef = useRef<HTMLDivElement>(null);
   const draggedRef = useRef(false);
   const areaRef = useRef<HTMLDivElement>(null);
@@ -59,7 +62,15 @@ export function Preview() {
   useEffect(() => {
     engine.attach(videoRef.current!, imageRef.current!);
     engine.attachText(textRef.current);
-    engine.attachFx({ layer: layerRef.current!, vignette: vignetteRef.current!, grain: grainRef.current!, flash: flashRef.current!, svg: fxSvgRef.current! });
+    engine.attachFx({
+      layer: layerFxRef.current!,
+      layerPicture: layerPicRef.current!,
+      clip: clipFxRef.current!,
+      clipOverlays: overlaysIn(clipOvRef.current!),
+      layerOverlays: overlaysIn(layerOvRef.current!),
+      svg: fxSvgRef.current!,
+      svg2: fxSvg2Ref.current!,
+    });
     return () => {
       engine.attachFx(null);
       engine.detach();
@@ -177,11 +188,21 @@ export function Preview() {
         }}
       >
         <div ref={layerRef} className="stage-layer" style={{ filter: liveGrade }}>
-          <video ref={videoRef} className="stage-media" playsInline />
-          <img ref={imageRef} className="stage-media" alt="" draggable={false} />
-          <div ref={vignetteRef} className="stage-fx" />
-          <div ref={grainRef} className="stage-fx stage-grain" />
-          <div ref={flashRef} className="stage-fx stage-flash" />
+          {/* Effect layers wrap the clip: their filter and overlays apply to everything below. */}
+          <div ref={layerFxRef} className="stage-fxwrap">
+            <div ref={layerPicRef} className="stage-fxwrap stage-fxpic">
+              <div ref={clipFxRef} className="stage-fxwrap">
+                <video ref={videoRef} className="stage-media" playsInline />
+                <img ref={imageRef} className="stage-media" alt="" draggable={false} />
+                <div ref={clipOvRef} className="stage-ov">
+                  <FxOverlayElements />
+                </div>
+              </div>
+            </div>
+            <div ref={layerOvRef} className="stage-ov stage-ov-full">
+              <FxOverlayElements />
+            </div>
+          </div>
         </div>
         <canvas ref={textRef} className="stage-text" aria-hidden="true" />
         <TextSelection width={width} height={height} />
@@ -208,9 +229,29 @@ export function Preview() {
             </filter>
           ))}
         <filter ref={fxSvgRef} id="xc-fx-svg" colorInterpolationFilters="sRGB" x="0" y="0" width="100%" height="100%" />
+        <filter ref={fxSvg2Ref} id="xc-fx-svg2" colorInterpolationFilters="sRGB" x="0" y="0" width="100%" height="100%" />
       </svg>
     </div>
   );
+}
+
+/** The overlay elements the engine paints (see `FxOverlays`), in the export's order. */
+function FxOverlayElements() {
+  return (
+    <>
+      <div className="stage-fx" data-ov="vignette" />
+      <div className="stage-fx stage-grain" data-ov="grain" />
+      <div className="stage-fx" data-ov="scanlines" />
+      <div className="stage-fx stage-flash" data-ov="flash" />
+      <div className="stage-fx stage-dip" data-ov="dip" />
+      <div className="stage-fx" data-ov="letterbox" />
+    </>
+  );
+}
+
+function overlaysIn(box: HTMLElement): FxOverlays {
+  const get = (name: string) => box.querySelector<HTMLElement>(`[data-ov="${name}"]`)!;
+  return { box, vignette: get("vignette"), grain: get("grain"), scanlines: get("scanlines"), flash: get("flash"), dip: get("dip"), letterbox: get("letterbox") };
 }
 
 /** Dashed box around the selected text clip while it is on screen. */

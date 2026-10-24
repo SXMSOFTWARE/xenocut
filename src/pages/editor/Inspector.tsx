@@ -1,41 +1,13 @@
-import {
-  Activity,
-  Aperture,
-  Blend,
-  CircleDot,
-  Contrast,
-  Droplet,
-  FlipHorizontal2,
-  FlipVertical2,
-  Layers,
-  Maximize2,
-  Focus,
-  Scissors,
-  SlidersHorizontal,
-  Sparkles,
-  Sun,
-  Thermometer,
-  Trash2,
-  Type,
-  Vibrate,
-  Wand2,
-  X,
-  Zap,
-  ZoomIn,
-  ZoomOut,
-  type LucideIcon,
-} from "lucide-react";
+import { Layers, Scissors, SlidersHorizontal, Sparkles, Trash2, Type } from "lucide-react";
 import { Slider } from "../../components/controls";
 import { useT } from "../../i18n";
 import { shortTime, timecode } from "../../lib/format";
-import { clipDuration, clipEnd, maxSourceOut, MIN_CLIP_SECONDS, projectDuration, updateClip } from "../../project/ops";
+import { clipDuration, clipEnd, isEffectLayer, maxSourceOut, MIN_CLIP_SECONDS, projectDuration, updateClip } from "../../project/ops";
 import type { Clip, MediaItem, Project } from "../../project/types";
 import { useProject } from "../../store/project";
 import { useEditorUi } from "../../store/editorUi";
 import { deleteSelection, splitAtPlayhead } from "./commands";
-import { matchingPreset, PRESETS, presetSwatch } from "../../project/presets";
-import { usePosterThumb } from "./SidePanel";
-import { EFFECT_DEF, EFFECTS, type ClipEffect, type EffectGroup, type EffectKind } from "../../project/effects";
+import { EffectLayerInfo, EffectStack } from "./EffectBrowser";
 
 
 export function Inspector({ noFx = false }: { noFx?: boolean } = {}) {
@@ -61,6 +33,17 @@ export function Inspector({ noFx = false }: { noFx?: boolean } = {}) {
               <Type />
               {t("text.openPanel")}
             </button>
+          </div>
+        ) : clip && isEffectLayer(clip) ? (
+          <div className="inspector-stack">
+            <EffectLayerInfo clip={clip} />
+            <EffectsSection clip={clip} />
+            <div className="inspector-actions">
+              <button className="btn btn-sm btn-danger" onClick={deleteSelection}>
+                <Trash2 />
+                {t("inspector.delete")}
+              </button>
+            </div>
           </div>
         ) : clip && media ? (
           <ClipInspector project={project} clip={clip} media={media} noFx={noFx} />
@@ -229,48 +212,12 @@ function ClipInspector({ project, clip, media, noFx }: { project: Project; clip:
   );
 }
 
-const FX_ICONS: Record<EffectKind, LucideIcon> = {
-  brightness: Sun,
-  contrast: Contrast,
-  saturation: Droplet,
-  temperature: Thermometer,
-  bw: CircleDot,
-  sepia: Sparkles,
-  invert: Blend,
-  sharpen: Focus,
-  blur: Droplet,
-  rgbSplit: Aperture,
-  vignette: CircleDot,
-  grain: Wand2,
-  zoomIn: ZoomIn,
-  zoomOut: ZoomOut,
-  shake: Vibrate,
-  mirror: FlipHorizontal2,
-  flip: FlipVertical2,
-  flash: Zap,
-  punch: Maximize2,
-  hitShake: Activity,
-};
-
-const FX_GROUPS: EffectGroup[] = ["adjust", "look", "motion", "hit"];
-
-/** Per-clip effects: chips add / remove, applied ones get an amount slider. */
-export function EffectsSection({ clip }: { clip: Clip }) {
+/** Applied effects of a clip / layer, plus the way into the effect browser. */
+export function EffectsSection({ clip, browse = true }: { clip: Clip; browse?: boolean }) {
   const t = useT();
-  const { beginGesture, endGesture, transient, commit } = useProject.getState();
+  const commit = useProject((s) => s.commit);
   const effects = clip.effects ?? [];
-  const setEffects = (next: ClipEffect[], live = false) => {
-    const update = (p: Project) => updateClip(p, clip.id, { effects: next.length ? next : undefined });
-    if (live) transient(update);
-    else commit(update);
-  };
-  const toggle = (kind: EffectKind) => {
-    if (effects.some((e) => e.kind === kind)) setEffects(effects.filter((e) => e.kind !== kind));
-    else setEffects([...effects, { kind, amount: EFFECT_DEF[kind].initial }]);
-  };
-  const sliders = effects.filter((e) => !EFFECT_DEF[e.kind]?.toggle && EFFECT_DEF[e.kind]);
-  const preset = matchingPreset(effects);
-  const thumb = usePosterThumb();
+  const layer = isEffectLayer(clip);
   const visualCount = useProject((s) => {
     const p = s.project;
     if (!p) return 0;
@@ -282,81 +229,29 @@ export function EffectsSection({ clip }: { clip: Clip }) {
       const visual = new Set(p.media.filter((m) => m.kind !== "audio").map((m) => m.id));
       return { ...p, clips: p.clips.map((c) => (visual.has(c.mediaId) ? { ...c, effects: effects.length ? effects.map((e) => ({ ...e })) : undefined } : c)) };
     });
-
   return (
     <div className="inspector-section fx-section">
       <h3 className="section-title">
         {t("fx.title")}
-        {effects.length > 0 && (
-          <button className="link-btn" onClick={() => setEffects([])}>
+        {effects.length > 0 && !layer && (
+          <button className="link-btn" onClick={() => commit((p) => updateClip(p, clip.id, { effects: undefined }))}>
             {t("fx.reset")}
           </button>
         )}
       </h3>
-      <span className="fx-group-label">{t("preset.title")}</span>
-      <div className="preset-grid">
-        {PRESETS.map((pr) => {
-          const look = presetSwatch(pr);
-          const on = preset === pr.id;
-          return (
-            <button
-              key={pr.id}
-              className={`grade-card preset-card${on ? " active" : ""}`}
-              aria-pressed={on}
-              onClick={() => setEffects(on ? [] : pr.effects.map((e) => ({ ...e })))}
-            >
-              <span className="grade-swatch" style={{ filter: look.filter, backgroundImage: thumb ? `url("${thumb}")` : undefined }}>
-                {look.overlay && <i style={{ background: look.overlay }} />}
-              </span>
-              <span>{t(`preset.${pr.id}`)}</span>
-            </button>
-          );
-        })}
-      </div>
-      {visualCount > 1 && effects.length > 0 && (
+      <EffectStack clip={clip} />
+      {browse && (
+        <button className="btn btn-sm btn-block" onClick={() => useEditorUi.setState({ panel: "fx" })}>
+          <Sparkles />
+          {t("fx.browse")}
+        </button>
+      )}
+      {!layer && visualCount > 1 && effects.length > 0 && (
         <button className="btn btn-sm btn-block fx-apply-all" onClick={applyToAll}>
           <Layers />
           {t("preset.applyAll")}
         </button>
       )}
-      {sliders.map((e) => {
-        const def = EFFECT_DEF[e.kind];
-        return (
-          <div className="fx-row" key={e.kind}>
-            <Slider
-              label={t(`fx.${e.kind}`)}
-              value={Math.round(e.amount * 100)}
-              min={def.signed ? -100 : 0}
-              max={100}
-              step={1}
-              format={(v) => (def.signed && v > 0 ? `+${v}` : String(v))}
-              onChange={(v) => setEffects(effects.map((x) => (x.kind === e.kind ? { ...x, amount: v / 100 } : x)), true)}
-              onStart={beginGesture}
-              onEnd={endGesture}
-            />
-            <button className="icon-btn fx-remove" title={t("fx.remove")} aria-label={t("fx.remove")} onClick={() => toggle(e.kind)}>
-              <X />
-            </button>
-          </div>
-        );
-      })}
-      {FX_GROUPS.map((group) => (
-        <div className="fx-group" key={group}>
-          <span className="fx-group-label">{t(`fx.group.${group}`)}</span>
-          <div className="chip-group">
-            {EFFECTS.filter((d) => d.group === group).map((d) => {
-              const Icon = FX_ICONS[d.kind];
-              const on = effects.some((e) => e.kind === d.kind);
-              return (
-                <button key={d.kind} className={`chip${on ? " active" : ""}`} aria-pressed={on} onClick={() => toggle(d.kind)}>
-                  <Icon />
-                  {t(`fx.${d.kind}`)}
-                </button>
-              );
-            })}
-          </div>
-        </div>
-      ))}
     </div>
   );
 }

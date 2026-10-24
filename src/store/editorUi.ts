@@ -15,6 +15,8 @@ interface EditorUiState {
   exportOpen: boolean;
   dragMedia: { mediaId: string; x: number; y: number } | null;
   dropHint: { trackId: string | null; start: number; duration: number } | null;
+  /** Effect whose time range is being edited on the timeline (handles on the clip). */
+  fxFocus: { clipId: string; index: number } | null;
   setZoom: (pps: number) => void;
 }
 
@@ -27,5 +29,6 @@ export const useEditorUi = create<EditorUiState>((set) => ({
   exportOpen: false,
   dragMedia: null,
   dropHint: null,
+  fxFocus: null,
   setZoom: (pps) => set({ pxPerSec: Math.min(MAX_PPS, Math.max(MIN_PPS, pps)) }),
 }));

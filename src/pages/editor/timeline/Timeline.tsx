@@ -118,7 +118,7 @@ export function Timeline() {
   };
 
   if (!tracks) return null;
-  const counts = { video: 0, audio: 0, music: 0, text: 0 };
+  const counts = { video: 0, audio: 0, music: 0, text: 0, effect: 0 };
   for (const tr of tracks) counts[tr.kind] += 1;
   const mainVideo = tracks.find((tr) => tr.kind === "video")?.id;
 
@@ -196,7 +196,7 @@ export function Timeline() {
                 media={media}
                 pps={pps}
                 height={track.kind === "video" ? VIDEO_H : AUDIO_H}
-                canRemove={track.kind === "text" || counts[track.kind] > 1 || !(byTrack.get(track.id)?.length ?? 0)}
+                canRemove={track.kind === "text" || track.kind === "effect" || counts[track.kind] > 1 || !(byTrack.get(track.id)?.length ?? 0)}
                 showAdd={track.id === mainVideo}
               />
             ))}

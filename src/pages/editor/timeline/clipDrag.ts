@@ -3,6 +3,7 @@
 import {
   clipDuration,
   clipEnd,
+  isEffectLayer,
   isElastic,
   isFree,
   maxSourceOut,
@@ -31,9 +32,10 @@ export function beginClipDrag(e: React.PointerEvent, clipId: string, mode: ClipD
   const project = store.project;
   const origin = project?.clips.find((c) => c.id === clipId);
   const media = origin ? project?.media.find((m) => m.id === origin.mediaId) ?? null : null;
-  if (!project || !origin || (!media && !origin.text)) return;
+  const layer = !!origin && isEffectLayer(origin);
+  if (!project || !origin || (!media && !origin.text && !layer)) return;
   const elastic = isElastic(origin, media);
-  const fits = (kind: TrackKind) => (origin.text ? kind === "text" : !!media && trackAccepts(kind, media));
+  const fits = (kind: TrackKind) => (origin.text ? kind === "text" : layer ? kind === "effect" : !!media && trackAccepts(kind, media));
 
   const additive = e.shiftKey || e.ctrlKey || e.metaKey;
   const wasSelected = store.selection.includes(clipId);

@@ -7,7 +7,8 @@ import type { TextContent } from "./text";
 export type Aspect = "16:9" | "9:16" | "1:1" | "4:5";
 export type Resolution = "720p" | "1080p" | "1440p" | "4K";
 export type MediaKind = "video" | "audio" | "image";
-export type TrackKind = "video" | "audio" | "music" | "text";
+/** `effect`: effect layers, clips without media whose effects apply to the video tracks below. */
+export type TrackKind = "video" | "audio" | "music" | "text" | "effect";
 
 export interface ProjectSettings {
   aspect: Aspect;

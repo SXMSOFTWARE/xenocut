@@ -9,7 +9,7 @@ import type { Clip, MediaItem, Project, Track } from "../project/types";
 import { usePlayback } from "../store/playback";
 import { useProject } from "../store/project";
 import { drawTexts, textStateKey } from "../text/render";
-import { flashAt, motionAt, motionCss, previewFx, vignetteGradient } from "../project/effects";
+import { fxAt, letterboxBackground, motionCss, scanlineBackground, vignetteGradient, type FxState } from "../project/effects";
 
 /** How often playback pushes the time to the store (and so to the playhead painters). */
 const PUBLISH_MS = 80;
@@ -68,18 +68,35 @@ function previewPath(path: string): string {
 }
 
 /** Elements the per-clip effects preview drives (see project/effects.ts). */
-export interface FxElements {
-  /** Wrapper around the media and overlays: zoom / shake / flip transforms. */
-  layer: HTMLElement;
+/** Overlays drawn over a picture (a clip's fitted picture or an effect layer's whole canvas). */
+export interface FxOverlays {
+  /** Positioned box holding the overlays (each fills it). */
+  box: HTMLElement;
   vignette: HTMLElement;
   grain: HTMLElement;
-  /** White beat-hit flash over the fitted picture. */
+  scanlines: HTMLElement;
+  /** White beat-hit flash. */
   flash: HTMLElement;
-  /** `<filter id="xc-fx-svg">`: sharpen and RGB split. */
-  svg: SVGFilterElement;
+  /** Black dip (fade in / fade out effects). */
+  dip: HTMLElement;
+  letterbox: HTMLElement;
 }
 
-function setStyle(el: HTMLElement, prop: "filter" | "transform" | "background" | "opacity" | "display", value: string) {
+export interface FxElements {
+  /** Effect layers: zoom / shake transform around everything below. */
+  layer: HTMLElement;
+  /** Effect layers: colour / blur filter on the clips (not on the layer overlays). */
+  layerPicture: HTMLElement;
+  /** The visible clip: zoom / shake / flips transform around its media and overlays. */
+  clip: HTMLElement;
+  clipOverlays: FxOverlays;
+  layerOverlays: FxOverlays;
+  /** `<filter id="xc-fx-svg">` (clip) and `xc-fx-svg2` (layers): sharpen and RGB split. */
+  svg: SVGFilterElement;
+  svg2: SVGFilterElement;
+}
+
+function setStyle(el: HTMLElement, prop: "filter" | "transform" | "background" | "opacity" | "display" | "left" | "top" | "width" | "height", value: string) {
   if (el.style[prop] !== value) el.style[prop] = value;
 }
 
@@ -119,8 +136,8 @@ class PlaybackEngine {
   private textKey = "";
   private textProject: Project | null = null;
   private fx: FxElements | null = null;
-  private fxKey = "";
   private svgKey = "";
+  private svg2Key = "";
 
   attach(video: HTMLVideoElement, image: HTMLImageElement) {
     this.video = video;
@@ -146,73 +163,100 @@ class PlaybackEngine {
 
   attachFx(fx: FxElements | null) {
     this.fx = fx;
-    this.fxKey = "";
     this.svgKey = "";
+    this.svg2Key = "";
     this.render(this.latestTime(), usePlayback.getState().playing);
   }
 
-  /** Effects of the visible clip: filter on the media element, overlays, layer transform. */
+  /** Effects of the visible clip (filter on the media element, overlays over its fitted picture,
+   *  transform) and of the effect layers above it (on everything composited so far). */
   private applyFx(p: Project, visual: Active | null, el: HTMLElement | null, t: number) {
     const fx = this.fx;
     if (!fx) return;
-    const effects = visual?.clip.effects ?? [];
-    if (!visual || !el || effects.length === 0) {
-      if (this.fxKey !== "") {
-        this.fxKey = "";
-        for (const m of [this.video, this.image]) if (m) setStyle(m, "filter", "");
-        setStyle(fx.layer, "transform", "");
-        setStyle(fx.vignette, "display", "none");
-        setStyle(fx.grain, "display", "none");
-        setStyle(fx.flash, "display", "none");
-      }
-      return;
-    }
     const stageH = fx.layer.clientHeight || p.settings.height;
-    const look = previewFx(effects, p.settings.height, stageH / p.settings.height);
+    const scale = stageH / p.settings.height;
+    const H = p.settings.height;
+
+    // The clip.
+    const effects = visual?.clip.effects ?? [];
     const other = el === this.video ? this.image : this.video;
     if (other) setStyle(other, "filter", "");
-    setStyle(el, "filter", look.filter);
-    if (look.svg) {
-      const key = `${look.svg.sharpen}|${look.svg.split}`;
-      if (key !== this.svgKey) {
-        this.svgKey = key;
-        fx.svg.innerHTML = svgPrimitives(look.svg.sharpen, look.svg.split);
+    if (!visual || !el || effects.length === 0) {
+      if (el) setStyle(el, "filter", "");
+      setStyle(fx.clip, "transform", "");
+      this.paintOverlays(fx.clipOverlays, null, t, p, scale);
+    } else {
+      const local = t - visual.clip.start;
+      const look = fxAt(effects, local, clipDuration(visual.clip), H, scale, "xc-fx-svg");
+      setStyle(el, "filter", look.filter);
+      if (look.svg) {
+        const key = `${look.svg.sharpen}|${look.svg.split}`;
+        if (key !== this.svgKey) {
+          this.svgKey = key;
+          fx.svg.innerHTML = svgPrimitives(look.svg.sharpen, look.svg.split);
+        }
+      }
+      // Overlays cover the fitted picture, like the export applies them before padding.
+      const { width: W } = p.settings;
+      const mw = visual.media.width || W;
+      const mh = visual.media.height || H;
+      const fit = Math.min(W / mw, H / mh);
+      const rw = Math.min(1, (mw * fit) / W) * 100;
+      const rh = Math.min(1, (mh * fit) / H) * 100;
+      const box = fx.clipOverlays.box;
+      setStyle(box, "left", `${(100 - rw) / 2}%`);
+      setStyle(box, "top", `${(100 - rh) / 2}%`);
+      setStyle(box, "width", `${rw}%`);
+      setStyle(box, "height", `${rh}%`);
+      this.paintOverlays(fx.clipOverlays, look, t, p, scale);
+      setStyle(fx.clip, "transform", motionCss(look.motion));
+    }
+
+    // Effect layers on tracks above the visible clip (all of them over a gap).
+    const below = visual ? p.tracks.indexOf(visual.track) : p.tracks.length;
+    const looks: FxState[] = [];
+    for (let i = below - 1; i >= 0; i--) {
+      const track = p.tracks[i];
+      if (track.kind !== "effect" || track.hidden) continue;
+      for (const c of p.clips) {
+        if (c.trackId !== track.id || !c.effects?.length) continue;
+        if (t < c.start - 1e-6 || t >= clipEnd(c) - 1e-6) continue;
+        looks.push(fxAt(c.effects, t - c.start, clipDuration(c), H, scale, "xc-fx-svg2"));
       }
     }
-    // Overlays cover the fitted picture, like the export applies them before padding.
-    const { width: W, height: H } = p.settings;
-    const mw = visual.media.width || W;
-    const mh = visual.media.height || H;
-    const fit = Math.min(W / mw, H / mh);
-    const rw = Math.min(1, (mw * fit) / W) * 100;
-    const rh = Math.min(1, (mh * fit) / H) * 100;
-    const rect = `${(100 - rw) / 2}%|${(100 - rh) / 2}%|${rw}%|${rh}%`;
-    const key = `${visual.clip.id}|${rect}|${look.vignette}|${look.grain}`;
-    if (key !== this.fxKey) {
-      this.fxKey = key;
-      for (const o of [fx.vignette, fx.grain, fx.flash]) {
-        o.style.left = `${(100 - rw) / 2}%`;
-        o.style.top = `${(100 - rh) / 2}%`;
-        o.style.width = `${rw}%`;
-        o.style.height = `${rh}%`;
+    const merged = mergeLooks(looks);
+    setStyle(fx.layerPicture, "filter", merged?.filter ?? "");
+    if (merged?.svg) {
+      const key = `${merged.svg.sharpen}|${merged.svg.split}`;
+      if (key !== this.svg2Key) {
+        this.svg2Key = key;
+        fx.svg2.innerHTML = svgPrimitives(merged.svg.sharpen, merged.svg.split);
       }
-      setStyle(fx.vignette, "display", look.vignette > 0 ? "block" : "none");
-      setStyle(fx.vignette, "background", look.vignette > 0 ? vignetteGradient(look.vignette) : "");
-      setStyle(fx.grain, "display", look.grain > 0 ? "block" : "none");
-      setStyle(fx.grain, "opacity", String(Math.min(1, look.grain * 0.7)));
     }
+    this.paintOverlays(fx.layerOverlays, merged, t, p, scale);
+    setStyle(fx.layer, "transform", looks.map((l) => motionCss(l.motion)).filter(Boolean).join(" "));
+  }
+
+  private paintOverlays(o: FxOverlays, look: FxState | null, t: number, p: Project, scale: number) {
+    const show = (e: HTMLElement, on: boolean) => setStyle(e, "display", on ? "block" : "none");
+    show(o.vignette, !!look && look.vignette > 0);
+    show(o.grain, !!look && look.grain > 0);
+    show(o.scanlines, !!look && look.scanlines > 0);
+    show(o.flash, !!look && look.flash > 0);
+    show(o.dip, !!look && look.dip > 0);
+    show(o.letterbox, !!look && look.letterbox > 0);
+    if (!look) return;
+    if (look.vignette > 0) setStyle(o.vignette, "background", vignetteGradient(look.vignette));
     if (look.grain > 0) {
+      setStyle(o.grain, "opacity", String(Math.min(1, look.grain * 0.7)));
       // A new noise offset every frame, stable for a given frame.
       const frame = Math.floor(t * p.settings.fps);
-      const x = (frame * 73) % 199;
-      const y = (frame * 151) % 197;
-      fx.grain.style.backgroundPosition = `${x}px ${y}px`;
+      o.grain.style.backgroundPosition = `${(frame * 73) % 199}px ${(frame * 151) % 197}px`;
     }
-    const local = t - visual.clip.start;
-    const flash = flashAt(effects, local);
-    setStyle(fx.flash, "display", flash > 0 ? "block" : "none");
-    if (flash > 0) setStyle(fx.flash, "opacity", flash.toFixed(3));
-    setStyle(fx.layer, "transform", motionCss(motionAt(effects, local, clipDuration(visual.clip))));
+    if (look.scanlines > 0) setStyle(o.scanlines, "background", scanlineBackground(look.scanlines, p.settings.height, scale));
+    if (look.flash > 0) setStyle(o.flash, "opacity", look.flash.toFixed(3));
+    if (look.dip > 0) setStyle(o.dip, "opacity", look.dip.toFixed(3));
+    if (look.letterbox > 0) setStyle(o.letterbox, "background", letterboxBackground(look.letterbox));
   }
 
   /** Force the next render to redraw text (canvas resized, fonts loaded). */
@@ -460,6 +504,26 @@ class PlaybackEngine {
 }
 
 /** SVG primitives for sharpen (3x3 unsharp approximation) and RGB split (`split` CSS px). */
+/** Several effect layers active at once (preview only; the export chains them exactly):
+ *  filters chain bottom first, overlays take the strongest, flashes / dips combine. */
+function mergeLooks(looks: FxState[]): FxState | null {
+  if (looks.length === 0) return null;
+  if (looks.length === 1) return looks[0];
+  const max = (k: "vignette" | "grain" | "scanlines" | "letterbox") => Math.max(...looks.map((l) => l[k]));
+  const keep = (k: "flash" | "dip") => looks.reduce((v, l) => v * (1 - l[k]), 1);
+  return {
+    filter: looks.map((l) => l.filter).filter(Boolean).join(" "),
+    svg: looks.find((l) => l.svg)?.svg ?? null,
+    vignette: max("vignette"),
+    grain: max("grain"),
+    scanlines: max("scanlines"),
+    letterbox: max("letterbox"),
+    flash: 1 - keep("flash"),
+    dip: 1 - keep("dip"),
+    motion: null,
+  };
+}
+
 function svgPrimitives(sharpen: number, split: number): string {
   const parts: string[] = [];
   let src = "SourceGraphic";

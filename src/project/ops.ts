@@ -1,5 +1,6 @@
 // Pure project operations. Every function returns a new project; nothing mutates.
 import { uid } from "../lib/id";
+import type { ClipEffect } from "./effects";
 import type { Aspect, Clip, MediaItem, ProbeInfo, Project, ProjectSettings, Resolution, Track, TrackKind } from "./types";
 import { TEXT_DEFAULT_SECONDS, type TextContent } from "./text";
 
@@ -23,7 +24,7 @@ export function settingsFor(aspect: Aspect, resolution: Resolution, fps: number)
 }
 
 export function makeTrack(kind: TrackKind, existing: Track[]): Track {
-  const base = kind === "video" ? "Video" : kind === "audio" ? "Audio" : kind === "text" ? "Text" : "Music";
+  const base = kind === "video" ? "Video" : kind === "audio" ? "Audio" : kind === "text" ? "Text" : kind === "effect" ? "FX" : "Music";
   const n = existing.filter((t) => t.kind === kind).length + 1;
   return { id: uid("t"), kind, name: `${base} ${n}`, muted: false, hidden: false };
 }
@@ -77,11 +78,16 @@ export function maxSourceOut(media: MediaItem | null | undefined): number {
 
 /** Text clips and stills can be stretched freely; their "in" point is always 0. */
 export function isElastic(clip: Clip, media: MediaItem | null | undefined): boolean {
-  return !!clip.text || media?.kind === "image";
+  return !!clip.text || isEffectLayer(clip) || media?.kind === "image";
+}
+
+/** A clip on an effect track: no media, no text, only effects. */
+export function isEffectLayer(clip: Clip): boolean {
+  return !clip.text && clip.mediaId === "";
 }
 
 export function trackAccepts(kind: TrackKind, media: MediaItem): boolean {
-  if (kind === "text") return false;
+  if (kind === "text" || kind === "effect") return false;
   if (kind === "video") return media.kind === "video" || media.kind === "image";
   return media.kind === "audio" || (media.kind === "video" && media.hasAudio);
 }
@@ -195,9 +201,9 @@ export function updateClip(project: Project, clipId: string, patch: Partial<Clip
   return { ...project, clips: project.clips.map((c) => (c.id === clipId ? { ...c, ...patch } : c)) };
 }
 
-const TRACK_ORDER: TrackKind[] = ["text", "video", "audio", "music"];
+const TRACK_ORDER: TrackKind[] = ["text", "effect", "video", "audio", "music"];
 
-/** Text tracks on top, then video, audio and music; order inside a group is preserved. */
+/** Text tracks on top, then effect layers, video, audio and music; order inside a group is preserved. */
 export function sortTracks(tracks: Track[]): Track[] {
   return [...tracks].sort((a, b) => TRACK_ORDER.indexOf(a.kind) - TRACK_ORDER.indexOf(b.kind));
 }
@@ -246,4 +252,20 @@ export function updateText(project: Project, clipId: string, update: (text: Text
     ...project,
     clips: project.clips.map((c) => (c.id === clipId && c.text ? { ...c, text: update(c.text) } : c)),
   };
+}
+
+export const EFFECT_LAYER_SECONDS = 3;
+
+/** Put an effect layer at (or near) `at` on a free effect track; a new track is added when every one is busy. */
+export function addEffectLayer(project: Project, effects: ClipEffect[], at: number, duration = EFFECT_LAYER_SECONDS): { project: Project; clipId: string } {
+  let next = project;
+  const start = Math.max(0, at);
+  let trackId = next.tracks.find((t) => t.kind === "effect" && isFree(next, t.id, start, duration))?.id;
+  if (!trackId) {
+    const track = makeTrack("effect", next.tracks);
+    next = { ...next, tracks: sortTracks([...next.tracks, track]) };
+    trackId = track.id;
+  }
+  const clip: Clip = { id: uid("c"), trackId, mediaId: "", start, in: 0, out: duration, speed: 1, volume: 1, opacity: 1, fadeIn: 0, fadeOut: 0, effects };
+  return { project: { ...next, clips: [...next.clips, clip] }, clipId: clip.id };
 }

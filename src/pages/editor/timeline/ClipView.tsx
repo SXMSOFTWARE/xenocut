@@ -1,9 +1,14 @@
-import { memo } from "react";
+import { memo, type PointerEvent as ReactPointerEvent } from "react";
 import { fileSrc } from "../../../lib/backend";
-import { clipDuration } from "../../../project/ops";
-import type { Clip, MediaAssets, MediaItem, TrackKind } from "../../../project/types";
+import { clipDuration, updateClip } from "../../../project/ops";
+import type { Clip, MediaAssets, MediaItem, Project, TrackKind } from "../../../project/types";
 import { useAssets } from "../../../store/assets";
-import { ChevronLeft, ChevronRight, Type } from "lucide-react";
+import { ChevronLeft, ChevronRight, Sparkles, Type } from "lucide-react";
+import { EFFECT_DEF } from "../../../project/effects";
+import { useEditorUi } from "../../../store/editorUi";
+import { useProject } from "../../../store/project";
+import { engine } from "../../../engine/playback";
+import { t, type Key } from "../../../i18n";
 import { beginClipDrag } from "./clipDrag";
 
 const MAX_TILES = 48;
@@ -49,6 +54,7 @@ export const ClipView = memo(function ClipView({ clip, media, trackKind, pps, se
         {clip.fadeIn > 0 && <span className="clip-fade in" style={{ width: Math.min(width / 2, clip.fadeIn * pps) }} />}
         {clip.fadeOut > 0 && <span className="clip-fade out" style={{ width: Math.min(width / 2, clip.fadeOut * pps) }} />}
       </div>
+      {selected && <FxRangeBar clip={clip} pps={pps} />}
       <span className="clip-handle start" onPointerDown={(e) => beginClipDrag(e, clip.id, "trim-start")} />
       <span className="clip-handle end" onPointerDown={(e) => beginClipDrag(e, clip.id, "trim-end")} />
       {selected && width >= 52 && (
@@ -99,6 +105,100 @@ export const TextClipView = memo(function TextClipView({ clip, pps, selected }: 
     </div>
   );
 });
+
+/** An effect layer: a pill on an "effect" track that applies its effects to everything below it. */
+export const EffectLayerView = memo(function EffectLayerView({ clip, pps, selected }: { clip: Clip; pps: number; selected: boolean }) {
+  const duration = clipDuration(clip);
+  const width = Math.max(2, duration * pps);
+  const label = (clip.effects ?? []).map((e) => (EFFECT_DEF[e.kind] ? t(`fx.${e.kind}` as Key) : e.kind)).join(" · ");
+  return (
+    <div
+      className={`clip tone-fx${selected ? " selected" : ""}${width < 36 ? " tiny" : ""}`}
+      style={{ transform: `translateX(${clip.start * pps}px)`, width }}
+      data-clip-id={clip.id}
+      title={label}
+      onPointerDown={(e) => beginClipDrag(e, clip.id, "move")}
+    >
+      <div className="clip-body">
+        <div className="clip-label">
+          <Sparkles className="clip-text-glyph" />
+          <span>{label || t("fx.layer")}</span>
+        </div>
+      </div>
+      {selected && <FxRangeBar clip={clip} pps={pps} />}
+      <span className="clip-handle start" onPointerDown={(e) => beginClipDrag(e, clip.id, "trim-start")} />
+      <span className="clip-handle end" onPointerDown={(e) => beginClipDrag(e, clip.id, "trim-end")} />
+      {selected && width >= 52 && (
+        <>
+          <span className="trim-btn start" onPointerDown={(e) => beginClipDrag(e, clip.id, "trim-start")}>
+            <ChevronLeft size={12} strokeWidth={2.4} />
+          </span>
+          <span className="trim-btn end" onPointerDown={(e) => beginClipDrag(e, clip.id, "trim-end")}>
+            <ChevronRight size={12} strokeWidth={2.4} />
+          </span>
+        </>
+      )}
+    </div>
+  );
+});
+
+const MIN_FX = 0.1;
+
+/** Range of the focused effect drawn over the selected clip, with draggable edges and body. */
+function FxRangeBar({ clip, pps }: { clip: Clip; pps: number }) {
+  const focus = useEditorUi((s) => s.fxFocus);
+  if (!focus || focus.clipId !== clip.id) return null;
+  const fx = clip.effects?.[focus.index];
+  if (!fx) return null;
+  const length = clipDuration(clip);
+  const a = Math.max(0, Math.min(length, fx.from ?? 0));
+  const b = Math.max(a, Math.min(length, fx.to ?? length));
+  const begin = (e: ReactPointerEvent, mode: "start" | "end" | "move") => {
+    e.stopPropagation();
+    e.preventDefault();
+    const x0 = e.clientX;
+    const store = useProject.getState();
+    store.beginGesture();
+    const move = (ev: PointerEvent) => {
+      const d = (ev.clientX - x0) / pps;
+      let na = a;
+      let nb = b;
+      if (mode === "start") na = Math.min(b - MIN_FX, Math.max(0, a + d));
+      else if (mode === "end") nb = Math.max(a + MIN_FX, Math.min(length, b + d));
+      else {
+        const sh = Math.max(-a, Math.min(length - b, d));
+        na = a + sh;
+        nb = b + sh;
+      }
+      const r = (v: number) => Math.round(v * 100) / 100;
+      store.transient((p) => setEffectRange(p, clip.id, focus.index, r(na), r(nb), length));
+      engine.seek(clip.start + (mode === "end" ? nb : na));
+    };
+    const up = () => {
+      window.removeEventListener("pointermove", move);
+      window.removeEventListener("pointerup", up);
+      store.endGesture();
+    };
+    window.addEventListener("pointermove", move);
+    window.addEventListener("pointerup", up);
+  };
+  return (
+    <div className="fx-range" style={{ left: a * pps, width: Math.max(4, (b - a) * pps) }} onPointerDown={(e) => begin(e, "move")}>
+      <span className="fx-range-label">{t(`fx.${fx.kind}` as Key)}</span>
+      <span className="fx-range-h start" onPointerDown={(e) => begin(e, "start")} />
+      <span className="fx-range-h end" onPointerDown={(e) => begin(e, "end")} />
+    </div>
+  );
+}
+
+/** Set an effect's range; a range covering the whole clip is stored as "whole clip" (no bounds). */
+export function setEffectRange(p: Project, clipId: string, index: number, from: number, to: number, length: number): Project {
+  const whole = from <= 0.005 && to >= length - 0.005;
+  const clip = p.clips.find((c) => c.id === clipId);
+  if (!clip) return p;
+  const effects = (clip.effects ?? []).map((e, i) => (i !== index ? e : whole ? { kind: e.kind, amount: e.amount } : { ...e, from, to }));
+  return updateClip(p, clipId, { effects });
+}
 
 /** Filmstrip tiles sampled from the clip's source range out of one sprite image. */
 function Film({ clip, media, assets, width, pps, height }: { clip: Clip; media: MediaItem; assets: MediaAssets; width: number; pps: number; height: number }) {

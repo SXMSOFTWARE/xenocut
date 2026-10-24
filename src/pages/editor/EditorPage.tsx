@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { Upload } from "lucide-react";
 import "../../styles/editor.css";
+import "../../styles/effects.css";
 import { engine } from "../../engine/playback";
 import { useT } from "../../i18n";
 import { onFileDrop } from "../../lib/backend";

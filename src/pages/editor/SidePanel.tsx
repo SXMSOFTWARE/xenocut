@@ -15,6 +15,7 @@ import { useProject } from "../../store/project";
 import { useRouter } from "../../store/router";
 import { addTrack, toggleTrack } from "./commands";
 import { Inspector } from "./Inspector";
+import { EffectsPanel } from "./EffectBrowser";
 import { TextPanel } from "./TextPanel";
 import { LyricsPanel } from "./LyricsPanel";
 import { AmvPanel } from "./AmvPanel";
@@ -55,6 +56,7 @@ export function SidePanel() {
       <div className="sp-body">
         {panel === "media" && <MediaBin />}
         {panel === "effects" && <Inspector />}
+        {panel === "fx" && <EffectsPanel />}
         {panel === "voice" && <VoicePanel />}
         {panel === "music" && <MusicPanel />}
         {panel === "audio" && <AudioPanel />}

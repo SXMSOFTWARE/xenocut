@@ -78,10 +78,30 @@
   inset: 0;
   transform-origin: 50% 50%;
 }
+/* Effect wrappers: layer transform > layer filter (black like the export canvas) > clip transform. */
+.stage-fxwrap {
+  position: absolute;
+  inset: 0;
+  transform-origin: 50% 50%;
+}
+.stage-fxpic {
+  background: #000;
+}
+.stage-ov {
+  position: absolute;
+  pointer-events: none;
+}
+.stage-ov-full {
+  inset: 0;
+}
 .stage-fx {
   position: absolute;
+  inset: 0;
   display: none;
   pointer-events: none;
+}
+.stage-dip {
+  background: #000;
 }
 .stage-flash {
   background: #fff;
