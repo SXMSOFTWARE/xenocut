@@ -152,6 +152,7 @@ async function perfProbe() {
   const o = opts();
   if (!o.secs) return;
   if (o.perf !== undefined) useSettings.getState().update({ performanceMode: o.perf === "1" });
+  if (o.pubms !== undefined) engine.publishMs = Number(o.pubms);
   if (o.proxy === "1") {
     useSettings.getState().update({ previewProxy: true });
     const started = performance.now();

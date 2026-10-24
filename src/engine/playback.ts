@@ -105,6 +105,8 @@ class PlaybackEngine {
   private audio = new Map<string, HTMLAudioElement>();
   private raf = 0;
   private lastPublish = 0;
+  /** Test override for the store publish interval in ms (autotest `pubms=`). */
+  publishMs: number | null = null;
   private latest = 0;
   private wallStart = 0;
   private timeStart = 0;
@@ -336,7 +338,8 @@ class PlaybackEngine {
     // every frame, so WebKit repaints the timeline far less often while the video plays.
     this.latest = time;
     const now = performance.now();
-    if (!useSettings.getState().performanceMode || now - this.lastPublish >= 80) {
+    const every = this.publishMs ?? (useSettings.getState().performanceMode ? 80 : 0);
+    if (now - this.lastPublish >= every) {
       this.lastPublish = now;
       usePlayback.setState({ time });
     }
