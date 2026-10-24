@@ -46,7 +46,21 @@ jobs:
             patchelf \
             libssl-dev \
             libxdo-dev \
-            file
+            file \
+            gstreamer1.0-plugins-base \
+            gstreamer1.0-plugins-good \
+            gstreamer1.0-plugins-bad \
+            gstreamer1.0-libav
+          # The AppImage bundles the runner's GStreamer plugins (bundleMediaFramework). gst-libav and
+          # plugins-good/bad give the preview native H.264/AAC/HEVC decoding (avdec_*, qtdemux,
+          # h264parse); the app's WebM preview copy stays as the fallback for anything else.
+
+      - name: Check the GStreamer decoders that get bundled
+        if: runner.os == 'Linux'
+        run: |
+          for el in avdec_h264 avdec_aac qtdemux h264parse matroskademux vp8dec opusdec; do
+            gst-inspect-1.0 "$el" > /dev/null || { echo "missing GStreamer element $el"; exit 1; }
+          done
 
       - name: Install dependencies
         run: npm ci
