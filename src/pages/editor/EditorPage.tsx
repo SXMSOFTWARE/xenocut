@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { Upload } from "lucide-react";
 import "../../styles/editor.css";
 import "../../styles/effects.css";
+import "../../styles/themes.css";
 import { engine } from "../../engine/playback";
 import { useT } from "../../i18n";
 import { onFileDrop } from "../../lib/backend";
@@ -27,10 +28,14 @@ import { laneAtPoint } from "./timeline/geometry";
 import { layoutVars } from "./layout";
 import { isMobileUi } from "../../lib/platform";
 import { MobileEditor } from "./mobile/MobileEditor";
+import { DockBin } from "./DockBin";
+import { useCurrentTheme } from "../../themes/useTheme";
 
 export default function EditorPage() {
   const panelSide = useSettings((s) => s.panelSide);
   const panelWidth = useSettings((s) => s.panelWidth);
+  const timelineFrac = useSettings((s) => s.timelineFrac);
+  const layout = useCurrentTheme().layout;
   const t = useT();
   const hasProject = useProject((s) => !!s.project);
   const exportOpen = useEditorUi((s) => s.exportOpen);
@@ -45,6 +50,14 @@ export default function EditorPage() {
   }, [hasProject]);
 
   useEffect(() => startAutosave(), []);
+
+  // Modern docks the media bin, so the tool panel opens on the clip inspector instead.
+  useEffect(() => {
+    if (layout === "modern" && !isMobileUi) {
+      const ui = useEditorUi.getState();
+      if (ui.panel === "media" || ui.panel === null) useEditorUi.setState({ panel: "effects" });
+    }
+  }, [layout]);
 
   // Native file drops: on a lane they land on the timeline, anywhere else they go to the bin.
   useEffect(() => {
@@ -107,9 +120,10 @@ export default function EditorPage() {
   }
 
   return (
-    <div className={`editor${panelOpen ? " panel-open" : ""}${panelSide === "left" ? " panel-left" : ""}${panelWidth ? " panel-sized" : ""}`} style={layoutVars(panelWidth)} ref={rootRef}>
+    <div className={`editor${panelOpen ? " panel-open" : ""}${panelSide === "left" ? " panel-left" : ""}${panelWidth ? " panel-sized" : ""}`} style={layoutVars(panelWidth, timelineFrac)} ref={rootRef}>
       <div className="hero">
-        <Ambient />
+        {layout === "xenocut" && <Ambient />}
+        {layout === "modern" && <DockBin />}
         <Preview />
         <Rail />
         <TitleBar />

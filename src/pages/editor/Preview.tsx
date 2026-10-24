@@ -168,8 +168,12 @@ export function Preview() {
   useLayoutEffect(() => {
     const area = areaRef.current!;
     const fit = () => {
-      const aw = Math.max(32, area.clientWidth);
-      const ah = Math.max(32, area.clientHeight);
+      // clientWidth includes padding (themes pad the docked stage): fit inside the content box.
+      const cs = getComputedStyle(area);
+      const px = (parseFloat(cs.paddingLeft) || 0) + (parseFloat(cs.paddingRight) || 0);
+      const py = (parseFloat(cs.paddingTop) || 0) + (parseFloat(cs.paddingBottom) || 0);
+      const aw = Math.max(32, area.clientWidth - px);
+      const ah = Math.max(32, area.clientHeight - py);
       const scale = Math.min(aw / width, ah / height);
       setBox({ w: Math.max(16, Math.floor(width * scale)), h: Math.max(16, Math.floor(height * scale)) });
     };

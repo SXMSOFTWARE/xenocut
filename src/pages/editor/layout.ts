@@ -36,8 +36,12 @@ export function resetSizes() {
 }
 
 /** CSS variables the editor root carries for user-sized parts. */
-export function layoutVars(panelWidth: number): CSSProperties | undefined {
-  return panelWidth ? ({ "--panel-w-user": `${panelWidth}px` } as CSSProperties) : undefined;
+export function layoutVars(panelWidth: number, timelineFrac = 0): CSSProperties | undefined {
+  const vars: Record<string, string> = {};
+  if (panelWidth) vars["--panel-w-user"] = `${panelWidth}px`;
+  // Docked layouts (Modern/Classic/Basic) size the timeline row from this.
+  if (timelineFrac) vars["--tl-row"] = `${timelineFrac * 100}%`;
+  return Object.keys(vars).length ? (vars as CSSProperties) : undefined;
 }
 
 /**

@@ -23,6 +23,8 @@ import {
   X,
 } from "lucide-react";
 import "../../../styles/mobile.css";
+import "../../../styles/themes.css";
+import { useCurrentTheme } from "../../../themes/useTheme";
 import { engine } from "../../../engine/playback";
 import { useT, type Key } from "../../../i18n";
 import { clipEnd, projectDuration } from "../../../project/ops";
@@ -83,6 +85,7 @@ const tabOf = (panel: PanelId) => TABS.find((tab) => tab.segs.includes(panel)) ?
  */
 export function MobileEditor() {
   const panel = useEditorUi((s) => s.panel);
+  const solid = !!useCurrentTheme().tokens["--bg"];
 
   // The desktop opens with the media panel; the phone starts on a clean preview + timeline.
   useEffect(() => {
@@ -92,7 +95,7 @@ export function MobileEditor() {
   return (
     <div className={`m-editor${panel ? " sheet-open" : ""}`}>
       <div className="hero m-hero">
-        <Ambient />
+        {!solid && <Ambient />}
         <TopBar />
         <div className="m-stage">
           <Preview />

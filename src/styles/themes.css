@@ -1,0 +1,412 @@
+/* Editor themes (src/themes): every theme recolours through tokens; the docked layouts below
+   (Modern, Classic, Basic) also move the preview, panels, media bin and timeline. The XenoCut
+   layout is editor.css as is. Docked layouts need room, so small windows keep the overlay look. */
+
+/* ---------- colours shared by the solid themes ---------- */
+html[data-solid] .hero,
+html[data-solid] .hero:has(.ambient-canvas.ready) {
+  background: var(--hero-bg, var(--bg));
+}
+html[data-solid] .timeline,
+html[data-solid].perf .timeline {
+  background: var(--tl-bg, var(--surface-1));
+  border-top-color: var(--line-strong);
+}
+html[data-solid] .side-panel {
+  background: var(--panel-bg, var(--surface-1));
+  box-shadow: none;
+}
+html[data-solid] .rail-btn.active,
+html[data-solid] .round-btn[aria-pressed="true"],
+html[data-solid] .side-panel .bin-filters .chip.active {
+  background: var(--theme-accent, #fff);
+  border-color: var(--theme-accent, #fff);
+  color: var(--accent-ink, var(--ink));
+}
+html[data-solid] .clip.selected .clip-body {
+  box-shadow: inset 0 0 0 2px var(--theme-accent, #fff);
+}
+html[data-solid] .round-btn {
+  background: var(--surface-2);
+}
+html[data-solid] .round-btn:hover:not(:disabled) {
+  background: var(--surface-3);
+}
+html[data-solid] .hero:has(.ambient-canvas.ready) .stage {
+  box-shadow: none;
+}
+
+/* ---------- phone: themes recolour and resize, the layout stays the phone layout ---------- */
+html[data-solid] .m-editor {
+  background: var(--bg);
+}
+html[data-solid] .m-editor .timeline {
+  background: var(--tl-bg, var(--surface-1));
+}
+html[data-solid] .m-toolbar,
+html[data-solid] .m-dock {
+  background: var(--panel-bg, var(--surface-1));
+}
+html[data-solid] .m-tool-icon {
+  background: var(--surface-2);
+  border-color: var(--line-strong);
+}
+html[data-theme]:not([data-theme="xenocut"]) .m-tool:active .m-tool-icon {
+  background: var(--theme-accent, #fff);
+  color: var(--accent-ink, var(--ink));
+}
+html[data-theme]:not([data-theme="xenocut"]) .m-editor .clip.selected .clip-body {
+  box-shadow: inset 0 0 0 2px var(--theme-accent, #fff);
+}
+html[data-density="compact"] .m-editor {
+  --m-tap: 42px;
+}
+html[data-density="compact"] .m-tool {
+  min-height: 56px;
+}
+html[data-density="compact"] .m-tool-icon {
+  width: 38px;
+  height: 38px;
+}
+html[data-density="comfortable"] .m-editor {
+  --m-tap: 54px;
+}
+html[data-density="comfortable"] .m-tool {
+  min-height: 72px;
+  flex-basis: 68px;
+}
+html[data-density="comfortable"] .m-tool-icon {
+  width: 50px;
+  height: 50px;
+}
+
+.rail-label {
+  display: none;
+}
+
+/* density: chrome (not the timeline or the preview, whose pointer maths is in CSS px) scales */
+html[data-density] .rail,
+html[data-density] .title-row,
+html[data-density] .bottom-bar,
+html[data-density] .side-panel > .sp-head,
+html[data-density] .side-panel > .sp-body > *,
+html[data-density] .dock-bin > * {
+  zoom: var(--ui-zoom, 1);
+}
+
+/* ---------- docked layouts ---------- */
+@media (min-width: 861px) and (min-height: 601px) {
+  html:not([data-layout="xenocut"]) .editor {
+    padding: 0;
+    gap: 0;
+    --hero-gap: 0px;
+    --panel-w: 320px;
+    --bin-w: 300px;
+  }
+  html:not([data-layout="xenocut"]) .editor.panel-sized {
+    --panel-w: min(var(--panel-w-user), 42vw);
+  }
+  html:not([data-layout="xenocut"]) .hero {
+    display: grid;
+    border-radius: 0;
+    gap: 1px;
+    background: var(--line-strong);
+  }
+  /* !important: the overlay layout's offsets come from many state rules (.panel-open, .panel-left…) */
+  html:not([data-layout="xenocut"]) .hero > * {
+    position: relative !important;
+    inset: auto !important;
+    transform: none !important;
+    min-width: 0;
+    min-height: 0;
+    margin: 0;
+  }
+  html:not([data-layout="xenocut"]) .stage-area {
+    grid-area: stage;
+    background: var(--hero-bg, var(--bg));
+    padding: 14px;
+    transition: none;
+  }
+  html:not([data-layout="xenocut"]) .title-row,
+  html:not([data-layout="xenocut"]) .panel-open .title-row {
+    grid-area: title;
+    left: auto;
+    max-width: none;
+    justify-content: center;
+    padding: 0 12px;
+    background: var(--surface-1);
+  }
+  html:not([data-layout="xenocut"]) .side-panel {
+    grid-area: panel;
+    top: auto;
+    right: auto;
+    bottom: auto;
+    left: auto;
+    width: auto;
+    border: 0;
+    border-radius: 0;
+  }
+  html:not([data-layout="xenocut"]) .dock-bin {
+    grid-area: bin;
+    display: flex;
+    flex-direction: column;
+    background: var(--panel-bg, var(--surface-1));
+    overflow: hidden;
+  }
+  .dock-bin .bin,
+  .dock-bin .inspector {
+    background: none;
+    border: 0;
+  }
+  .dock-bin .sp-head {
+    display: flex;
+    align-items: center;
+    padding: 12px 14px 6px 16px;
+  }
+  .dock-bin .sp-head h2 {
+    font-size: 13px;
+    font-weight: 600;
+  }
+  .dock-bin .sp-body {
+    flex: 1;
+    min-height: 0;
+    overflow: auto;
+    display: flex;
+    flex-direction: column;
+  }
+  .dock-bin .sp-body > * {
+    flex: 1;
+  }
+  .dock-bin .bin-grid {
+    grid-template-columns: repeat(auto-fill, minmax(116px, 1fr));
+    padding: 8px 14px 14px;
+  }
+  .dock-bin .bin-filters {
+    padding: 2px 14px 4px;
+    flex-wrap: nowrap;
+    gap: 4px;
+  }
+  .dock-bin .bin-filters .chip {
+    height: 24px;
+    padding: 0 9px;
+    font-size: 11.5px;
+  }
+  .dock-bin .bin-filters .chip.active {
+    background: var(--theme-accent, #fff);
+    color: var(--accent-ink, var(--ink));
+  }
+  html:not([data-layout="xenocut"]) .timeline {
+    grid-area: tl;
+    left: auto;
+    right: auto;
+    bottom: auto;
+    height: auto;
+    max-height: none;
+    border-top: 0;
+  }
+  html:not([data-layout="xenocut"]) .timeline.sized {
+    height: auto;
+  }
+  html:not([data-layout="xenocut"]) .rail {
+    grid-area: rail;
+    top: auto;
+    left: auto;
+    padding: 10px 8px;
+    background: var(--surface-1);
+    align-items: center;
+    overflow: auto;
+    scrollbar-width: none;
+  }
+  html:not([data-layout="xenocut"]) .rail-btn {
+    width: 36px;
+    height: 36px;
+    flex: none;
+    border-radius: var(--r-sm);
+    background: transparent;
+    border-color: transparent;
+    color: var(--text-2);
+  }
+  html:not([data-layout="xenocut"]) .rail-btn:hover {
+    background: var(--surface-3);
+    color: var(--text);
+  }
+  html:not([data-layout="xenocut"]) .rail-btn.active {
+    color: var(--accent-ink, #fff);
+  }
+  html:not([data-layout="xenocut"]) .bottom-bar {
+    background: var(--surface-1);
+    border-top: 1px solid var(--line-strong);
+    padding: 0 12px;
+  }
+  html:not([data-layout="xenocut"]) .sp-resize {
+    top: 0;
+    bottom: 0;
+  }
+  html:not([data-layout="xenocut"]) .tl-resize {
+    top: -5px;
+  }
+
+  /* Modern: media bin | preview | inspector, timeline across the bottom */
+  html[data-layout="modern"] .hero {
+    grid-template-columns: 52px var(--bin-w) minmax(0, 1fr) 0;
+    grid-template-rows: 44px minmax(0, 1fr) var(--tl-row, 38%);
+    grid-template-areas:
+      "rail title title title"
+      "rail bin stage panel"
+      "rail tl tl tl";
+  }
+  html[data-layout="modern"] .panel-open .hero {
+    grid-template-columns: 52px var(--bin-w) minmax(0, 1fr) var(--panel-w);
+  }
+  html[data-layout="modern"] .panel-left .hero {
+    grid-template-columns: 52px 0 minmax(0, 1fr) var(--bin-w);
+    grid-template-areas:
+      "rail title title title"
+      "rail panel stage bin"
+      "rail tl tl tl";
+  }
+  html[data-layout="modern"] .panel-left.panel-open .hero {
+    grid-template-columns: 52px var(--panel-w) minmax(0, 1fr) var(--bin-w);
+  }
+  html[data-layout="modern"] .rail-btn[data-panel="media"] {
+    display: none;
+  }
+
+  /* Classic (Premiere-like): project/tool panel | program monitor, tall timeline, dense */
+  html[data-layout="classic"] .editor {
+    --panel-w: 34%;
+  }
+  html[data-layout="classic"] .editor.panel-sized {
+    --panel-w: min(var(--panel-w-user), 50vw);
+  }
+  html[data-layout="classic"] .hero {
+    grid-template-columns: 44px 0 minmax(0, 1fr);
+    grid-template-rows: 34px minmax(0, 1fr) var(--tl-row, 44%);
+    grid-template-areas:
+      "rail title title"
+      "rail panel stage"
+      "rail tl tl";
+  }
+  html[data-layout="classic"] .panel-open .hero {
+    grid-template-columns: 44px var(--panel-w) minmax(0, 1fr);
+  }
+  html[data-layout="classic"] .editor:not(.panel-left) .hero {
+    grid-template-columns: 44px minmax(0, 1fr) 0;
+    grid-template-areas:
+      "rail title title"
+      "rail stage panel"
+      "rail tl tl";
+  }
+  html[data-layout="classic"] .editor.panel-open:not(.panel-left) .hero {
+    grid-template-columns: 44px minmax(0, 1fr) var(--panel-w);
+  }
+  html[data-layout="classic"] .rail {
+    padding: 6px 4px;
+    gap: 2px;
+  }
+  html[data-layout="classic"] .rail-btn {
+    width: 32px;
+    height: 32px;
+  }
+  html[data-layout="classic"] .stage-area {
+    padding: 8px;
+    background: #111;
+  }
+  html[data-layout="classic"] .sp-head {
+    padding: 8px 10px 4px 12px;
+  }
+  html[data-layout="classic"] .sp-head h2 {
+    font-size: 12px;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: var(--text-2);
+  }
+  html[data-layout="classic"] .timeline {
+    padding: 4px 8px 6px;
+  }
+
+  /* Basic: big labelled tools on top, preview with the panel beside it, a roomy timeline */
+  html[data-layout="basic"] .hero {
+    grid-template-columns: minmax(0, 1fr) 0;
+    grid-template-rows: 48px 84px minmax(0, 1fr) var(--tl-row, 34%);
+    grid-template-areas:
+      "title title"
+      "rail rail"
+      "stage panel"
+      "tl tl";
+  }
+  html[data-layout="basic"] .panel-open .hero {
+    grid-template-columns: minmax(0, 1fr) var(--panel-w);
+  }
+  html[data-layout="basic"] .panel-left .hero {
+    grid-template-columns: 0 minmax(0, 1fr);
+    grid-template-areas:
+      "title title"
+      "rail rail"
+      "panel stage"
+      "tl tl";
+  }
+  html[data-layout="basic"] .panel-left.panel-open .hero {
+    grid-template-columns: var(--panel-w) minmax(0, 1fr);
+  }
+  html[data-layout="basic"] .editor {
+    --panel-w: 360px;
+  }
+  html[data-layout="basic"] .rail {
+    flex-direction: row;
+    justify-content: center;
+    gap: 10px;
+    padding: 8px 16px;
+  }
+  html[data-layout="basic"] .rail-btn {
+    width: 84px;
+    height: 64px;
+    flex-direction: column;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    border-radius: var(--r-md);
+    background: var(--surface-2);
+    border: 1px solid var(--line-strong);
+    color: var(--text);
+  }
+  html[data-layout="basic"] .rail-btn svg {
+    width: 22px;
+    height: 22px;
+  }
+  html[data-layout="basic"] .rail-btn[data-adv] {
+    display: none;
+  }
+  html[data-layout="basic"] .rail-label {
+    display: block;
+    font-size: 12px;
+    font-weight: 600;
+    max-width: 78px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  html[data-layout="basic"] .rail-back {
+    position: absolute;
+    left: 16px;
+    top: 10px;
+  }
+  html[data-layout="basic"] .stage-area {
+    padding: 18px;
+  }
+  html[data-layout="basic"] .timeline {
+    padding: 8px 16px 12px;
+  }
+  html[data-layout="basic"] .tl-bar {
+    height: 40px;
+  }
+  html[data-layout="basic"] .timeline .tl-btn {
+    width: 36px;
+    height: 36px;
+  }
+  html[data-layout="basic"] .round-btn {
+    width: 40px;
+    height: 40px;
+  }
+}
