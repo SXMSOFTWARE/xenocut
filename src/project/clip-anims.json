@@ -16,7 +16,17 @@
     "blurIn": { "alpha": true, "alphaSpan": 0.4, "curve": "ease", "fx": [["blur", 1.0, 0.0, 0.5], ["blur", 0.45, 0.5, 0.8]] },
     "glitchIn": { "alpha": true, "alphaSpan": 0.25, "curve": "linear", "fx": [["rgbSplit", 1.0, 0.0, 1.0], ["hitShake", 0.7, 0.0, 0.6], ["flash", 0.5, 0.0, 0.15]] },
     "shakeIn": { "s": 1.15, "curve": "ease", "fx": [["hitShake", 1.0, 1.0, 2.5]] },
-    "flashIn": { "curve": "linear", "fx": [["flash", 1.0, 0.0, 1.0]] }
+    "flashIn": { "curve": "linear", "fx": [["flash", 1.0, 0.0, 1.0]] },
+    "riseUp": { "ty": 0.35, "alpha": true, "alphaSpan": 0.5, "curve": "ease" },
+    "dropIn": { "ty": -0.12, "alpha": true, "curve": "ease" },
+    "bounceUp": { "ty": 1, "curve": "bounce" },
+    "rollIn": { "tx": -1, "rot": -120, "curve": "ease" },
+    "tiltIn": { "s": 1.2, "rot": -12, "alpha": true, "alphaSpan": 0.5, "curve": "ease" },
+    "flipZoom": { "s": 2.5, "rot": 30, "alpha": true, "alphaSpan": 0.4, "curve": "ease" },
+    "elastic": { "s": 0.5, "alpha": true, "alphaSpan": 0.2, "curve": "back" },
+    "zoomBlur": { "s": 1.5, "alpha": true, "alphaSpan": 0.5, "curve": "ease", "fx": [["blur", 0.8, 0.0, 0.6]] },
+    "flashZoom": { "s": 1.25, "curve": "ease", "fx": [["flash", 0.9, 0.0, 0.7]] },
+    "rgbIn": { "tx": 0.04, "alpha": true, "alphaSpan": 0.4, "curve": "ease", "fx": [["rgbSplit", 1.0, 0.0, 0.9]] }
   },
   "combo": {
     "pulse": { "terms": [["s", 0.06, "bump"]], "duration": 1.0 },
@@ -28,6 +38,13 @@
     "spinLoop": { "terms": [["rot", 360, "turn"]], "duration": 3.0 },
     "zoomPush": { "terms": [["s", 0.15, "ramp"]], "duration": 1.0 },
     "zoomPull": { "terms": [["s", 0.15, "ramp1"]], "duration": 1.0 },
-    "jitter": { "terms": [], "duration": 1.0, "fx": [["shake", 0.45, 0.0, 1.0]] }
+    "jitter": { "terms": [], "duration": 1.0, "fx": [["shake", 0.45, 0.0, 1.0]] },
+    "breathe": { "terms": [["s", 0.04, "sin"]], "duration": 3.0 },
+    "tilt": { "terms": [["rot", 6, "sin"], ["ty", 0.015, "sin"]], "duration": 2.4 },
+    "hop": { "terms": [["ty", -0.04, "bump"]], "duration": 0.7 },
+    "beatPunch": { "terms": [["s", 0.08, "beat"]], "duration": 0.5 },
+    "kenBurns": { "terms": [["s", 0.12, "ramp"], ["tx", 0.03, "ramp"]], "duration": 1.0 },
+    "drift": { "terms": [["s", 0.06, "ramp"], ["ty", -0.025, "ramp"]], "duration": 1.0 },
+    "glitchLoop": { "terms": [], "duration": 1.0, "fx": [["rgbSplit", 0.5, 0.0, 1.0], ["shake", 0.2, 0.0, 1.0]] }
   }
 }
