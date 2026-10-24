@@ -17,8 +17,8 @@ import { applyPreset, type LayoutPreset } from "../pages/editor/layout";
 import { useRouter, type Page } from "../store/router";
 import { useAssets } from "../store/assets";
 import type { Grade } from "../project/grade";
-import { addTextClip, projectDuration, updateClip } from "../project/ops";
-import type { EffectKind } from "../project/effects";
+import { addEffectLayer, addTextClip, projectDuration, updateClip } from "../project/ops";
+import type { ClipEffect, EffectKind } from "../project/effects";
 import { PRESETS } from "../project/presets";
 import { textFromPreset } from "../project/text";
 import { renderTextLayer, discardTextLayer } from "../text/exportLayer";
@@ -89,24 +89,48 @@ export async function runAutotest(file: string) {
   await perfProbe();
 }
 
-/** fx=blur:30+vignette:60[,at=2][,export=out.mp4]: puts effects on the first video clip. */
+/** "blur:30@1-2.5+vignette:60" → effects; `@from-to` limits one to part of its clip / layer. */
+function parseFx(spec: string): ClipEffect[] {
+  return spec.split("+").filter(Boolean).map((part) => {
+    const [body, range] = part.split("@");
+    const [kind, amount] = body.split(":");
+    const fx: ClipEffect = { kind: kind as EffectKind, amount: amount === undefined ? 1 : Number(amount) / 100 };
+    if (range) {
+      const [a, b] = range.split("-").map(Number);
+      if (Number.isFinite(a)) fx.from = a;
+      if (Number.isFinite(b)) fx.to = b;
+    }
+    return fx;
+  });
+}
+
+/**
+ * fx=blur:30@0.5-2+vignette:60[,layer=vhs+flash@0-0.5][,layerAt=1][,layerLen=3][,at=2][,export=out.mp4]:
+ * puts effects on the first video clip and / or an effect layer over everything.
+ */
 async function fxProbe() {
   const o = opts();
-  if (!o.fx && !o.look) return;
+  if (!o.fx && !o.look && !o.layer) return;
   const look = PRESETS.find((p) => p.id === o.look);
-  const effects = look ? look.effects : o.fx.split("+").map((part) => {
-    const [kind, amount] = part.split(":");
-    return { kind: kind as EffectKind, amount: amount === undefined ? 1 : Number(amount) / 100 };
-  });
+  const effects = look ? look.effects : parseFx(o.fx ?? "");
   const project = useProject.getState().project!;
   const clip = project.clips.find((c) => project.tracks.find((t) => t.id === c.trackId)?.kind === "video" && !c.text);
   if (!clip) return log("autotest", "FX no clip");
-  useProject.getState().commit((p) => updateClip(p, clip.id, { effects }));
+  if (effects.length) useProject.getState().commit((p) => updateClip(p, clip.id, { effects }));
   useProject.getState().select([clip.id]);
-  useEditorUi.setState({ panel: "effects" });
+  if (o.layer) {
+    let id = "";
+    useProject.getState().commit((p) => {
+      const out = addEffectLayer(p, parseFx(o.layer), Number(o.layerAt ?? 1), Number(o.layerLen ?? 3));
+      id = out.clipId;
+      return out.project;
+    });
+    useProject.getState().select([id]);
+  }
+  useEditorUi.setState({ panel: "fx" });
   engine.seek(Number(o.at ?? 2));
   await sleep(1500);
-  log("autotest", `FX ${JSON.stringify({ effects, filter: (document.querySelector("video.stage-media") as HTMLElement | null)?.style.filter, transform: (document.querySelector(".stage-layer") as HTMLElement | null)?.style.transform })}`);
+  log("autotest", `FX ${JSON.stringify({ effects, filter: (document.querySelector("video.stage-media") as HTMLElement | null)?.style.filter, transform: (document.querySelector(".stage-layer") as HTMLElement | null)?.style.transform, layerFilter: (document.querySelector(".stage-fxpic") as HTMLElement | null)?.style.filter })}`);
   document.querySelector(".fx-section")?.scrollIntoView({ block: "start" });
   await sleep(300);
   log("autotest", "fx-ready");

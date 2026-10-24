@@ -271,7 +271,7 @@ export function EffectLayerInfo({ clip }: { clip: Clip }) {
         <span className="kind-dot kind-fx" />
         <div>
           <b>{t("fx.layer")}</b>
-          <small className="muted">{t("fx.layerHint")}</small>
+          <small className="muted">{t("fx.layerSub")}</small>
         </div>
       </div>
       <div className="fx-range-row">
@@ -293,7 +293,7 @@ export function EffectsPanel({ compact = false }: { compact?: boolean }) {
     <div className="inspector fx-panel">
       <div className="inspector-body">
         <EffectBrowser compact={compact} />
-        {target && (
+        {target && (target.kind === "layer" || !!target.clip.effects?.length) && (
           <div className="inspector-section fx-section">
             <h3 className="section-title">{target.kind === "layer" ? t("fx.layer") : t("fx.applied")}</h3>
             {target.kind === "layer" && <EffectLayerInfo clip={target.clip} />}

@@ -550,6 +550,7 @@ export const en: Record<keyof typeof tr, string> = {
   "fx.layerStart": "Start",
   "fx.layerLength": "Length",
   "fx.applied": "Applied effects",
+  "fx.layerSub": "Affects every clip below it",
   "fx.browse": "Add effect",
   "rail.fx": "Effects",
   "modules.title": "Modules",

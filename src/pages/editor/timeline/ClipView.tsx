@@ -153,6 +153,8 @@ function FxRangeBar({ clip, pps }: { clip: Clip; pps: number }) {
   const length = clipDuration(clip);
   const a = Math.max(0, Math.min(length, fx.from ?? 0));
   const b = Math.max(a, Math.min(length, fx.to ?? length));
+  // A layer covering its whole span is trimmed by its own edges; no second bar on top.
+  if (!clip.mediaId && fx.from === undefined && fx.to === undefined) return null;
   const begin = (e: ReactPointerEvent, mode: "start" | "end" | "move") => {
     e.stopPropagation();
     e.preventDefault();

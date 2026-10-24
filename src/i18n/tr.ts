@@ -560,6 +560,7 @@ export const tr = {
   "fx.layerStart": "Başlangıç",
   "fx.layerLength": "Süre",
   "fx.applied": "Uygulanan efektler",
+  "fx.layerSub": "Altındaki tüm klipleri etkiler",
   "fx.browse": "Efekt ekle",
   "rail.fx": "Efektler",
   "modules.title": "Modüller",
