@@ -1,5 +1,6 @@
 // CapCut-style effect browser: category tabs over a grid of looping demo previews, a target switch
 // (the selected clip or a new effect layer), and the applied stack with amount + time range.
+import { NativeFxSection } from "./NativeFxSection";
 import { Crosshair, Layers, Plus, Puzzle, Sparkles, X } from "lucide-react";
 import { effectMenu } from "./menus";
 import { useMemo, useState } from "react";
@@ -422,6 +423,7 @@ export function EffectsPanel({ compact = false }: { compact?: boolean }) {
             <EffectStack clip={target.clip} />
           </div>
         )}
+        <NativeFxSection />
       </div>
     </div>
   );

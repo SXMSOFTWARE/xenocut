@@ -5,6 +5,16 @@ import { invoke } from "@tauri-apps/api/core";
 import { create } from "zustand";
 import { call, isTauri } from "./backend";
 import type { Clip, MediaItem, NativeFx } from "../project/types";
+import { toast } from "../store/toast";
+import { t } from "../i18n";
+
+let listening = false;
+/** Effect-host notes (a plug-in failed or crashed and was skipped) become toasts. */
+function listenNotes() {
+  if (listening || !isTauri) return;
+  listening = true;
+  void import("@tauri-apps/api/event").then(({ listen }) => listen<string>("fx-native-note", (e) => toast(t("nfx.note", { text: e.payload }), "error")));
+}
 
 export interface NativePlugin {
   id: string;
@@ -54,6 +64,7 @@ export const useNativeFx = create<NativeState>((set, get) => ({
   load: async (rescan = false) => {
     if (get().loading) return get().catalog;
     if (get().catalog && !rescan) return get().catalog;
+    listenNotes();
     set({ loading: true });
     try {
       const catalog = await call<NativeCatalog>("fx_native_catalog", { rescan });

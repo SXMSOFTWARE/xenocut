@@ -113,6 +113,11 @@ pub fn configure(user_root: &Path, state_file: &Path) {
     let exe = std::env::current_exe()
         .map(|p| p.display().to_string())
         .unwrap_or_else(|_| "xenocut".into());
+    if supported() {
+        // The folders the UI points people to for their own plug-ins.
+        let _ = std::fs::create_dir_all(user_root.join("ofx"));
+        let _ = std::fs::create_dir_all(user_root.join("frei0r"));
+    }
     let block = std::fs::read_to_string(state_file)
         .ok()
         .and_then(|s| serde_json::from_str(&s).ok())
