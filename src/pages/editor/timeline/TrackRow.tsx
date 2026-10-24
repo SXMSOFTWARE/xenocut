@@ -9,6 +9,9 @@ import { importDialog, addToTimeline } from "../../../project/actions";
 import { clipDuration } from "../../../project/ops";
 import { removeTrack, toggleTrack } from "../commands";
 import { ClipView, EffectLayerView, TextClipView } from "./ClipView";
+import { useLongPress } from "../../../components/ContextMenu";
+import { clipMenu, laneTime, trackMenu } from "../menus";
+import { Lock, Unlock } from "lucide-react";
 
 const ICON = { video: Film, audio: AudioLines, music: Music2, text: Type, effect: Sparkles };
 
@@ -32,12 +35,22 @@ export const TrackRow = memo(function TrackRow({ track, clips, media, pps, heigh
   const selected = useMemo(() => new Set(selection), [selection]);
   const Icon = ICON[track.kind];
   const end = clips.reduce((max, c) => Math.max(max, c.start + clipDuration(c)), 0);
+  // One handler per row: a clip under the pointer gets the clip menu, empty lane space the track menu.
+  const laneMenu = useLongPress((e) => {
+    const el = document.elementFromPoint(e.clientX, e.clientY) as HTMLElement | null;
+    const clipEl = el?.closest<HTMLElement>("[data-clip-id]");
+    const lane = el?.closest<HTMLElement>("[data-lane]");
+    if (clipEl?.dataset.clipId) clipMenu(e, clipEl.dataset.clipId);
+    else if (lane) trackMenu(e, track.id, laneTime(e, lane, pps), canRemove);
+  });
+  const headMenu = useLongPress((e) => trackMenu(e, track.id, undefined, canRemove));
 
   return (
-    <div className={`tl-row kind-${track.kind}${track.muted ? " muted" : ""}${track.hidden ? " hidden" : ""}`} style={{ height }}>
-      <div className="tl-header">
+    <div className={`tl-row kind-${track.kind}${track.muted ? " muted" : ""}${track.hidden ? " hidden" : ""}${track.locked ? " locked" : ""}`} style={{ height }}>
+      <div className="tl-header" {...headMenu}>
         <span className={`tl-track-icon kind-${track.kind}`} title={track.name}>
           <Icon />
+          {track.locked && <Lock className="tl-lock-badge" />}
         </span>
         <div className="tl-track-actions">
           <span className="tl-track-name">{track.name}</span>
@@ -51,6 +64,11 @@ export const TrackRow = memo(function TrackRow({ track, clips, media, pps, heigh
               {track.muted ? <VolumeX /> : <Volume2 />}
             </button>
           )}
+          {(
+            <button className={`mini-btn${track.locked ? " on" : ""}`} onClick={() => toggleTrack(track.id, "locked")} title={t(track.locked ? "menu.unlockTrack" : "menu.lockTrack")} aria-label={t(track.locked ? "menu.unlockTrack" : "menu.lockTrack")}>
+              {track.locked ? <Lock /> : <Unlock />}
+            </button>
+          )}
           {canRemove && (
             <button className="mini-btn danger" onClick={() => removeTrack(track.id)} title={t("track.remove")} aria-label={t("track.remove")}>
               <Trash2 />
@@ -58,7 +76,7 @@ export const TrackRow = memo(function TrackRow({ track, clips, media, pps, heigh
           )}
         </div>
       </div>
-      <div className="tl-lane" data-lane="" data-track-id={track.id} onPointerDown={lanePointerDown}>
+      <div className="tl-lane" data-lane="" data-track-id={track.id} onPointerDown={lanePointerDown} {...laneMenu}>
         {clips.map((clip, i) => {
           if (clip.text) return <TextClipView key={clip.id} clip={clip} pps={pps} selected={selected.has(clip.id)} />;
           if (track.kind === "effect") return <EffectLayerView key={clip.id} clip={clip} pps={pps} selected={selected.has(clip.id)} />;
@@ -89,12 +107,57 @@ export const TrackRow = memo(function TrackRow({ track, clips, media, pps, heigh
   );
 });
 
-/** Clicking empty lane space clears the selection and scrubs the playhead. */
+/** Clicking empty lane space clears the selection and seeks there; dragging draws a selection
+ * marquee over the clips (Shift / Ctrl add to the selection). */
 export function lanePointerDown(e: React.PointerEvent<HTMLDivElement>) {
   if (e.button !== 0 || e.target !== e.currentTarget) return;
-  useProject.getState().select([]);
-  if (e.pointerType === "touch") return tapToSeek(e.currentTarget, e.clientX, e.clientY);
-  scrubFrom(e.currentTarget, e.clientX);
+  if (e.pointerType === "touch") {
+    useProject.getState().select([]);
+    return tapToSeek(e.currentTarget, e.clientX, e.clientY);
+  }
+  marquee(e.currentTarget, e.clientX, e.clientY, e.shiftKey || e.ctrlKey || e.metaKey);
+}
+
+function marquee(lane: HTMLElement, sx: number, sy: number, additive: boolean) {
+  const store = useProject.getState();
+  const base = additive ? store.selection : [];
+  if (!additive) store.select([]);
+  const root = lane.closest<HTMLElement>(".tl-scroll") ?? document.body;
+  const box = document.createElement("div");
+  box.className = "tl-marquee";
+  let active = false;
+  const locked = new Set(store.project?.tracks.filter((t) => t.locked).map((t) => t.id));
+  const move = (ev: PointerEvent) => {
+    if (!active && Math.hypot(ev.clientX - sx, ev.clientY - sy) < 5) return;
+    if (!active) {
+      active = true;
+      document.body.appendChild(box);
+    }
+    const x0 = Math.min(sx, ev.clientX), x1 = Math.max(sx, ev.clientX);
+    const y0 = Math.min(sy, ev.clientY), y1 = Math.max(sy, ev.clientY);
+    Object.assign(box.style, { left: `${x0}px`, top: `${y0}px`, width: `${x1 - x0}px`, height: `${y1 - y0}px` });
+    const hit: string[] = [];
+    root.querySelectorAll<HTMLElement>("[data-clip-id]").forEach((el) => {
+      const r = el.getBoundingClientRect();
+      const trackId = el.closest<HTMLElement>("[data-track-id]")?.dataset.trackId;
+      if (trackId && locked.has(trackId)) return;
+      if (r.right >= x0 && r.left <= x1 && r.bottom >= y0 && r.top <= y1) hit.push(el.dataset.clipId!);
+    });
+    useProject.getState().select([...new Set([...base, ...hit])]);
+  };
+  const up = (ev: PointerEvent) => {
+    window.removeEventListener("pointermove", move);
+    window.removeEventListener("pointerup", up);
+    window.removeEventListener("pointercancel", up);
+    box.remove();
+    if (!active && ev.type === "pointerup") {
+      engine.pause();
+      engine.seek(Math.max(0, (ev.clientX - lane.getBoundingClientRect().left) / useEditorUi.getState().pxPerSec));
+    }
+  };
+  window.addEventListener("pointermove", move);
+  window.addEventListener("pointerup", up);
+  window.addEventListener("pointercancel", up);
 }
 
 /** Touch on empty lane space: a tap seeks there, a swipe is left to the browser to scroll. */

@@ -14,7 +14,7 @@ import {
   trackAccepts,
   updateClip,
 } from "../../../project/ops";
-import type { TrackKind } from "../../../project/types";
+import type { Clip, Project, TrackKind } from "../../../project/types";
 import { visibleBeats } from "../../../store/beats";
 import { useEditorUi } from "../../../store/editorUi";
 import { usePlayback } from "../../../store/playback";
@@ -47,6 +47,14 @@ export function beginClipDrag(e: React.PointerEvent, clipId: string, mode: ClipD
   // Touch: the first tap only selects, so a swipe over clips still scrolls the timeline; a
   // selected clip (touch-action: none) can then be dragged or trimmed.
   if (e.pointerType === "touch" && !wasSelected) return;
+  // Locked tracks select but never edit.
+  if (project.tracks.find((t) => t.id === origin.trackId)?.locked) return;
+  if (mode === "move" && wasSelected) {
+    const sel = new Set(store.selection);
+    const locked = new Set(project.tracks.filter((t) => t.locked).map((t) => t.id));
+    const group = project.clips.filter((c) => sel.has(c.id) && c.id !== clipId && !locked.has(c.trackId));
+    if (group.length) return beginGroupDrag(e, origin, group);
+  }
 
   const ui = useEditorUi.getState();
   const pps = ui.pxPerSec;
@@ -91,7 +99,7 @@ export function beginClipDrag(e: React.PointerEvent, clipId: string, mode: ClipD
       const lane = laneAtPoint(ev.clientX, ev.clientY);
       const current = useProject.getState().project;
       const target = lane?.trackId && current?.tracks.find((t) => t.id === lane.trackId);
-      if (target && fits(target.kind)) trackId = target.id;
+      if (target && fits(target.kind) && !target.locked) trackId = target.id;
       useProject.getState().transient((p) => updateClip(p, clipId, { start, trackId }));
     } else if (mode === "trim-start") {
       const s = snapTo(origin.start + dx);
@@ -137,6 +145,100 @@ export function beginClipDrag(e: React.PointerEvent, clipId: string, mode: ClipD
     state.endGesture();
   };
 
+  window.addEventListener("pointermove", move);
+  window.addEventListener("pointerup", up);
+  window.addEventListener("pointercancel", up);
+}
+
+/** Several selected clips move together: same time offset, same track offset (when every clip
+ * fits the track it lands on), snapping by the grabbed clip; one undo step, overlaps resolved
+ * on release by nudging the whole group, or the move is dropped. */
+function beginGroupDrag(e: React.PointerEvent, origin: Clip, others: Clip[]) {
+  const store = useProject.getState();
+  const project = store.project!;
+  const group = [origin, ...others];
+  const ids = new Set(group.map((c) => c.id));
+  const tracks = project.tracks;
+  const index = new Map(tracks.map((t, i) => [t.id, i]));
+  const kindOf = (c: Clip) => {
+    const media = project.media.find((m) => m.id === c.mediaId) ?? null;
+    return (kind: TrackKind) => (c.text ? kind === "text" : isEffectLayer(c) ? kind === "effect" : !!media && trackAccepts(kind, media));
+  };
+  const fits = new Map(group.map((c) => [c.id, kindOf(c)]));
+  const pps = useEditorUi.getState().pxPerSec;
+  const threshold = 8 / pps;
+  const candidates = snapCandidates(project, usePlayback.getState().time, ids, visibleBeats(project, ids));
+  const earliest = Math.min(...group.map((c) => c.start));
+  const duration = clipDuration(origin);
+  const sx = e.clientX;
+  const sy = e.clientY;
+  let moved = false;
+  let shift = 0;
+  let rows = 0;
+
+  const place = (q: Project, dt: number, dr: number) => {
+    const byId = new Map(group.map((c) => [c.id, c]));
+    return {
+      ...q,
+      clips: q.clips.map((c) => {
+        const o = byId.get(c.id);
+        if (!o) return c;
+        return { ...c, start: o.start + dt, trackId: tracks[index.get(o.trackId)! + dr].id };
+      }),
+    };
+  };
+  const rowsOk = (dr: number) =>
+    group.every((c) => {
+      const t = tracks[index.get(c.trackId)! + dr];
+      return !!t && !t.locked && fits.get(c.id)!(t.kind);
+    });
+
+  store.beginGesture();
+  const move = (ev: PointerEvent) => {
+    if (!moved && Math.abs(ev.clientX - sx) < 3 && Math.abs(ev.clientY - sy) < 3) return;
+    moved = true;
+    let dt = Math.max(-earliest, (ev.clientX - sx) / pps);
+    let snapLine: number | null = null;
+    if (useEditorUi.getState().snapping) {
+      const head = snap(origin.start + dt, candidates, threshold);
+      const tail = snap(origin.start + dt + duration, candidates, threshold);
+      if (head.snapped !== null) (dt = head.time - origin.start), (snapLine = head.snapped);
+      else if (tail.snapped !== null) (dt = tail.time - duration - origin.start), (snapLine = tail.snapped);
+      dt = Math.max(-earliest, dt);
+    }
+    const lane = laneAtPoint(ev.clientX, ev.clientY);
+    if (lane?.trackId && index.has(lane.trackId)) {
+      const dr = index.get(lane.trackId)! - index.get(origin.trackId)!;
+      if (rowsOk(dr)) rows = dr;
+    }
+    shift = dt;
+    useProject.getState().transient((q) => place(q, shift, rows));
+    useEditorUi.setState({ snapLine });
+  };
+  const up = () => {
+    window.removeEventListener("pointermove", move);
+    window.removeEventListener("pointerup", up);
+    window.removeEventListener("pointercancel", up);
+    useEditorUi.setState({ snapLine: null });
+    const state = useProject.getState();
+    if (!moved) {
+      state.cancelGesture();
+      state.select([origin.id]);
+      return;
+    }
+    // Nudge the whole group right until nothing overlaps (a few tries), else give up.
+    for (let i = 0; i < 8; i++) {
+      const q = state.project!;
+      const hit = q.clips.find((c) => ids.has(c.id) && !isFree(q, c.trackId, c.start, clipDuration(c), ids));
+      if (!hit) return state.endGesture();
+      const free = nearestFreeStart(q, hit.trackId, hit.start, clipDuration(hit), ids);
+      const nudge = free - hit.start;
+      if (Math.abs(nudge) < EPS || earliest + shift + nudge < -EPS) break;
+      shift += nudge;
+      state.transient((p) => place(p, shift, rows));
+    }
+    state.cancelGesture();
+  };
   window.addEventListener("pointermove", move);
   window.addEventListener("pointerup", up);
   window.addEventListener("pointercancel", up);

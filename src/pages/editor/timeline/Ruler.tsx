@@ -4,6 +4,11 @@ import { pickBeats, timelineBeats } from "../../../project/beats";
 import { songBeats, useBeats } from "../../../store/beats";
 import { useProject } from "../../../store/project";
 import { scrubFrom } from "./TrackRow";
+import { engine } from "../../../engine/playback";
+import { openMenu } from "../../../components/ContextMenu";
+import { t as tr } from "../../../i18n";
+import { clearRange } from "../edit";
+import { projectDuration } from "../../../project/ops";
 
 const STEPS = [0.1, 0.2, 0.5, 1, 2, 5, 10, 15, 30, 60, 120, 300, 600, 1200];
 
@@ -97,6 +102,41 @@ export function Ruler({ pps, scroller, contentWidth }: { pps: number; scroller: 
   return (
     <div className="tl-ruler" ref={hostRef} style={{ width: contentWidth }} onPointerDown={(e) => e.button === 0 && scrubFrom(hostRef.current!, e.clientX)}>
       <canvas ref={canvasRef} />
+      <RulerMarks pps={pps} />
     </div>
+  );
+}
+
+/** In/out range band and markers over the ruler. Click a marker to jump; right-click to remove. */
+function RulerMarks({ pps }: { pps: number }) {
+  const markers = useProject((st) => st.project?.markers);
+  const range = useProject((st) => st.project?.range);
+  const end = useProject((st) => (st.project ? projectDuration(st.project) : 0));
+  const out = range ? Math.min(range.out, Math.max(end, range.in)) : 0;
+  const removeMarker = (id: string) =>
+    useProject.getState().commit((p) => ({ ...p, markers: (p.markers ?? []).filter((m) => m.id !== id) }));
+  return (
+    <>
+      {range && (
+        <div
+          className="tl-range"
+          style={{ left: range.in * pps, width: Math.max(2, (out - range.in) * pps) }}
+          onContextMenu={(e) => openMenu(e, [{ label: tr("sc.clearInOut"), run: clearRange }])}
+        />
+      )}
+      {markers?.map((m) => (
+        <button
+          key={m.id}
+          className="tl-marker"
+          style={{ left: m.time * pps, ...(m.color ? { color: m.color } : null) }}
+          title={m.label ?? rulerLabel(m.time)}
+          onPointerDown={(e) => {
+            e.stopPropagation();
+            if (e.button === 0) engine.seek(m.time);
+          }}
+          onContextMenu={(e) => openMenu(e, [{ label: tr("menu.removeMarker"), danger: true, run: () => removeMarker(m.id) }])}
+        />
+      ))}
+    </>
   );
 }

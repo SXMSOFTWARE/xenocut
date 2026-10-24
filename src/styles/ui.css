@@ -711,3 +711,133 @@ html.mobile .toasts {
 .combo .kbd {
   font-family: var(--font-ui, inherit), "DejaVu Sans", system-ui, sans-serif;
 }
+
+/* ---- context menus ---- */
+.ctx-layer {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+}
+.ctx-menu {
+  position: fixed;
+  min-width: 220px;
+  max-width: 320px;
+  max-height: calc(100vh - 12px);
+  overflow: auto;
+  padding: 5px;
+  border-radius: 12px;
+  background: var(--glass-warm);
+  border: 1px solid var(--glass-warm-border);
+  box-shadow: var(--glass-warm-hi), 0 18px 44px -12px rgba(0, 0, 0, 0.6);
+  backdrop-filter: blur(18px) saturate(1.2);
+  animation: ctx-in 0.09s ease-out;
+}
+@keyframes ctx-in {
+  from {
+    opacity: 0;
+    transform: scale(0.98);
+  }
+}
+html.perf .ctx-menu {
+  backdrop-filter: none;
+  animation: none;
+}
+.ctx-title {
+  padding: 6px 10px 4px;
+  font-size: 10.5px;
+  letter-spacing: 0.01em;
+  font-weight: 600;
+  color: var(--text-3, rgba(255, 255, 255, 0.5));
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.ctx-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  height: 28px;
+  padding: 0 8px 0 6px;
+  border-radius: 7px;
+  font-size: 12.5px;
+  color: var(--text-1, #fff);
+  text-align: left;
+}
+.ctx-item.active:not(:disabled) {
+  background: rgba(255, 255, 255, 0.13);
+}
+.ctx-item:disabled {
+  opacity: 0.38;
+}
+.ctx-item.danger {
+  color: #ffb1a1;
+}
+.ctx-icon {
+  display: grid;
+  place-items: center;
+  width: 18px;
+  flex: none;
+  opacity: 0.85;
+}
+.ctx-icon svg,
+.ctx-more {
+  width: 14px;
+  height: 14px;
+}
+.ctx-label {
+  flex: 1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.ctx-hint {
+  font-size: 11px;
+  color: var(--text-3, rgba(255, 255, 255, 0.5));
+  white-space: nowrap;
+}
+.ctx-more {
+  opacity: 0.6;
+}
+.ctx-sep {
+  height: 1px;
+  margin: 4px 6px;
+  background: rgba(255, 255, 255, 0.12);
+}
+/* Phone: the menu is a bottom sheet with big rows. */
+.ctx-layer.sheet {
+  background: rgba(0, 0, 0, 0.35);
+}
+.ctx-layer.sheet > .ctx-menu:not(.ctx-sub) {
+  left: 8px;
+  right: 8px;
+  bottom: calc(8px + env(safe-area-inset-bottom, 0px));
+  top: auto;
+  max-width: none;
+  max-height: 70vh;
+  border-radius: 18px;
+  padding: 8px;
+}
+.ctx-layer.sheet .ctx-item {
+  height: 44px;
+  font-size: 15px;
+  gap: 12px;
+  padding: 0 12px;
+}
+.ctx-layer.sheet .ctx-icon svg {
+  width: 18px;
+  height: 18px;
+}
+.ctx-layer.sheet .ctx-sub {
+  left: 16px !important;
+  right: 16px;
+  max-width: none;
+  border-radius: 16px;
+}
+/* Phones have no keyboard: no shortcut hints, no hover highlight until touched. */
+.ctx-layer.sheet .ctx-hint {
+  display: none;
+}
+.ctx-layer.sheet .ctx-item.active:not(:active) {
+  background: transparent;
+}

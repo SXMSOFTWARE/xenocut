@@ -1,6 +1,9 @@
 import { Layers, Scissors, SlidersHorizontal, Sparkles, Trash2, Type } from "lucide-react";
+import { keysOf } from "./shortcuts";
+import { KeyCombo } from "./ShortcutsDialog";
+import { Keyboard } from "lucide-react";
 import { Slider } from "../../components/controls";
-import { useT } from "../../i18n";
+import { useT, type Key } from "../../i18n";
 import { shortTime, timecode } from "../../lib/format";
 import { clipDuration, clipEnd, isEffectLayer, maxSourceOut, MIN_CLIP_SECONDS, projectDuration, updateClip } from "../../project/ops";
 import type { Clip, MediaItem, Project } from "../../project/types";
@@ -300,23 +303,19 @@ function ProjectInfo({ project }: { project: Project }) {
       </div>
       <div className="shortcut-list">
         <h3 className="section-title">{t("inspector.shortcuts")}</h3>
-        {(
-          [
-            ["Space", "shortcut.play"],
-            ["J / K / L", "shortcut.jkl"],
-            ["← →", "shortcut.frame"],
-            ["S", "shortcut.split"],
-            ["Del", "shortcut.delete"],
-            ["Ctrl+Z", "shortcut.undo"],
-            ["Ctrl+S", "shortcut.save"],
-            ["Ctrl+Wheel", "shortcut.zoom"],
-          ] as const
-        ).map(([k, label]) => (
-          <div className="kv" key={k}>
-            <span>{t(label)}</span>
-            <span className="kbd">{k}</span>
-          </div>
-        ))}
+        {["playPause", "split", "delete", "copy", "paste", "undo", "copyAttributes", "pasteAttributes", "marker", "save"].map((id) => {
+          const k = keysOf(id)[0];
+          return (
+            <div className="kv" key={id}>
+              <span>{t(`sc.${id}` as Key)}</span>
+              {k ? <KeyCombo combo={k} /> : <span className="muted">—</span>}
+            </div>
+          );
+        })}
+        <p className="muted small">{t("inspector.rightClickHint")}</p>
+        <button className="btn sm" onClick={() => useEditorUi.setState({ shortcutsOpen: true })}>
+          <Keyboard /> {t("inspector.allShortcuts")}
+        </button>
       </div>
     </div>
   );

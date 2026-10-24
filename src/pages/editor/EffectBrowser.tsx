@@ -1,6 +1,7 @@
 // CapCut-style effect browser: category tabs over a grid of looping demo previews, a target switch
 // (the selected clip or a new effect layer), and the applied stack with amount + time range.
 import { Crosshair, Layers, Plus, Puzzle, Sparkles, X } from "lucide-react";
+import { effectMenu } from "./menus";
 import { useMemo, useState } from "react";
 import { Slider } from "../../components/controls";
 import { useT, type Key } from "../../i18n";
@@ -290,6 +291,7 @@ export function EffectStack({ clip }: { clip: Clip }) {
             key={`${e.kind}-${i}`}
             data-fx-item={e.kind}
             onPointerDown={() => !focused && useEditorUi.setState({ fxFocus: { clipId: clip.id, index: i } })}
+            onContextMenu={(ev) => effectMenu(ev, clip, i)}
           >
             <div className="fx-item-head">
               {url && <img className="fx-item-thumb" src={url} alt="" />}

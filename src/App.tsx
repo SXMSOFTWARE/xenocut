@@ -3,6 +3,7 @@ import { useRouter } from "./store/router";
 import { useSettings } from "./store/settings";
 import { useRecent } from "./store/recent";
 import { Toasts } from "./components/Toasts";
+import { ContextMenuHost } from "./components/ContextMenu";
 import { HomePage } from "./pages/home/HomePage";
 import { messageOf } from "./lib/format";
 import { usePlugins } from "./lib/plugins";
@@ -50,6 +51,7 @@ export function App() {
         {page === "plugins" && <PluginsPage />}
       </Suspense>
       <Toasts />
+      <ContextMenuHost />
     </>
   );
 }

@@ -1,4 +1,6 @@
 import { memo, useMemo, useState } from "react";
+import { useLongPress } from "../../components/ContextMenu";
+import { mediaMenu } from "./menus";
 import { AudioLines, Film, Image as ImageIcon, Plus, Trash2, Upload } from "lucide-react";
 import { useT } from "../../i18n";
 import { fileSrc } from "../../lib/backend";
@@ -76,10 +78,13 @@ const MediaCard = memo(function MediaCard({ media }: { media: MediaItem }) {
     if (used) toast(t("bin.removedWithClips"), "info");
   };
 
+  const menu = useLongPress((e) => mediaMenu(e, media.id, remove));
+
   return (
     <div
       className={`media-card kind-${media.kind}${selected ? " selected" : ""}`}
-      onPointerDown={(e) => startMediaDrag(e, media)}
+      {...menu}
+      onPointerDown={(e) => e.button === 0 && startMediaDrag(e, media)}
       onDoubleClick={() => addToTimeline(media, usePlayback.getState().time)}
       title={media.path}
     >

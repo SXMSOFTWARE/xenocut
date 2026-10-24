@@ -38,7 +38,7 @@ export const ClipView = memo(function ClipView({ clip, media, trackKind, pps, se
       className={`clip tone-${tone} tint-${tint}${selected ? " selected" : ""}${width < 36 ? " tiny" : ""}`}
       style={{ transform: `translateX(${clip.start * pps}px)`, width }}
       data-clip-id={clip.id}
-      title={media.name}
+      title={clip.name ?? media.name}
       onPointerDown={(e) => beginClipDrag(e, clip.id, "move")}
     >
       <div className="clip-body">
@@ -47,10 +47,11 @@ export const ClipView = memo(function ClipView({ clip, media, trackKind, pps, se
         <span className="clip-tint" />
         {!visual && (
           <div className="clip-label">
-            <span>{media.name}</span>
+            <span>{clip.name ?? media.name}</span>
             {clip.speed !== 1 && <em>{clip.speed.toFixed(2)}×</em>}
           </div>
         )}
+        {visual && clip.name && width >= 48 && <span className="clip-name">{clip.name}</span>}
         {visual && clip.speed !== 1 && <em className="clip-speed">{clip.speed.toFixed(2)}×</em>}
         {clip.fadeIn > 0 && <span className="clip-fade in" style={{ width: Math.min(width / 2, clip.fadeIn * pps) }} />}
         {clip.fadeOut > 0 && <span className="clip-fade out" style={{ width: Math.min(width / 2, clip.fadeOut * pps) }} />}
@@ -135,7 +136,7 @@ export const TextClipView = memo(function TextClipView({ clip, pps, selected }: 
       <div className="clip-body">
         <div className="clip-label">
           <Type className="clip-text-glyph" />
-          <span>{label || "…"}</span>
+          <span>{clip.name ?? (label || "…")}</span>
         </div>
       </div>
       <span className="clip-handle start" onPointerDown={(e) => beginClipDrag(e, clip.id, "trim-start")} />
@@ -170,7 +171,7 @@ export const EffectLayerView = memo(function EffectLayerView({ clip, pps, select
       <div className="clip-body">
         <div className="clip-label">
           <Sparkles className="clip-text-glyph" />
-          <span>{label || t("fx.layer")}</span>
+          <span>{clip.name ?? (label || t("fx.layer"))}</span>
         </div>
       </div>
       {selected && <FxRangeBar clip={clip} pps={pps} />}

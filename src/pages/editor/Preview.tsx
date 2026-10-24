@@ -1,4 +1,6 @@
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
+import { useLongPress } from "../../components/ContextMenu";
+import { previewMenu } from "./menus";
 import { perfSkip } from "../../lib/perfSkip";
 import { engine, type FxOverlays } from "../../engine/playback";
 import { useT } from "../../i18n";
@@ -182,12 +184,15 @@ export function Preview() {
     if (box.h && !usePlayback.getState().playing) engine.seek(usePlayback.getState().time);
   }, [box.h]);
 
+  const stageMenu = useLongPress(previewMenu);
+
   return (
     <div className="stage-area" ref={areaRef}>
       <div
         ref={stageRef}
         className="stage"
         style={{ width: box.w, height: box.h }}
+        {...stageMenu}
         onPointerDown={onStagePointerDown}
         onClick={() => {
           if (!draggedRef.current) engine.toggle();
