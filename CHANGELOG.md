@@ -8,7 +8,8 @@ Eklenti sistemi (LUT, görünüm, animasyon ve yazı stili paketleri), CapCut ta
 
 ### Düzeltme: Linux'ta önizleme açılmıyordu (MediaError 4)
 - Neden: AppImage, CI'daki Ubuntu GStreamer'ını paketliyor ama içinde gst-libav yok. Bu yüzden WebView H.264/AAC çözemiyor ve video "desteklenmeyen kaynak" hatasıyla siyah kalıyordu. Dışa aktarma etkilenmiyordu, çünkü FFmpeg kullanıyor.
-- Önizleme bir dosyayı çözemediğinde uygulama artık arka planda otomatik olarak VP8/Opus WebM önizleme kopyası üretir ve anlaşılır bir bilgi gösterir. Dışa aktarma her zaman orijinal dosyayı kullanır.
+- Kalıcı çözüm: AppImage artık gst-libav ile birlikte GStreamer'ın good/bad eklentilerini de paketliyor (avdec_h264, avdec_aac, qtdemux, h264parse). Böylece H.264/AAC önizlemede doğrudan çözülüyor. CI, paketlemeden önce bu çözücülerin varlığını denetliyor.
+- Yedek çözüm: Önizleme bir dosyayı çözemediğinde uygulama artık arka planda otomatik olarak VP8/Opus WebM önizleme kopyası üretir ve anlaşılır bir bilgi gösterir. Dışa aktarma her zaman orijinal dosyayı kullanır.
 
 ### Eklentiler
 - Yeni "Eklentiler" sayfası (Ana sayfa, Ayarlar ve panellerdeki "Daha fazla" kutusundan açılır):
