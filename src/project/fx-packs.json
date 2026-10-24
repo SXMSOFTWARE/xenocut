@@ -1,0 +1,21 @@
+{
+  "_comment": "Compound effects: each expands to primitive effects (amount = base x pack amount), sharing the pack's time range. Read by src/project/effects.ts and src-tauri/src/effects.rs, so preview and export expand them identically.",
+  "cinematic": [["contrast", 0.25], ["saturation", -0.15], ["temperature", 0.3], ["vignette", 0.45]],
+  "vintage": [["sepia", 0.45], ["contrast", -0.15], ["brightness", 0.06], ["vignette", 0.5], ["grain", 0.5]],
+  "vhs": [["saturation", 0.25], ["contrast", 0.1], ["rgbSplit", 0.45], ["blur", 0.08], ["grain", 0.45], ["scanlines", 0.5]],
+  "noir": [["bw", 1], ["contrast", 0.45], ["brightness", -0.06], ["vignette", 0.6], ["grain", 0.25]],
+  "dreamy": [["brightness", 0.14], ["contrast", -0.2], ["saturation", -0.1], ["temperature", 0.2], ["blur", 0.07], ["vignette", 0.25]],
+  "punchy": [["contrast", 0.35], ["saturation", 0.4], ["sharpen", 0.45]],
+  "cold": [["temperature", -0.6], ["saturation", -0.15], ["contrast", 0.12]],
+  "sunset": [["temperature", 0.7], ["saturation", 0.2], ["contrast", 0.1], ["vignette", 0.3]],
+  "faded": [["contrast", -0.3], ["brightness", 0.1], ["saturation", -0.3], ["grain", 0.2]],
+  "glitch": [["contrast", 0.2], ["saturation", 0.2], ["rgbSplit", 0.75], ["shake", 0.35], ["grain", 0.2]],
+  "crt": [["scanlines", 0.9], ["rgbSplit", 0.25], ["contrast", 0.2], ["vignette", 0.55]],
+  "oldFilm": [["sepia", 0.7], ["grain", 0.7], ["vignette", 0.65], ["contrast", 0.1], ["shake", 0.12]],
+  "softFocus": [["blur", 0.12], ["brightness", 0.08], ["contrast", -0.1]],
+  "heavyBlur": [["blur", 0.6], ["brightness", -0.05]],
+  "earthquake": [["shake", 1], ["rgbSplit", 0.3], ["blur", 0.04]],
+  "amvHit": [["flash", 0.55], ["punch", 0.7], ["rgbSplit", 0.5]],
+  "beatGlitch": [["hitShake", 0.8], ["rgbSplit", 0.8], ["invert", 0.15]],
+  "widescreen": [["letterbox", 1], ["contrast", 0.15], ["temperature", -0.15], ["vignette", 0.3]]
+}

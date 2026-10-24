@@ -56,6 +56,8 @@ pub enum TrackKind {
     Music,
     /// Titles, subtitles and lyrics. Drawn by the frontend; the export receives them pre-rendered.
     Text,
+    /// Effect layers: clips without media whose effects apply to the video tracks below them.
+    Effect,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]

@@ -296,3 +296,16 @@
     grid-template-columns: minmax(0, 1fr);
   }
 }
+
+/* phones: badge keeps its circle, subtitle stays one line */
+html.mobile .tool-badge {
+  flex: none;
+}
+html.mobile .page-title {
+  min-width: 0;
+}
+html.mobile .page-title .muted {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
