@@ -36,6 +36,22 @@ Tüm önemli değişiklikler bu dosyada. Sürümler GitHub'da ön sürüm (pre-r
 - Alt çubuktaki yerleşim düğmesi artık bir menü: Referans (varsayılan), Panel solda, Geniş zaman çizelgesi, Odak (yalnızca önizleme); zaman çizelgesini gizle/göster.
 - Zaman çizelgesinin üst kenarı ve panelin iç kenarı sürüklenerek boyutlandırılır; çift tık sıfırlar. Seçimler ayarlarda saklanır. Telefon/kısa pencere düzeni değişmedi.
 
+### Performans (Linux önizleme)
+- Oynatma sırasında oynatma kafası, zaman göstergesi ve kaydırıcı artık her modda saniyede ~12 kez güncelleniyor. WebKitGTK'da önizleme dışındaki her öğenin her karede yeniden çizilmesi 1080p oynatmayı yarıya düşürüyordu. Kesme, dokunarak senkronlama ve kısayollar yine tam zamanı kullanır.
+- Ayarlar › Performans: hafif mod ve önizleme vekili (540p proxy) seçenekleri.
+- Ölçüm (CachyOS, 1080p60 test videosu, 8 sn oynatma = 480 kare, ses kapalı):
+
+| Yapı / mod | Arayüz fps | Çözülen kare | Takılma |
+|---|---|---|---|
+| v0.2.0, varsayılan | 12.9 | — | sık |
+| v0.3.0 öncesi, normal | 31.7 | 255 / 480 | 14 |
+| v0.3.0, normal | 57.7 | 451 / 480 | 0 |
+| v0.3.0, varsayılan | 65.6 | 471 / 480 | 0 |
+| v0.3.0, hafif mod | 86.1 | 480 / 480 | 0 |
+
+### Modüller sayfası
+- Ayarlar › Modüller: entegre açık kaynak araçlar (FFmpeg, x264, Whisper/Candle, UVR/ort, RustFFT/hound, Fontsource yazı tipleri), her birinin neyi çalıştırdığı, lisansı ve model durumu (yüklü/ilk kullanımda iner); Whisper modelleri buradan silinebilir.
+
 ### Diğer
 - AppImage GStreamer'ı içinde taşıyor; önizleme AppImage'da da oynuyor.
 - Ayarlar › Hakkında: kullanılan açık kaynak projelerin listesi ve lisansları (THIRD_PARTY_NOTICES.md).
