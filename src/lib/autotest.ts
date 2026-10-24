@@ -26,6 +26,7 @@ import { renderTextLayer, discardTextLayer } from "../text/exportLayer";
 import { api } from "./backend";
 import { cuesFromProject, maxCharsFor, setSubtitles, shiftLines } from "../project/subtitles";
 import { fitToSong, songRange, splitLyrics, spreadLines } from "../pages/editor/LyricsPanel";
+import { packFile, usePlugins } from "./plugins";
 import { useSubtitleJob } from "../store/subtitleJob";
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
@@ -89,6 +90,7 @@ export async function runAutotest(file: string) {
   await layoutProbe();
   await fxProbe();
   await animProbe();
+  await lutProbe();
   await perfProbe();
 }
 
@@ -176,6 +178,48 @@ async function animProbe() {
   await sleep(1200);
   const v = document.querySelector("video.stage-media") as HTMLElement | null;
   log("autotest", `ANIM ${JSON.stringify({ anim, transforms: [...document.querySelectorAll(".stage-fxwrap")].map((e) => (e as HTMLElement).style.transform).filter(Boolean), opacity: v?.style.opacity })}`);
+  log("autotest", "anim-ready");
+  await sleep(800);
+  await exportProbe(o.export);
+}
+
+/**
+ * lut=xenocut.film-looks/teal-orange[,amount=0.8][,at=2][,export=…]: installs the pack from the
+ * catalog (bundled when offline), grades the first video clip and logs whether the WebGL LUT
+ * view took over (media element transparent) plus a pixel read back from it.
+ */
+async function lutProbe() {
+  const o = opts();
+  if (!o.lut) return;
+  const [packId, lutId] = o.lut.split("/");
+  const plugins = usePlugins.getState();
+  await plugins.loadCatalog();
+  const entry = usePlugins.getState().catalog?.find((e) => e.id === packId);
+  if (!entry) return log("autotest", `LUT no catalog entry ${packId} (${usePlugins.getState().catalogError})`);
+  const pack = await plugins.installFromCatalog(entry);
+  const lut = pack.manifest.luts?.find((l) => l.id === lutId);
+  if (!lut) return log("autotest", `LUT no lut ${lutId}`);
+  const project = useProject.getState().project!;
+  const clip = project.clips.find((c) => project.tracks.find((t) => t.id === c.trackId)?.kind === "video" && !c.text);
+  if (!clip) return log("autotest", "LUT no clip");
+  useProject.getState().commit((p) => updateClip(p, clip.id, { lut: { path: packFile(pack, lut.file), name: lut.name, amount: Number(o.amount ?? 1) } }));
+  useProject.getState().select([clip.id]);
+  useEditorUi.setState({ panel: "color" });
+  engine.seek(clip.start + Number(o.at ?? 2));
+  await sleep(2000);
+  const canvas = document.querySelector("canvas.stage-lut") as HTMLCanvasElement | null;
+  let pixel: number[] | null = null;
+  if (canvas && canvas.width > 0) {
+    const probe = document.createElement("canvas");
+    probe.width = probe.height = 1;
+    const ctx = probe.getContext("2d")!;
+    ctx.drawImage(canvas, canvas.width / 2, canvas.height / 2, 1, 1, 0, 0, 1, 1);
+    pixel = [...ctx.getImageData(0, 0, 1, 1).data];
+  }
+  const v = document.querySelector("video.stage-media") as HTMLElement | null;
+  log("autotest", `LUT ${JSON.stringify({ pack: pack.manifest.id, lut: lut.name, path: packFile(pack, lut.file), videoOpacity: v?.style.opacity, canvas: canvas ? [canvas.width, canvas.height, getComputedStyle(canvas).display, canvas.style.opacity] : null, pixel })}`);
+  document.querySelector(".lut-section")?.scrollIntoView({ block: "start" });
+  await sleep(400);
   log("autotest", "anim-ready");
   await sleep(800);
   await exportProbe(o.export);
