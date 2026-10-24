@@ -1,12 +1,15 @@
 // The Text panel: add titles from presets and style the selected text clip.
 import { engine } from "../../engine/playback";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { AlignCenter, AlignLeft, AlignRight, Bold, CaseUpper, Italic, Plus, Trash2, Type } from "lucide-react";
+import { AlignCenter, AlignLeft, AlignRight, Bold, CaseUpper, Italic, Plus, Puzzle, Trash2, Type } from "lucide-react";
+import { enabledPacks, sanitizeTextStyle, usePlugins } from "../../lib/plugins";
+import { useRouter } from "../../store/router";
 import { Segmented, Slider } from "../../components/controls";
 import { useT, type Key } from "../../i18n";
 import { addTextClip, updateText } from "../../project/ops";
 import {
   applyPreset,
+  BASE_STYLE,
   TEXT_PRESETS,
   textFromPreset,
   type AnimIn,
@@ -66,6 +69,18 @@ export function TextPanel() {
     });
     if (clipId) select([clipId]);
   };
+  const addPlugin = (key: string, style: Partial<TextStyle>) => {
+    const { project, commit, select } = useProject.getState();
+    if (!project) return;
+    let clipId = "";
+    const text = withPluginStyle(textFromPreset("clean", t("text.sample")), key, style);
+    commit((p) => {
+      const result = addTextClip(p, text, engine.now());
+      clipId = result.clipId;
+      return result.project;
+    });
+    if (clipId) select([clipId]);
+  };
 
   return (
     <div className="sp-stack text-panel">
@@ -84,6 +99,7 @@ export function TextPanel() {
           </button>
           <h3 className="section-title">{t("text.presets")}</h3>
           <PresetGrid ready={ready} active={null} onPick={add} />
+          <PluginPresetGrid ready={ready} active={null} onPick={addPlugin} />
           <p className="sp-note">{t("text.hint")}</p>
         </>
       )}
@@ -106,6 +122,76 @@ export function PresetGrid({ ready, active, onPick, ids }: { ready: boolean; act
 
 /** The preset drawn with the real renderer on a small canvas. */
 function PresetSwatch({ id, label, ready }: { id: string; label: string; ready: boolean }) {
+  const base = useMemo(() => textFromPreset(id, label), [id, label]);
+  return <TextSwatch base={base} label={label} ready={ready} />;
+}
+
+/** Text styles from enabled plugin packs (`<pack id>/<preset id>`), validated against the editor's limits. */
+export function usePluginTextPresets(): { key: string; name: string; pack: string; style: Partial<TextStyle> }[] {
+  const installed = usePlugins((s) => s.installed);
+  return useMemo(
+    () =>
+      enabledPacks(installed).flatMap((p) =>
+        (p.manifest.textPresets ?? []).map((x) => ({
+          key: `${p.manifest.id}/${x.id}`,
+          name: x.name,
+          pack: p.manifest.name,
+          style: sanitizeTextStyle((x.style ?? {}) as Record<string, unknown>, BASE_STYLE),
+        })),
+      ),
+    [installed],
+  );
+}
+
+/** Text re-styled with a plugin style (keeps the words; titles keep their position unless the style sets one). */
+export function withPluginStyle(text: TextContent, key: string, style: Partial<TextStyle>): TextContent {
+  const keepPos = text.role === "title" && style.x === undefined && style.y === undefined;
+  return {
+    ...text,
+    preset: key,
+    style: { ...BASE_STYLE, ...style, ...(keepPos ? { x: text.style.x, y: text.style.y } : {}) },
+  };
+}
+
+function PluginPresetGrid({ ready, active, onPick }: { ready: boolean; active: string | null; onPick: (key: string, style: Partial<TextStyle>) => void }) {
+  const t = useT();
+  const go = useRouter((r) => r.go);
+  const presets = usePluginTextPresets();
+  const sample = t("text.sample");
+  return (
+    <>
+      <h3 className="section-title plugin-title-row">
+        {t("plugins.textTitle")}
+        <button className="link-btn" onClick={() => go("plugins")}>
+          <Puzzle size={12} /> {t("plugins.getMore")}
+        </button>
+      </h3>
+      {presets.length > 0 && (
+        <div className="text-presets">
+          {presets.map((p) => (
+            <button
+              key={p.key}
+              className={`text-preset${active === p.key ? " active" : ""}`}
+              onClick={() => onPick(p.key, p.style)}
+              aria-pressed={active === p.key}
+              title={`${p.name} · ${p.pack}`}
+              data-text-preset={p.key}
+            >
+              <PluginSwatch name={p.name} sample={sample} style={p.style} ready={ready} />
+            </button>
+          ))}
+        </div>
+      )}
+    </>
+  );
+}
+
+function PluginSwatch({ name, sample, style, ready }: { name: string; sample: string; style: Partial<TextStyle>; ready: boolean }) {
+  const base = useMemo(() => withPluginStyle(textFromPreset("clean", sample), name, style), [name, sample, style]);
+  return <TextSwatch base={base} label={name} ready={ready} />;
+}
+
+function TextSwatch({ base, label, ready }: { base: TextContent; label: string; ready: boolean }) {
   const ref = useRef<HTMLCanvasElement>(null);
   useEffect(() => {
     const canvas = ref.current;
@@ -116,7 +202,6 @@ function PresetSwatch({ id, label, ready }: { id: string; label: string; ready: 
     const dpr = Math.min(2, window.devicePixelRatio || 1);
     canvas.width = Math.round(W * dpr);
     canvas.height = Math.round(H * dpr);
-    const base = textFromPreset(id, label);
     const lower = base.style.y > 0.7;
     const text: TextContent = {
       ...base,
@@ -127,7 +212,7 @@ function PresetSwatch({ id, label, ready }: { id: string; label: string; ready: 
     ctx.clearRect(0, 0, W, H);
     // Karaoke shows half sung, other emphases sit at rest.
     drawText(ctx, text, W, H, base.anim.emphasis === "karaoke" ? 1 : 0, 2);
-  }, [id, label, ready]);
+  }, [base, ready]);
   return <canvas ref={ref} className="text-preset-canvas" aria-label={label} />;
 }
 
@@ -182,6 +267,7 @@ function TextEditor({ clipId, text, ready }: { clipId: string; text: TextContent
         <>
           <h3 className="section-title">{t("text.presets")}</h3>
           <PresetGrid ready={ready} active={text.preset} onPick={(id) => commit((p) => updateText(p, clipId, (x) => applyPreset(x, id)))} />
+          <PluginPresetGrid ready={ready} active={text.preset} onPick={(key, style) => commit((p) => updateText(p, clipId, (x) => withPluginStyle(x, key, style)))} />
           <h3 className="section-title">{t("text.font")}</h3>
           <div className="font-grid">
             {fontOptions.map((f) => (

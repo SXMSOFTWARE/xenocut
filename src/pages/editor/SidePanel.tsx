@@ -17,6 +17,7 @@ import { addTrack, toggleTrack } from "./commands";
 import { Inspector } from "./Inspector";
 import { EffectsPanel } from "./EffectBrowser";
 import { AnimPanel } from "./AnimPanel";
+import { LutSection } from "./LutSection";
 import { TextPanel } from "./TextPanel";
 import { LyricsPanel } from "./LyricsPanel";
 import { AmvPanel } from "./AmvPanel";
@@ -239,6 +240,7 @@ export function ColorPanel() {
         ))}
       </div>
       <p className="sp-note">{t("grade.hint")}</p>
+      <LutSection />
     </div>
   );
 }

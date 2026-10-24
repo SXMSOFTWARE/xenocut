@@ -1,11 +1,14 @@
 // CapCut-style effect browser: category tabs over a grid of looping demo previews, a target switch
 // (the selected clip or a new effect layer), and the applied stack with amount + time range.
-import { Crosshair, Layers, Plus, Sparkles, X } from "lucide-react";
+import { Crosshair, Layers, Plus, Puzzle, Sparkles, X } from "lucide-react";
 import { useMemo, useState } from "react";
 import { Slider } from "../../components/controls";
 import { useT, type Key } from "../../i18n";
 import { engine } from "../../engine/playback";
-import { CATEGORIES, EFFECT_DEF, EFFECTS, type ClipEffect, type EffectCategory, type EffectKind } from "../../project/effects";
+import { CATEGORIES, EFFECT_DEF, EFFECTS, previewFx, vignetteGradient, type ClipEffect, type EffectCategory, type EffectKind } from "../../project/effects";
+import { enabledPacks, usePlugins, type PackEffect } from "../../lib/plugins";
+import { useRouter } from "../../store/router";
+import { usePosterThumb } from "./SidePanel";
 import { addEffectLayer, clipDuration, clipEnd, isEffectLayer, updateClip } from "../../project/ops";
 import type { Clip, Project } from "../../project/types";
 import { useEditorUi } from "../../store/editorUi";
@@ -13,7 +16,11 @@ import { usePlayback } from "../../store/playback";
 import { useProject } from "../../store/project";
 import { setEffectRange } from "./timeline/ClipView";
 
-const DEMOS = import.meta.glob("../../assets/fx-demos/*.webp", { eager: true, query: "?url", import: "default" }) as Record<string, string>;
+const DEMOS = import.meta.glob("../../assets/fx-demos/*.webp", {
+  eager: true,
+  query: "?url",
+  import: "default",
+}) as Record<string, string>;
 export const demoUrl = (kind: EffectKind): string | undefined => DEMOS[`../../assets/fx-demos/${kind}.webp`];
 
 /** Seconds a "hit" effect (flash, punch, beat glitch…) covers when added at the playhead. */
@@ -78,21 +85,112 @@ export function applyEffect(kind: EffectKind, target: Target, asLayer: boolean):
     return clip.id;
   }
   const length = clipDuration(clip);
-  const effect: ClipEffect = { kind, amount: def.initial, ...defaultRange(kind, now - clip.start, length) };
+  const effect: ClipEffect = {
+    kind,
+    amount: def.initial,
+    ...defaultRange(kind, now - clip.start, length),
+  };
   store.commit((p) => updateClip(p, clip.id, { effects: [...effects, effect] }));
   useEditorUi.setState({ fxFocus: { clipId: clip.id, index: effects.length } });
   return clip.id;
+}
+
+/** A plugin look's stack as project effects (unknown kinds dropped, amounts clamped to 0..1). */
+function lookEffects(look: PackEffect): ClipEffect[] {
+  return look.stack
+    .filter(([kind]) => kind in EFFECT_DEF && !EFFECT_DEF[kind as EffectKind].hit)
+    .map(([kind, amount]) => ({
+      kind: kind as EffectKind,
+      amount: Math.min(1, Math.max(0, amount)),
+    }));
+}
+
+/** Apply a plugin look: its effects are copied into the clip (replacing the same kinds) or onto a new layer. */
+function applyLook(look: PackEffect, target: Target, asLayer: boolean) {
+  const store = useProject.getState();
+  const effects = lookEffects(look);
+  if (!store.project || effects.length === 0) return;
+  if (asLayer || !target) {
+    const now = usePlayback.getState().time;
+    let id = "";
+    store.commit((p) => {
+      const out = addEffectLayer(p, effects, now, undefined);
+      id = out.clipId;
+      return out.project;
+    });
+    store.select([id]);
+    return;
+  }
+  const clip = store.project.clips.find((c) => c.id === target.clip.id);
+  if (!clip) return;
+  const kinds = new Set(effects.map((e) => e.kind));
+  const kept = (clip.effects ?? []).filter((e) => !kinds.has(e.kind) || EFFECT_DEF[e.kind].hit);
+  store.commit((p) => updateClip(p, clip.id, { effects: [...kept, ...effects] }));
+  useEditorUi.setState({ fxFocus: { clipId: clip.id, index: kept.length } });
+}
+
+/** Installed plugin looks, rendered over the poster frame with the same CSS filters the preview uses. */
+function PluginLooks({ target, asLayer }: { target: Target; asLayer: boolean }) {
+  const t = useT();
+  const go = useRouter((r) => r.go);
+  const installed = usePlugins((s) => s.installed);
+  const thumb = usePosterThumb();
+  const looks = useMemo(
+    () =>
+      enabledPacks(installed).flatMap((p) =>
+        (p.manifest.effects ?? []).map((e) => ({
+          key: `${p.manifest.id}/${e.id}`,
+          pack: p.manifest.name,
+          look: e,
+        })),
+      ),
+    [installed],
+  );
+  return (
+    <>
+      {looks.length === 0 && <p className="fx-hint">{t("plugins.noEffects")}</p>}
+      <div className="fx-grid" role="list">
+        {looks.map(({ key, pack, look }) => {
+          const fx = previewFx(lookEffects(look), 720, 0.25);
+          const filter = fx.filter.replace(/url\([^)]*\)/g, "").trim();
+          return (
+            <button key={key} role="listitem" className="fx-card plugin" data-look={key} onClick={() => applyLook(look, target, asLayer)} title={`${look.name} · ${pack}`}>
+              <span className="fx-thumb look-thumb">
+                <span
+                  className="look-img"
+                  style={{
+                    backgroundImage: thumb ? `url("${thumb}")` : undefined,
+                    filter: filter || undefined,
+                  }}
+                />
+                {fx.vignette > 0 && <span className="look-vig" style={{ background: vignetteGradient(fx.vignette) }} />}
+                <Plus className="fx-add" size={14} />
+                <em className="fx-badge">{look.category}</em>
+              </span>
+              <span className="fx-name">{look.name}</span>
+            </button>
+          );
+        })}
+        <button role="listitem" className="fx-card get-more" onClick={() => go("plugins")}>
+          <span className="fx-thumb">
+            <Puzzle size={20} />
+          </span>
+          <span className="fx-name">{t("plugins.getMore")}</span>
+        </button>
+      </div>
+    </>
+  );
 }
 
 /** Category tabs + demo grid. */
 export function EffectBrowser({ compact = false }: { compact?: boolean }) {
   const t = useT();
   const target = useFxTarget();
-  const [cat, setCat] = useState<EffectCategory>("basic");
+  const [cat, setCat] = useState<EffectCategory | "plugins">("basic");
   const [layerMode, setLayerMode] = useState(false);
   const asLayer = layerMode || !target;
   const applied = new Set((target?.clip.effects ?? []).map((e) => e.kind));
-  const list = EFFECTS.filter((d) => d.cats.includes(cat));
+  const list = cat === "plugins" ? [] : EFFECTS.filter((d) => d.cats.includes(cat));
   return (
     <div className={`fx-browser${compact ? " compact" : ""}`}>
       <div className="fx-target" role="radiogroup" aria-label={t("fx.target")}>
@@ -118,31 +216,37 @@ export function EffectBrowser({ compact = false }: { compact?: boolean }) {
             {t(`fx.cat.${c}` as Key)}
           </button>
         ))}
+        <button role="tab" aria-selected={cat === "plugins"} className={`fx-tab plugins${cat === "plugins" ? " active" : ""}`} onClick={() => setCat("plugins")}>
+          <Puzzle size={12} /> {t("plugins.fxTab")}
+        </button>
       </div>
-      <div className="fx-grid" role="list">
-        {list.map((d) => {
-          const on = !asLayer && applied.has(d.kind);
-          const url = demoUrl(d.kind);
-          return (
-            <button
-              key={d.kind}
-              role="listitem"
-              className={`fx-card${on ? " active" : ""}`}
-              data-fx={d.kind}
-              aria-pressed={on}
-              onClick={() => applyEffect(d.kind, target, asLayer)}
-              title={t(`fx.${d.kind}` as Key)}
-            >
-              <span className="fx-thumb">
-                {url ? <img src={url} alt="" loading="lazy" draggable={false} /> : <Sparkles />}
-                {on ? <i className="fx-on" /> : <Plus className="fx-add" size={14} />}
-                {d.hit && <em className="fx-badge">{t("fx.hitBadge")}</em>}
-              </span>
-              <span className="fx-name">{t(`fx.${d.kind}` as Key)}</span>
-            </button>
-          );
-        })}
-      </div>
+      {cat === "plugins" && <PluginLooks target={target} asLayer={asLayer} />}
+      {cat !== "plugins" && (
+        <div className="fx-grid" role="list">
+          {list.map((d) => {
+            const on = !asLayer && applied.has(d.kind);
+            const url = demoUrl(d.kind);
+            return (
+              <button
+                key={d.kind}
+                role="listitem"
+                className={`fx-card${on ? " active" : ""}`}
+                data-fx={d.kind}
+                aria-pressed={on}
+                onClick={() => applyEffect(d.kind, target, asLayer)}
+                title={t(`fx.${d.kind}` as Key)}
+              >
+                <span className="fx-thumb">
+                  {url ? <img src={url} alt="" loading="lazy" draggable={false} /> : <Sparkles />}
+                  {on ? <i className="fx-on" /> : <Plus className="fx-add" size={14} />}
+                  {d.hit && <em className="fx-badge">{t("fx.hitBadge")}</em>}
+                </span>
+                <span className="fx-name">{t(`fx.${d.kind}` as Key)}</span>
+              </button>
+            );
+          })}
+        </div>
+      )}
       {asLayer && <p className="fx-hint">{t("fx.layerHint")}</p>}
     </div>
   );
@@ -181,7 +285,12 @@ export function EffectStack({ clip }: { clip: Clip }) {
         const focused = focus?.clipId === clip.id && focus.index === i;
         const url = demoUrl(e.kind);
         return (
-          <div className={`fx-item${focused ? " focused" : ""}`} key={`${e.kind}-${i}`} data-fx-item={e.kind} onPointerDown={() => !focused && useEditorUi.setState({ fxFocus: { clipId: clip.id, index: i } })}>
+          <div
+            className={`fx-item${focused ? " focused" : ""}`}
+            key={`${e.kind}-${i}`}
+            data-fx-item={e.kind}
+            onPointerDown={() => !focused && useEditorUi.setState({ fxFocus: { clipId: clip.id, index: i } })}
+          >
             <div className="fx-item-head">
               {url && <img className="fx-item-thumb" src={url} alt="" />}
               <b>{t(`fx.${e.kind}` as Key)}</b>
@@ -190,7 +299,9 @@ export function EffectStack({ clip }: { clip: Clip }) {
                 title={t("fx.showRange")}
                 aria-label={t("fx.showRange")}
                 onClick={() => {
-                  useEditorUi.setState({ fxFocus: { clipId: clip.id, index: i } });
+                  useEditorUi.setState({
+                    fxFocus: { clipId: clip.id, index: i },
+                  });
                   engine.seek(clip.start + a);
                 }}
               >
@@ -208,7 +319,12 @@ export function EffectStack({ clip }: { clip: Clip }) {
                 max={100}
                 step={1}
                 format={(v) => (def.signed && v > 0 ? `+${v}` : String(v))}
-                onChange={(v) => setEffects(effects.map((x, j) => (j === i ? { ...x, amount: v / 100 } : x)), true)}
+                onChange={(v) =>
+                  setEffects(
+                    effects.map((x, j) => (j === i ? { ...x, amount: v / 100 } : x)),
+                    true,
+                  )
+                }
                 onStart={beginGesture}
                 onEnd={endGesture}
               />
@@ -222,7 +338,11 @@ export function EffectStack({ clip }: { clip: Clip }) {
               <button className={`chip chip-xs${whole ? " active" : ""}`} aria-pressed={whole} onClick={() => range(i, 0, length)}>
                 {layer ? t("fx.wholeLayer") : t("fx.wholeClip")}
               </button>
-              <button className="chip chip-xs" onClick={() => range(i, Math.max(0, Math.min(length - 0.1, usePlayback.getState().time - clip.start)), b)} title={t("fx.fromPlayhead")}>
+              <button
+                className="chip chip-xs"
+                onClick={() => range(i, Math.max(0, Math.min(length - 0.1, usePlayback.getState().time - clip.start)), b)}
+                title={t("fx.fromPlayhead")}
+              >
                 {t("fx.fromPlayheadShort")}
               </button>
             </div>

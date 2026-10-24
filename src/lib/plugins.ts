@@ -5,6 +5,7 @@ import { create } from "zustand";
 import { call, log } from "./backend";
 import type { ComboDef, EdgeDef } from "../project/anims";
 import type { TextStyle } from "../project/text";
+import { FONTS } from "../text/fonts";
 
 export interface PackEffect {
   id: string;
@@ -192,15 +193,44 @@ export function applyCube(c: Cube, r: number, g: number, b: number, out: number[
   }
 }
 
-/** Only known text style keys with the right value types survive (packs are untrusted data). */
+const COLOR = /^#[0-9a-f]{6}([0-9a-f]{2})?$/i;
+const ENUMS: Record<string, readonly string[]> = { background: ["none", "box", "pill", "band"], align: ["left", "center", "right"] };
+const RANGES: Record<string, [number, number]> = {
+  weight: [100, 900],
+  size: [8, 400],
+  stroke: [0, 40],
+  shadow: [0, 1],
+  glow: [0, 1],
+  bgOpacity: [0, 1],
+  x: [0, 1],
+  y: [0, 1],
+  width: [0.1, 1],
+  spacing: [-0.2, 1],
+  lineHeight: [0.6, 3],
+};
+
+/** Only known text style keys with valid values survive (packs are untrusted data): fonts must be
+ *  bundled, enums known, colours `#rrggbb[aa]`, numbers clamped to what the editor offers. */
 export function sanitizeTextStyle(style: Record<string, unknown>, base: TextStyle): Partial<TextStyle> {
   const out: Record<string, unknown> = {};
+  const fonts = new Set(FONTS.map((f) => f.id as string));
   for (const [k, v] of Object.entries(style)) {
     if (!(k in base)) continue;
-    const want = typeof (base as unknown as Record<string, unknown>)[k];
     const cur = (base as unknown as Record<string, unknown>)[k];
-    if (cur === null && (typeof v === "string" || v === null)) out[k] = v;
-    else if (typeof v === want && (want !== "number" || Number.isFinite(v as number))) out[k] = v;
+    if (k === "font") {
+      if (typeof v === "string" && fonts.has(v)) out[k] = v;
+    } else if (ENUMS[k]) {
+      if (typeof v === "string" && ENUMS[k].includes(v)) out[k] = v;
+    } else if (k === "color2") {
+      if (v === null || (typeof v === "string" && COLOR.test(v))) out[k] = v;
+    } else if (typeof cur === "string") {
+      if (typeof v === "string" && COLOR.test(v)) out[k] = v;
+    } else if (typeof cur === "number") {
+      if (typeof v === "number" && Number.isFinite(v)) {
+        const [lo, hi] = RANGES[k] ?? [-1e6, 1e6];
+        out[k] = Math.min(hi, Math.max(lo, v));
+      }
+    } else if (typeof cur === "boolean" && typeof v === "boolean") out[k] = v;
   }
   return out as Partial<TextStyle>;
 }
