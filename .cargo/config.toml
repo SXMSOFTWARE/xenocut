@@ -1,0 +1,5 @@
+# candle's gemm-f16 has hand-written half-precision NEON kernels that only assemble with the
+# ARMv8.2 fp16 extension enabled. gemm picks them at run time only on CPUs that report fp16;
+# every arm64 phone core since Cortex-A55/A75 (2017+) has it.
+[target.aarch64-linux-android]
+rustflags = ["-C", "target-feature=+fp16"]
