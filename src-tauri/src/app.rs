@@ -319,6 +319,70 @@ pub fn export_cancel() {
     cancel::request();
 }
 
+// ---------- native effect plug-ins (OpenFX / frei0r, see fxhost.rs) ----------
+
+#[tauri::command]
+pub async fn fx_native_catalog(rescan: bool) -> Result<crate::fxhost::Catalog, String> {
+    tauri::async_runtime::spawn_blocking(move || {
+        crate::fxhost::with_preview(|s| s.catalog(rescan))
+    })
+    .await
+    .map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+pub async fn fx_native_describe(id: String) -> Result<serde_json::Value, String> {
+    tauri::async_runtime::spawn_blocking(move || crate::fxhost::with_preview(|s| s.describe(&id)))
+        .await
+        .map_err(|e| e.to_string())?
+}
+
+/// Unblock every plug-in and scan again.
+#[tauri::command]
+pub async fn fx_native_unblock() -> Result<crate::fxhost::Catalog, String> {
+    tauri::async_runtime::spawn_blocking(|| {
+        crate::fxhost::unblock_all();
+        crate::fxhost::with_preview(|s| s.catalog(true))
+    })
+    .await
+    .map_err(|e| e.to_string())
+}
+
+/// One preview frame through a clip's native effects. Raw body:
+/// `[u32 LE header length][JSON header][RGBA]`; answers the processed RGBA. Problems (a
+/// crash, a blocked plug-in) go out as `fx-native-note` events; the frame then passes through.
+#[tauri::command]
+pub async fn fx_native_preview(
+    app: AppHandle,
+    request: tauri::ipc::Request<'_>,
+) -> Result<tauri::ipc::Response, String> {
+    let tauri::ipc::InvokeBody::Raw(body) = request.body() else {
+        return Err("preview frame must be sent as raw bytes".into());
+    };
+    let (head, mut pixels) = crate::fxhost::split_preview(body)?;
+    let (pixels, notes) = tauri::async_runtime::spawn_blocking(move || {
+        let notes = crate::fxhost::with_preview(|s| {
+            s.render(
+                &head.chain,
+                &format!("pv:{}", head.key),
+                &mut pixels,
+                head.w,
+                head.h,
+                (head.full_w, head.full_h),
+                head.time,
+                head.fps,
+            )
+        });
+        (pixels, notes)
+    })
+    .await
+    .map_err(|e| e.to_string())?;
+    for note in notes {
+        let _ = app.emit("fx-native-note", note);
+    }
+    Ok(tauri::ipc::Response::new(pixels))
+}
+
 // ---------- text layer (pre-rendered titles for exports) ----------
 
 #[tauri::command]

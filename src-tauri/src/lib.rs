@@ -6,6 +6,7 @@ pub mod content_import;
 pub mod diag;
 pub mod effects;
 pub mod export;
+pub mod fxhost;
 pub mod grade;
 pub mod media;
 pub mod mediaserver;
@@ -25,6 +26,8 @@ pub fn run() {
             let handle = app.handle();
             diag::init_log(handle);
             textlayer::clear_stale(&app::cache_root(handle));
+            let native = app::plugins_root(handle).join("native");
+            fxhost::configure(&native, &native.join("fxhost.json"));
             let roots = vec![
                 app::cache_root(handle),
                 app::audio_root(handle),
@@ -74,6 +77,10 @@ pub fn run() {
             app::cache_info,
             app::cache_clear,
             app::export_start,
+            app::fx_native_catalog,
+            app::fx_native_describe,
+            app::fx_native_preview,
+            app::fx_native_unblock,
             app::export_cancel,
             app::text_layer_begin,
             app::text_layer_frame,
