@@ -374,3 +374,8 @@ pub fn plugin_set_enabled(app: AppHandle, id: String, enabled: bool) -> Result<(
 pub fn plugin_lut(app: AppHandle, path: String) -> Result<crate::plugins::Cube, String> {
     plugin_store(&app).lut(std::path::Path::new(&path))
 }
+
+#[tauri::command]
+pub async fn plugin_catalog() -> Result<serde_json::Value, String> {
+    tauri::async_runtime::spawn_blocking(crate::plugins::fetch_catalog).await.map_err(|e| e.to_string())?
+}

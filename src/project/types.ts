@@ -66,6 +66,15 @@ export interface Clip {
   effects?: ClipEffect[];
   /** In / Out / Combo animations (see project/anims.ts). */
   anim?: ClipAnim;
+  /** Colour LUT from a plugin pack (absolute `.cube` path), mixed in by `amount` 0..1. */
+  lut?: ClipLut;
+}
+
+export interface ClipLut {
+  path: string;
+  amount: number;
+  /** Display name, kept so the project still reads well if the pack is removed. */
+  name?: string;
 }
 
 export interface Project {

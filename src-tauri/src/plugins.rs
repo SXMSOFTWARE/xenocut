@@ -54,7 +54,8 @@ pub struct EffectPreset {
     pub name: String,
     #[serde(default)]
     pub category: String,
-    /// `[[primitive kind, amount 0..1]]`, like `fx-packs.json`.
+    /// `[[primitive kind, amount]]` like `fx-packs.json`: 0..1, or -1..1 for brightness,
+    /// contrast, saturation and temperature.
     pub stack: Vec<(String, f64)>,
 }
 
@@ -168,8 +169,10 @@ pub fn validate(m: &Manifest, dir: Option<&Path>) -> Result<(), String> {
             return Err(format!("effect {}: 1 to 12 layers", e.id));
         }
         for (kind, amount) in &e.stack {
-            if !crate::effects::is_primitive(kind) || !(0.0..=1.0).contains(amount) {
-                return Err(format!("effect {}: unknown kind {kind} or amount out of 0..1", e.id));
+            let signed = ["brightness", "contrast", "saturation", "temperature"].contains(&kind.as_str());
+            let range = if signed { -1.0..=1.0 } else { 0.0..=1.0 };
+            if !crate::effects::is_primitive(kind) || !range.contains(amount) {
+                return Err(format!("effect {}: unknown kind {kind} or amount out of range", e.id));
             }
         }
     }
@@ -563,8 +566,42 @@ fn wrap_cube(path: &Path, staging: &Path) -> Result<(), String> {
     std::fs::write(staging.join("manifest.json"), serde_json::to_vec_pretty(&m).unwrap()).map_err(|e| e.to_string())
 }
 
+pub const CATALOG_URL: &str = "https://raw.githubusercontent.com/sxmsoft/xenocut/main/catalog/index.json";
+
+/// The pack catalog JSON. `XENOCUT_CATALOG` (an https URL or a local file) overrides it for tests.
+pub fn fetch_catalog() -> Result<Value, String> {
+    let source = std::env::var("XENOCUT_CATALOG").ok().filter(|s| !s.is_empty()).unwrap_or_else(|| CATALOG_URL.to_string());
+    let text = if source.starts_with("https://") {
+        let client = reqwest::blocking::Client::builder().user_agent("xenocut").timeout(std::time::Duration::from_secs(20)).build().map_err(|e| e.to_string())?;
+        let resp = client.get(&source).send().map_err(|e| format!("catalog unreachable: {e}"))?;
+        if !resp.status().is_success() {
+            return Err(format!("catalog returned {}", resp.status()));
+        }
+        resp.text().map_err(|e| e.to_string())?
+    } else {
+        std::fs::read_to_string(&source).map_err(|e| format!("catalog {source}: {e}"))?
+    };
+    if text.len() > 4 << 20 {
+        return Err("catalog too large".into());
+    }
+    let v: Value = serde_json::from_str(&text).map_err(|e| format!("catalog: {e}"))?;
+    if v.get("format").and_then(|f| f.as_str()) != Some("xenocut-catalog/1") {
+        return Err("unexpected catalog format".into());
+    }
+    Ok(v)
+}
+
 /// Downloads a catalog pack (https only, sha256 required) and installs it.
 pub fn install_url(store: &Store, url: &str, sha256: &str) -> Result<Installed, String> {
+    // Test catalogs (XENOCUT_CATALOG pointing at a file) may list local packs.
+    if !url.starts_with("https://") && std::env::var("XENOCUT_CATALOG").is_ok_and(|c| !c.starts_with("https://")) {
+        let path = Path::new(url);
+        let digest: String = Sha256::digest(std::fs::read(path).map_err(|e| e.to_string())?).iter().map(|b| format!("{b:02x}")).collect();
+        if !digest.eq_ignore_ascii_case(sha256) {
+            return Err("the download did not match the catalog checksum".into());
+        }
+        return store.install_path(path);
+    }
     if !url.starts_with("https://") {
         return Err("catalog packs must come over https".into());
     }
