@@ -12,12 +12,16 @@ import { usePlayback } from "../store/playback";
 import { useProject } from "../store/project";
 import { drawTexts, textStateKey } from "../text/render";
 import { animAt, animCss, animEffects } from "../project/anims";
+import { TransitionRenderer } from "../transitions/gl";
+import { joinAt, joins, transitionGlsl, type Join } from "../transitions/index";
 import { fxAt, letterboxBackground, motionCss, scanlineBackground, vignetteGradient, type FxState } from "../project/effects";
 
 /** How often playback pushes the time to the store (and so to the playhead painters). */
 const PUBLISH_MS = 80;
 
 const HARD_DRIFT = 0.3;
+/** How early the incoming clip of a transition starts loading in the spare element. */
+const PREROLL = 1.5;
 const PAUSED_EPS = 1 / 120;
 
 interface Active {
@@ -136,6 +140,16 @@ export interface FxElements {
   svg2: SVGFilterElement;
 }
 
+function ready(el: HTMLVideoElement | HTMLImageElement): boolean {
+  return el instanceof HTMLImageElement ? el.complete && el.naturalWidth > 0 : el.readyState >= 2 && !el.seeking;
+}
+
+function sizeOf(el: HTMLVideoElement | HTMLImageElement): [number, number] | undefined {
+  const w = el instanceof HTMLImageElement ? el.naturalWidth : el.videoWidth;
+  const h = el instanceof HTMLImageElement ? el.naturalHeight : el.videoHeight;
+  return w > 0 && h > 0 ? [w, h] : undefined;
+}
+
 function setStyle(el: HTMLElement, prop: "filter" | "transform" | "background" | "opacity" | "display" | "left" | "top" | "width" | "height", value: string) {
   if (el.style[prop] !== value) el.style[prop] = value;
 }
@@ -188,6 +202,13 @@ class PlaybackEngine {
   private svgKey = "";
   private svg2Key = "";
   private lutView: LutView | null = null;
+  /** Second video element: the other side of a transition (and the next clip, prerolled). */
+  private spare: HTMLVideoElement | null = null;
+  /** Off-DOM image for an image clip on the other side of a transition. */
+  private spareImage: HTMLImageElement | null = null;
+  private trCanvas: HTMLCanvasElement | null = null;
+  private tr: TransitionRenderer | null = null;
+  private joinCache: { clips: Clip[]; tracks: Track[]; joins: Map<string, Join> } | null = null;
 
   attach(video: HTMLVideoElement, image: HTMLImageElement) {
     this.video = video;
@@ -209,6 +230,109 @@ class PlaybackEngine {
       if (s.project !== prev.project && !usePlayback.getState().playing) this.render(usePlayback.getState().time, false);
     });
     this.render(usePlayback.getState().time, false);
+  }
+
+  /** The spare video and the WebGL canvas transitions are drawn on (null detaches). */
+  attachTransition(video: HTMLVideoElement | null, canvas: HTMLCanvasElement | null) {
+    this.tr?.dispose();
+    this.tr = canvas ? new TransitionRenderer(canvas) : null;
+    this.trCanvas = canvas;
+    this.spare = video;
+    if (video) {
+      if (transport.base) video.crossOrigin = "anonymous";
+      video.preload = "auto";
+      video.playsInline = true;
+      video.muted = true;
+      video.style.visibility = "hidden";
+      watch(video);
+    }
+    if (!this.spareImage) {
+      this.spareImage = new Image();
+      if (transport.base) this.spareImage.crossOrigin = "anonymous";
+      this.spareImage.addEventListener("load", this.redrawPaused);
+    }
+    // A paused frame inside a transition window needs both sides decoded: redraw when they are.
+    for (const el of [video, this.video]) {
+      if (!el || el.dataset.trWatched) continue;
+      el.dataset.trWatched = "1";
+      el.addEventListener("seeked", this.redrawPaused);
+      el.addEventListener("loadeddata", this.redrawPaused);
+    }
+    this.render(this.latestTime(), usePlayback.getState().playing);
+  }
+
+  private redrawPaused = () => {
+    if (!usePlayback.getState().playing && this.trCanvas) this.render(usePlayback.getState().time, false);
+  };
+
+  private joinsOf(p: Project): Map<string, Join> {
+    const c = this.joinCache;
+    if (c && c.clips === p.clips && c.tracks === p.tracks) return c.joins;
+    const map = joins(p.clips, p.tracks);
+    this.joinCache = { clips: p.clips, tracks: p.tracks, joins: map };
+    return map;
+  }
+
+  /** Puts `clip` at time t into the spare element (paused outside its media, like a held frame). */
+  private syncSpare(el: HTMLVideoElement, clip: Clip, media: MediaItem, t: number, playing: boolean) {
+    setSrc(el, previewPath(media.path));
+    el.dataset.clip = clip.id;
+    el.muted = true;
+    const target = sourceTime(clip, t);
+    const end = Math.max(0, (media.duration || Infinity) - 0.04);
+    if (playing && target >= 0 && target < end) {
+      this.syncElement(el, clip, t, true, false);
+    } else {
+      if (!el.paused) el.pause();
+      const held = Math.min(Math.max(target, 0), end);
+      if (Math.abs(el.currentTime - held) > PAUSED_EPS) el.currentTime = held;
+    }
+  }
+
+  /** Draws the transition under the playhead. False when there is none or it can't be drawn yet. */
+  private renderTransition(p: Project, visual: Active, mediaById: Map<string, MediaItem>, t: number, playing: boolean): boolean {
+    const canvas = this.trCanvas;
+    const tr = this.tr;
+    if (!canvas || !tr) return false;
+    const all = this.joinsOf(p);
+    if (all.size === 0) return false;
+    const join = joinAt(all, visual.track.id, t);
+    if (!join) {
+      // Preroll the incoming clip a little before its transition starts.
+      const next = all.get(visual.clip.id);
+      const spare = this.spare;
+      const media = next && mediaById.get(next.to.mediaId);
+      if (next && spare && media && media.kind !== "image" && t >= next.cut - next.duration / 2 - PREROLL) {
+        this.syncSpare(spare, next.to, media, next.cut - next.duration / 2, false);
+      }
+      return false;
+    }
+    const isFrom = visual.clip.id === join.from.id;
+    const otherClip = isFrom ? join.to : join.from;
+    const otherMedia = mediaById.get(otherClip.mediaId);
+    if (!otherMedia) return false;
+    let other: HTMLVideoElement | HTMLImageElement | null;
+    if (otherMedia.kind === "image") {
+      other = this.spareImage;
+      if (other) setSrc(other, otherMedia.path);
+    } else {
+      other = this.spare;
+      if (other) this.syncSpare(other, otherClip, otherMedia, t, playing);
+    }
+    const main = visual.media.kind === "image" ? this.image : this.video;
+    if (!other || !main || !ready(other) || !ready(main)) return false;
+    const shader = transitionGlsl(join.transition);
+    if (!shader) return false;
+    const dpr = Math.min(window.devicePixelRatio || 1, useSettings.getState().performanceMode ? 1 : 2);
+    const w = Math.max(16, Math.min(p.settings.width, Math.round(canvas.clientWidth * dpr)));
+    const h = Math.max(16, Math.round((w * p.settings.height) / p.settings.width));
+    if (canvas.width !== w || canvas.height !== h) {
+      canvas.width = w;
+      canvas.height = h;
+    }
+    const [from, to] = isFrom ? [main, other] : [other, main];
+    const progress = (t - (join.cut - join.duration / 2)) / join.duration;
+    return tr.render({ ...shader, params: join.transition.params, from, to, fromSize: sizeOf(from), toSize: sizeOf(to), progress });
   }
 
   /** The transparent canvas over the stage that shows text clips (drawn above the grade). */
@@ -233,7 +357,7 @@ class PlaybackEngine {
 
   /** Effects of the visible clip (filter on the media element, overlays over its fitted picture,
    *  transform) and of the effect layers above it (on everything composited so far). */
-  private applyFx(p: Project, visual: Active | null, el: HTMLElement | null, t: number) {
+  private applyFx(p: Project, visual: Active | null, el: HTMLElement | null, t: number, plain = false) {
     const fx = this.fx;
     if (!fx) return;
     const stageH = fx.layer.clientHeight || p.settings.height;
@@ -242,8 +366,9 @@ class PlaybackEngine {
 
     // The clip.
     const dur = visual ? clipDuration(visual.clip) : 0;
-    const anim = visual?.clip.anim;
-    const effects = [...(visual?.clip.effects ?? []), ...animEffects(anim, dur)];
+    // `plain`: a transition is drawn instead of the clip (its own effects are not previewed).
+    const anim = plain ? undefined : visual?.clip.anim;
+    const effects = plain ? [] : [...(visual?.clip.effects ?? []), ...animEffects(anim, dur)];
     const animTransform = visual && anim ? animCss(animAt(anim, t - visual.clip.start, dur)) : "";
     const other = el === this.video ? this.image : this.video;
     if (other) setStyle(other, "filter", "");
@@ -374,6 +499,11 @@ class PlaybackEngine {
     this.video = null;
     this.image = null;
     this.videoClipId = null;
+    if (this.spare) {
+      this.spare.pause();
+      delete this.spare.dataset.clip;
+    }
+    this.attachTransition(null, null);
     this.textCanvas = null;
   }
 
@@ -405,6 +535,7 @@ class PlaybackEngine {
     if (!usePlayback.getState().playing) return;
     usePlayback.setState({ playing: false, time: this.latest });
     this.video?.pause();
+    this.spare?.pause();
     for (const el of this.audio.values()) el.pause();
   }
 
@@ -470,7 +601,7 @@ class PlaybackEngine {
   /** Bring every element in line with timeline time `t`. */
   render(t: number, playing: boolean) {
     const p = this.project();
-    const video = this.video;
+    let video = this.video;
     const image = this.image;
     if (!p || !video || !image) return;
     this.drawTextAt(t);
@@ -492,6 +623,19 @@ class PlaybackEngine {
       if (track.kind !== "video" || track.hidden) continue;
       visual = at(track);
       if (visual) break;
+    }
+
+    // The clip may already be loaded in the spare element (prerolled, or the incoming side of a
+    // transition): swap roles instead of reloading, so the cut has no gap.
+    const spare = this.spare;
+    if (visual && visual.media.kind !== "image" && spare && video.dataset.clip !== visual.clip.id && spare.dataset.clip === visual.clip.id && spare.dataset.path === previewPath(visual.media.path)) {
+      this.spare = video;
+      this.video = spare;
+      video.muted = true;
+      video.style.visibility = "hidden";
+      setStyle(video, "filter", "");
+      video = spare;
+      this.videoClipId = visual.clip.id;
     }
 
     const fxEl = !visual ? null : visual.media.kind === "image" ? image : video;
@@ -524,6 +668,18 @@ class PlaybackEngine {
       video.volume = Math.min(1, visual.clip.volume * fadeGain(visual.clip, t));
       this.syncElement(video, visual.clip, t, playing, this.videoClipId !== visual.clip.id);
       this.videoClipId = visual.clip.id;
+      video.dataset.clip = visual.clip.id;
+    }
+
+    // Transition window: the WebGL canvas shows both sides instead of the clip.
+    const showTr = !!visual && this.renderTransition(p, visual, mediaById, t, playing);
+    if (this.trCanvas) setStyle(this.trCanvas, "display", showTr ? "block" : "none");
+    if (showTr) {
+      this.applyFx(p, visual, fxEl, t, true);
+      this.lutView?.update(null, undefined, "", "");
+      if (fxEl) setStyle(fxEl, "opacity", "0");
+    } else if (this.spare && this.spare.dataset.clip && !this.spare.paused && !this.prerolling(p, visual, t)) {
+      this.spare.pause();
     }
 
     // Audio: every unmuted audio/music track clip under the playhead.
@@ -552,6 +708,11 @@ class PlaybackEngine {
       el.load();
       this.audio.delete(id);
     }
+  }
+
+  private prerolling(p: Project, visual: Active | null, t: number): boolean {
+    const next = visual && this.joinsOf(p).get(visual.clip.id);
+    return !!next && t >= next.cut - next.duration / 2 - PREROLL;
   }
 
   private syncElement(el: HTMLMediaElement, clip: Clip, t: number, playing: boolean, entering: boolean) {

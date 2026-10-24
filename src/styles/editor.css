@@ -119,6 +119,12 @@
   object-fit: contain;
   visibility: hidden;
 }
+
+/* Transition window: drawn by WebGL over the media (the engine toggles display). */
+.stage-tr {
+  visibility: visible;
+  display: none;
+}
 .stage-text {
   position: absolute;
   inset: 0;
