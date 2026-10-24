@@ -81,6 +81,16 @@ fn packs() -> &'static HashMap<String, Vec<(String, f64)>> {
     })
 }
 
+/// A primitive or a built-in pack: what a plugin may reference.
+pub fn is_known_kind(kind: &str) -> bool {
+    PRIMITIVES.contains(&kind) || packs().contains_key(kind)
+}
+
+/// Whether `kind` is a primitive (plugin effect presets expand to these).
+pub fn is_primitive(kind: &str) -> bool {
+    PRIMITIVES.contains(&kind)
+}
+
 /// One primitive effect over [a, b) seconds of local time.
 #[derive(Debug, Clone, PartialEq)]
 pub struct Inst {

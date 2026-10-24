@@ -4,7 +4,7 @@ import TABLE from "./clip-anims.json";
 import type { ClipEffect, PrimitiveKind } from "./effects";
 
 type Fx = [PrimitiveKind, number, number, number];
-interface EdgeDef {
+export interface EdgeDef {
   s?: number;
   tx?: number;
   ty?: number;
@@ -15,7 +15,7 @@ interface EdgeDef {
   fx?: Fx[];
 }
 type Wave = "sin" | "bump" | "beat" | "turn" | "ramp" | "ramp1";
-interface ComboDef {
+export interface ComboDef {
   terms: ["s" | "tx" | "ty" | "rot", number, Wave][];
   duration: number;
   fx?: Fx[];
@@ -29,14 +29,29 @@ export const EDGE_KINDS = Object.keys(IN_TABLE) as EdgeKind[];
 export const COMBO_KINDS = Object.keys(COMBO_TABLE) as ComboKind[];
 
 export interface AnimSlot<K extends string = string> {
+  /** A built-in kind, or `<plugin id>/<id>` for a plugin animation. */
   kind: K;
   /** Seconds (In/Out: the window; Combo: the loop period). */
   duration: number;
+  /** Plugin animations carry their definition, so the project plays and exports without the plugin. */
+  spec?: EdgeDef | ComboDef;
+  /** Display name of a plugin animation. */
+  name?: string;
 }
 export interface ClipAnim {
-  in?: AnimSlot<EdgeKind>;
-  out?: AnimSlot<EdgeKind>;
-  combo?: AnimSlot<ComboKind>;
+  in?: AnimSlot;
+  out?: AnimSlot;
+  combo?: AnimSlot;
+}
+
+/** In/Out definition of a slot: its inline plugin spec, else the built-in entry. */
+export function edgeDef(slot: AnimSlot | undefined): EdgeDef | undefined {
+  if (!slot) return undefined;
+  return slot.spec ? (slot.spec as EdgeDef) : IN_TABLE[slot.kind];
+}
+export function comboDef(slot: AnimSlot | undefined): ComboDef | undefined {
+  if (!slot) return undefined;
+  return slot.spec ? (slot.spec as ComboDef) : COMBO_TABLE[slot.kind];
 }
 
 export const DEFAULT_EDGE = 0.5;
@@ -80,8 +95,8 @@ function wave(w: Wave, t: number, period: number, length: number): number {
 
 /** In and Out windows fitted into the clip (In first, Out gets what is left). */
 export function windows(anim: ClipAnim | undefined, length: number): { din: number; dout: number } {
-  const din = anim?.in && IN_TABLE[anim.in.kind] ? Math.min(Math.max(0.05, anim.in.duration), length) : 0;
-  const dout = anim?.out && IN_TABLE[anim.out.kind] ? Math.min(Math.max(0.05, anim.out.duration), Math.max(0, length - din)) : 0;
+  const din = anim?.in && edgeDef(anim.in) ? Math.min(Math.max(0.05, anim.in.duration), length) : 0;
+  const dout = anim?.out && edgeDef(anim.out) ? Math.min(Math.max(0.05, anim.out.duration), Math.max(0, length - din)) : 0;
   return { din, dout };
 }
 
@@ -106,9 +121,9 @@ export function animAt(anim: ClipAnim | undefined, t: number, length: number): A
     st.rot += (def.rot ?? 0) * f;
     if (def.alpha) st.alpha *= Math.min(1, elapsed / Math.max(1e-3, d * (def.alphaSpan ?? 1)));
   };
-  if (din > 0) edge(IN_TABLE[anim.in!.kind], t / din, din, t);
-  if (dout > 0) edge(IN_TABLE[anim.out!.kind], (length - t) / dout, dout, length - t);
-  const combo = anim.combo && COMBO_TABLE[anim.combo.kind];
+  if (din > 0) edge(edgeDef(anim.in)!, t / din, din, t);
+  if (dout > 0) edge(edgeDef(anim.out)!, (length - t) / dout, dout, length - t);
+  const combo = comboDef(anim.combo);
   if (combo) {
     let s = 1;
     for (const [param, amp, w] of combo.terms) {
@@ -133,9 +148,9 @@ export function animEffects(anim: ClipAnim | undefined, length: number): ClipEff
   const { din, dout } = windows(anim, length);
   const out: ClipEffect[] = [];
   const clamp = (v: number) => Math.min(length, Math.max(0, v));
-  if (din > 0) for (const [kind, amount, a, b] of IN_TABLE[anim.in!.kind].fx ?? []) out.push({ kind, amount, from: clamp(a * din), to: clamp(b * din) });
-  if (dout > 0) for (const [kind, amount, a, b] of IN_TABLE[anim.out!.kind].fx ?? []) out.push({ kind, amount, from: clamp(length - b * dout), to: clamp(length - a * dout) });
-  const combo = anim.combo && COMBO_TABLE[anim.combo.kind];
+  if (din > 0) for (const [kind, amount, a, b] of edgeDef(anim.in)!.fx ?? []) out.push({ kind, amount, from: clamp(a * din), to: clamp(b * din) });
+  if (dout > 0) for (const [kind, amount, a, b] of edgeDef(anim.out)!.fx ?? []) out.push({ kind, amount, from: clamp(length - b * dout), to: clamp(length - a * dout) });
+  const combo = comboDef(anim.combo);
   if (combo) for (const [kind, amount, a, b] of combo.fx ?? []) out.push({ kind, amount, from: clamp(a * length), to: clamp(b * length) });
   return out.filter((e) => (e.to ?? 0) - (e.from ?? 0) > 1e-3);
 }

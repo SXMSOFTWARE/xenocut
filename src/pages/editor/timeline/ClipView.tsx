@@ -101,7 +101,7 @@ function AnimBars({ clip, pps, selected }: { clip: Clip; pps: number; selected: 
     window.addEventListener("pointermove", move);
     window.addEventListener("pointerup", up);
   };
-  const label = (side: "in" | "out") => t(`anim.edge.${clip.anim![side]!.kind}` as Key);
+  const label = (side: "in" | "out") => clip.anim![side]!.name ?? t(`anim.edge.${clip.anim![side]!.kind}` as Key);
   return (
     <>
       {din > 0 && (
@@ -114,7 +114,7 @@ function AnimBars({ clip, pps, selected }: { clip: Clip; pps: number; selected: 
           {selected && <i className="clip-anim-h" onPointerDown={(e) => drag(e, "out")} />}
         </span>
       )}
-      {clip.anim?.combo && <span className="clip-anim combo" title={t(`anim.combo.${clip.anim.combo.kind}` as Key)} />}
+      {clip.anim?.combo && <span className="clip-anim combo" title={clip.anim.combo.name ?? t(`anim.combo.${clip.anim.combo.kind}` as Key)} />}
     </>
   );
 }

@@ -27,6 +27,7 @@ tauri-plugin-fs = "2"
 candle-core = "0.11"
 candle-nn = "0.11"
 candle-transformers = "0.11"
+zip = { version = "2", default-features = false, features = ["deflate"] }
 
 # ONNX Runtime: desktop links the prebuilt binaries; Android loads libonnxruntime.so from the
 # onnxruntime-android AAR (gen/android/app/build.gradle.kts) at run time.

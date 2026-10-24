@@ -15,6 +15,10 @@ use std::sync::OnceLock;
 pub struct AnimSlot {
     pub kind: String,
     pub duration: f64,
+    /// A plugin animation carries its own definition (same shape as a table entry), so the project
+    /// renders the same even where the plugin is not installed.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub spec: Option<serde_json::Value>,
 }
 
 #[derive(Debug, Clone, Default, Serialize, Deserialize, PartialEq)]
@@ -29,9 +33,9 @@ pub struct ClipAnim {
 
 type Fx = (String, f64, f64, f64);
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Clone, Deserialize)]
 #[serde(rename_all = "camelCase")]
-struct EdgeDef {
+pub struct EdgeDef {
     #[serde(default = "one")]
     s: f64,
     #[serde(default)]
@@ -49,8 +53,8 @@ struct EdgeDef {
     fx: Vec<Fx>,
 }
 
-#[derive(Debug, Deserialize)]
-struct ComboDef {
+#[derive(Debug, Clone, Deserialize)]
+pub struct ComboDef {
     terms: Vec<(String, f64, String)>,
     #[serde(default)]
     fx: Vec<Fx>,
@@ -72,19 +76,60 @@ fn table() -> &'static Table {
     T.get_or_init(|| serde_json::from_str(include_str!("../../src/project/clip-anims.json")).expect("clip-anims.json"))
 }
 
+/// The In/Out definition of a slot: its inline plugin spec, else the built-in table entry.
+fn edge_def(slot: Option<&AnimSlot>) -> Option<EdgeDef> {
+    let slot = slot?;
+    match &slot.spec {
+        Some(v) => serde_json::from_value(v.clone()).ok(),
+        None => table().edges.get(&slot.kind).cloned(),
+    }
+}
+
+fn combo_def(slot: Option<&AnimSlot>) -> Option<ComboDef> {
+    let slot = slot?;
+    match &slot.spec {
+        Some(v) => serde_json::from_value(v.clone()).ok(),
+        None => table().combo.get(&slot.kind).cloned(),
+    }
+}
+
+/// Checks a plugin's animation definition (used when a pack is installed).
+pub fn validate_spec(combo: bool, spec: &serde_json::Value) -> Result<(), String> {
+    let fx = if combo {
+        let d: ComboDef = serde_json::from_value(spec.clone()).map_err(|e| e.to_string())?;
+        for (param, _, wave) in &d.terms {
+            if !["s", "tx", "ty", "rot"].contains(&param.as_str()) || !["sin", "bump", "beat", "turn", "ramp", "ramp1"].contains(&wave.as_str()) {
+                return Err(format!("unknown term {param}/{wave}"));
+            }
+        }
+        d.fx
+    } else {
+        let d: EdgeDef = serde_json::from_value(spec.clone()).map_err(|e| e.to_string())?;
+        if !["ease", "back", "bounce", "linear"].contains(&d.curve.as_str()) {
+            return Err(format!("unknown curve {}", d.curve));
+        }
+        d.fx
+    };
+    for (kind, ..) in fx {
+        if !crate::effects::is_known_kind(&kind) {
+            return Err(format!("unknown effect {kind}"));
+        }
+    }
+    Ok(())
+}
+
 fn n(v: f64) -> String {
     format!("{v:.5}")
 }
 
 /// In and Out windows fitted into the clip (In first, Out gets what is left).
 pub fn windows(anim: &ClipAnim, length: f64) -> (f64, f64) {
-    let t = table();
     let din = match &anim.in_anim {
-        Some(s) if t.edges.contains_key(&s.kind) => s.duration.max(0.05).min(length),
+        Some(s) if edge_def(Some(s)).is_some() => s.duration.max(0.05).min(length),
         _ => 0.0,
     };
     let dout = match &anim.out {
-        Some(s) if t.edges.contains_key(&s.kind) => s.duration.max(0.05).min((length - din).max(0.0)),
+        Some(s) if edge_def(Some(s)).is_some() => s.duration.max(0.05).min((length - din).max(0.0)),
         _ => 0.0,
     };
     (din, dout)
@@ -109,7 +154,6 @@ struct Exprs {
 
 /// Scale / offset / rotation expressions with `t` standing for local time.
 fn exprs(anim: &ClipAnim, length: f64, t: &str) -> Exprs {
-    let table = table();
     let (din, dout) = windows(anim, length);
     let mut e = Exprs { s: vec![], tx: vec![], ty: vec![], rot: vec![] };
     let mut edge = |def: &EdgeDef, p: String| {
@@ -128,15 +172,15 @@ fn exprs(anim: &ClipAnim, length: f64, t: &str) -> Exprs {
         }
     };
     if din > 0.0 {
-        let def = &table.edges[&anim.in_anim.as_ref().unwrap().kind];
-        edge(def, format!("clip({t}/{},0,1)", n(din)));
+        let def = edge_def(anim.in_anim.as_ref()).unwrap();
+        edge(&def, format!("clip({t}/{},0,1)", n(din)));
     }
     if dout > 0.0 {
-        let def = &table.edges[&anim.out.as_ref().unwrap().kind];
-        edge(def, format!("clip(({}-{t})/{},0,1)", n(length), n(dout)));
+        let def = edge_def(anim.out.as_ref()).unwrap();
+        edge(&def, format!("clip(({}-{t})/{},0,1)", n(length), n(dout)));
     }
     if let Some(slot) = &anim.combo {
-        if let Some(def) = table.combo.get(&slot.kind) {
+        if let Some(def) = combo_def(Some(slot)) {
             let period = n(slot.duration.max(0.05));
             let mut s = Vec::new();
             for (param, amp, wave) in &def.terms {
@@ -168,7 +212,6 @@ fn exprs(anim: &ClipAnim, length: f64, t: &str) -> Exprs {
 
 /// Filters for the clip's canvas-sized `yuva420p` picture; empty when there is no animation.
 pub fn chain(anim: &ClipAnim, length: f64, fps: u32) -> Vec<String> {
-    let table = table();
     let mut out = Vec::new();
     let rot = exprs(anim, length, "t").rot;
     if !rot.is_empty() {
@@ -193,13 +236,13 @@ pub fn chain(anim: &ClipAnim, length: f64, fps: u32) -> Vec<String> {
     }
     let (din, dout) = windows(anim, length);
     if din > 0.0 {
-        let def = &table.edges[&anim.in_anim.as_ref().unwrap().kind];
+        let def = edge_def(anim.in_anim.as_ref()).unwrap();
         if def.alpha {
             out.push(format!("fade=t=in:st=0:d={}:alpha=1", n(din * def.alpha_span.clamp(0.01, 1.0))));
         }
     }
     if dout > 0.0 {
-        let def = &table.edges[&anim.out.as_ref().unwrap().kind];
+        let def = edge_def(anim.out.as_ref()).unwrap();
         if def.alpha {
             let d = dout * def.alpha_span.clamp(0.01, 1.0);
             out.push(format!("fade=t=out:st={}:d={}:alpha=1", n(length - d), n(d)));
@@ -210,7 +253,6 @@ pub fn chain(anim: &ClipAnim, length: f64, fps: u32) -> Vec<String> {
 
 /// The extra effects the animations add (blur, RGB split, shakes, flashes), as ranged effects.
 pub fn effects(anim: &ClipAnim, length: f64) -> Vec<Effect> {
-    let table = table();
     let (din, dout) = windows(anim, length);
     let clamp = |v: f64| v.clamp(0.0, length);
     let mut out = Vec::new();
@@ -220,16 +262,16 @@ pub fn effects(anim: &ClipAnim, length: f64) -> Vec<Effect> {
         }
     };
     if din > 0.0 {
-        for (kind, amount, a, b) in &table.edges[&anim.in_anim.as_ref().unwrap().kind].fx {
+        for (kind, amount, a, b) in &edge_def(anim.in_anim.as_ref()).unwrap().fx {
             push(kind, *amount, clamp(a * din), clamp(b * din));
         }
     }
     if dout > 0.0 {
-        for (kind, amount, a, b) in &table.edges[&anim.out.as_ref().unwrap().kind].fx {
+        for (kind, amount, a, b) in &edge_def(anim.out.as_ref()).unwrap().fx {
             push(kind, *amount, clamp(length - b * dout), clamp(length - a * dout));
         }
     }
-    if let Some(def) = anim.combo.as_ref().and_then(|s| table.combo.get(&s.kind)) {
+    if let Some(def) = combo_def(anim.combo.as_ref()) {
         for (kind, amount, a, b) in &def.fx {
             push(kind, *amount, clamp(a * length), clamp(b * length));
         }
@@ -242,7 +284,20 @@ mod tests {
     use super::*;
 
     fn slot(kind: &str, duration: f64) -> Option<AnimSlot> {
-        Some(AnimSlot { kind: kind.into(), duration })
+        Some(AnimSlot { kind: kind.into(), duration, spec: None })
+    }
+
+    #[test]
+    fn inline_plugin_specs_render() {
+        let spec = serde_json::json!({ "s": 0.2, "rot": -30, "alpha": true, "curve": "back", "fx": [["blur", 0.5, 0, 0.5]] });
+        validate_spec(false, &spec).unwrap();
+        let a = ClipAnim { in_anim: Some(AnimSlot { kind: "plug.twirl".into(), duration: 0.6, spec: Some(spec) }), ..Default::default() };
+        let c = chain(&a, 2.0, 30).join(",");
+        assert!(c.contains("rotate=") && c.contains("perspective=") && c.contains("fade=t=in"), "{c}");
+        assert_eq!(effects(&a, 2.0).len(), 1);
+        assert!(validate_spec(false, &serde_json::json!({ "curve": "wild" })).is_err());
+        assert!(validate_spec(true, &serde_json::json!({ "terms": [["s", 0.1, "sin"]], "fx": [["nope", 1, 0, 1]] })).is_err());
+        validate_spec(true, &serde_json::json!({ "terms": [["s", 0.1, "sin"], ["rot", 5, "bump"]] })).unwrap();
     }
 
     #[test]
