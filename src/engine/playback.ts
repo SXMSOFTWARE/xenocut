@@ -86,6 +86,8 @@ class PlaybackEngine {
   private image: HTMLImageElement | null = null;
   private audio = new Map<string, HTMLAudioElement>();
   private raf = 0;
+  private lastPublish = 0;
+  private latest = 0;
   private wallStart = 0;
   private timeStart = 0;
   private videoClipId: string | null = null;
@@ -139,6 +141,7 @@ class PlaybackEngine {
     if (time >= duration - 0.01) time = 0;
     this.wallStart = performance.now();
     this.timeStart = time;
+    this.latest = time;
     usePlayback.setState({ playing: true, time });
     this.render(time, true);
     cancelAnimationFrame(this.raf);
@@ -148,7 +151,7 @@ class PlaybackEngine {
   pause() {
     cancelAnimationFrame(this.raf);
     if (!usePlayback.getState().playing) return;
-    usePlayback.setState({ playing: false });
+    usePlayback.setState({ playing: false, time: this.latest });
     this.video?.pause();
     for (const el of this.audio.values()) el.pause();
   }
@@ -197,7 +200,14 @@ class PlaybackEngine {
       this.render(duration, false);
       return;
     }
-    usePlayback.setState({ time });
+    // Performance mode moves the playhead, scrubber and timecode ~12 times a second instead of
+    // every frame, so WebKit repaints the timeline far less often while the video plays.
+    this.latest = time;
+    const now = performance.now();
+    if (!useSettings.getState().performanceMode || now - this.lastPublish >= 80) {
+      this.lastPublish = now;
+      usePlayback.setState({ time });
+    }
     this.render(time, true);
     this.raf = requestAnimationFrame(this.tick);
   };
