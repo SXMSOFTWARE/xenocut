@@ -2,7 +2,6 @@
 import { engine } from "../../engine/playback";
 import { clipEnd, clipsAt, makeTrack, projectDuration, sortTracks, splitClip } from "../../project/ops";
 import type { TrackKind } from "../../project/types";
-import { usePlayback } from "../../store/playback";
 import { useProject } from "../../store/project";
 import { useEditorUi } from "../../store/editorUi";
 import { useRouter } from "../../store/router";
@@ -10,7 +9,7 @@ import { useRouter } from "../../store/router";
 export function splitAtPlayhead() {
   const { project, selection, commit, select } = useProject.getState();
   if (!project) return;
-  const time = usePlayback.getState().time;
+  const time = engine.now();
   const under = clipsAt(project, time);
   const targets = selection.length ? under.filter((c) => selection.includes(c.id)) : under;
   if (!targets.length) return;
@@ -65,7 +64,7 @@ export function zoomBy(factor: number) {
 export function jumpToEdge(direction: -1 | 1) {
   const { project } = useProject.getState();
   if (!project) return;
-  const time = usePlayback.getState().time;
+  const time = engine.now();
   const edges = new Set<number>([0]);
   for (const c of project.clips) {
     edges.add(c.start);

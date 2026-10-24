@@ -245,7 +245,7 @@ function TapSync({
 
   const tap = () => {
     const s = ref.current;
-    const now = usePlayback.getState().time;
+    const now = engine.now();
     if (s.taps.length >= s.lines.length) {
       // One more tap after the last line marks where it ends.
       onFinish([...s.taps, now], s.lines);

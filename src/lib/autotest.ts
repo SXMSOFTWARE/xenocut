@@ -386,7 +386,7 @@ async function tapProbe(lines: string[], times: number[]) {
   document.querySelector<HTMLButtonElement>(".lyrics-actions .btn-primary")!.click();
   const space = () => window.dispatchEvent(new KeyboardEvent("keydown", { key: " ", bubbles: true }));
   for (let i = 0; i < times.length; i++) {
-    while (usePlayback.getState().time < times[i]) await sleep(10);
+    while (engine.now() < times[i]) await sleep(5);
     space();
     if (i === 1) {
       await sleep(400);

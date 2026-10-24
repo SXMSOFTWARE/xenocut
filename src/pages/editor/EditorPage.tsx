@@ -6,7 +6,6 @@ import { useT } from "../../i18n";
 import { onFileDrop } from "../../lib/backend";
 import { addToTimeline, importPaths, startAutosave } from "../../project/actions";
 import { useEditorUi } from "../../store/editorUi";
-import { usePlayback } from "../../store/playback";
 import { useProject } from "../../store/project";
 import { useRouter } from "../../store/router";
 import { useSettings } from "../../store/settings";
@@ -78,7 +77,7 @@ export default function EditorPage() {
       const mod = e.ctrlKey || e.metaKey;
       const key = e.key.toLowerCase();
       const fps = useProject.getState().project?.settings.fps ?? 30;
-      const now = usePlayback.getState().time;
+      const now = engine.now();
       let handled = true;
       if (mod && key === "z" && !e.shiftKey) useProject.getState().undo();
       else if (mod && (key === "y" || (key === "z" && e.shiftKey))) useProject.getState().redo();

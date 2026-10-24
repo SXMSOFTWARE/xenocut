@@ -11,6 +11,9 @@ import { useProject } from "../store/project";
 import { drawTexts, textStateKey } from "../text/render";
 import { flashAt, motionAt, motionCss, previewFx, vignetteGradient } from "../project/effects";
 
+/** How often playback pushes the time to the store (and so to the playhead painters). */
+const PUBLISH_MS = 80;
+
 const HARD_DRIFT = 0.3;
 const PAUSED_EPS = 1 / 120;
 
@@ -218,6 +221,11 @@ class PlaybackEngine {
     this.drawTextAt(this.latestTime());
   }
 
+  /** The exact playback time: the running clock while playing (the store lags up to PUBLISH_MS). */
+  now() {
+    return this.latestTime();
+  }
+
   private latestTime() {
     return usePlayback.getState().playing ? this.latest : usePlayback.getState().time;
   }
@@ -334,11 +342,13 @@ class PlaybackEngine {
       this.render(duration, false);
       return;
     }
-    // Performance mode moves the playhead, scrubber and timecode ~12 times a second instead of
-    // every frame, so WebKit repaints the timeline far less often while the video plays.
+    // The playhead, scrubber and timecode move ~12 times a second while playing, not every frame.
+    // Measured on WebKitGTK (1080p60, Ryzen laptop): any DOM change outside the video, even a
+    // single transform, makes the frame repaint far more than the video rect, which halved the
+    // decoded frames (255/480 at 60 Hz updates vs 467/480 at 12.5 Hz). Seeks still publish at once.
     this.latest = time;
     const now = performance.now();
-    const every = this.publishMs ?? (useSettings.getState().performanceMode ? 80 : 0);
+    const every = this.publishMs ?? PUBLISH_MS;
     if (now - this.lastPublish >= every) {
       this.lastPublish = now;
       usePlayback.setState({ time });

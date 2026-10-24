@@ -1,4 +1,5 @@
 // The Text panel: add titles from presets and style the selected text clip.
+import { engine } from "../../engine/playback";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { AlignCenter, AlignLeft, AlignRight, Bold, CaseUpper, Italic, Plus, Trash2, Type } from "lucide-react";
 import { Segmented, Slider } from "../../components/controls";
@@ -15,7 +16,6 @@ import {
   type TextContent,
   type TextStyle,
 } from "../../project/text";
-import { usePlayback } from "../../store/playback";
 import { useProject } from "../../store/project";
 import { ensureFonts, FONTS, fontSpec, type FontId } from "../../text/fonts";
 import { drawText } from "../../text/render";
@@ -60,7 +60,7 @@ export function TextPanel() {
     let clipId = "";
     const text = textFromPreset(presetId, t(presetId === "lowerThird" ? "text.sampleLower" : "text.sample"));
     commit((p) => {
-      const result = addTextClip(p, text, usePlayback.getState().time);
+      const result = addTextClip(p, text, engine.now());
       clipId = result.clipId;
       return result.project;
     });
