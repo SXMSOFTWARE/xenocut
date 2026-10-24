@@ -33,15 +33,16 @@ const CARD_H = 90;
 const MIN_LEN = 1.5;
 const MAX_LEN = 10;
 
+/** Every Lottie entry of the enabled packs (plain function for non-React callers). */
+export function stickerDefs(installed: Installed[]): StickerDef[] {
+  return enabledPacks(installed).flatMap((pack) =>
+    (pack.manifest.lottie ?? []).map((entry) => ({ key: `${pack.manifest.id}/${entry.id}`, pack, entry, path: packFile(pack, entry.file) })),
+  );
+}
+
 export function useStickerDefs(): StickerDef[] {
   const installed = usePlugins((s) => s.installed);
-  return useMemo(
-    () =>
-      enabledPacks(installed).flatMap((pack) =>
-        (pack.manifest.lottie ?? []).map((entry) => ({ key: `${pack.manifest.id}/${entry.id}`, pack, entry, path: packFile(pack, entry.file) })),
-      ),
-    [installed],
-  );
+  return useMemo(() => stickerDefs(installed), [installed]);
 }
 
 export function catLabel(t: ReturnType<typeof useT>, c: string): string {

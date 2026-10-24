@@ -17,9 +17,11 @@ import { applyPreset, type LayoutPreset } from "../pages/editor/layout";
 import { useRouter, type Page } from "../store/router";
 import { useAssets } from "../store/assets";
 import type { Grade } from "../project/grade";
-import { addEffectLayer, addTextClip, projectDuration, splitClip, updateClip } from "../project/ops";
+import { addEffectLayer, addTextClip, projectDuration, splitClip, updateClip, updateLottie } from "../project/ops";
 import { applyTransitionDef, packTransitionDefs, resolveCut } from "../transitions/catalog";
 import { BUILTINS } from "../transitions";
+import { addSticker, stickerDefs } from "../pages/editor/StickersPanel";
+import { drawLottie } from "../lottie/render";
 import type { ClipEffect, EffectKind } from "../project/effects";
 import type { Clip } from "../project/types";
 import { PRESETS } from "../project/presets";
@@ -95,6 +97,7 @@ export async function runAutotest(file: string) {
   await animProbe();
   await lutProbe();
   await transProbe();
+  await lottieProbe();
   await perfProbe();
 }
 
@@ -274,6 +277,59 @@ async function transProbe() {
     pixel = [...ctx.getImageData(0, 0, 1, 1).data];
   }
   log("autotest", `TRANS ${JSON.stringify({ applied: ok, id: tr?.id, duration: tr?.duration, glsl: !!tr?.glsl, cut: +cut.cut.toFixed(2), canvas: canvas ? [canvas.width, canvas.height, getComputedStyle(canvas).display] : null, pixel })}`);
+  log("autotest", "anim-ready");
+  await sleep(Number(o.hold ?? 0) * 1000 + 800);
+  await exportProbe(o.export);
+}
+
+/**
+ * lottie=<pack/entry>[+<pack/entry>…][,texts=A|B][,export=…]: installs the packs from the catalog if
+ * needed, puts each animation on the timeline at 0.5 s, logs its frame and the coverage of a
+ * rasterised frame (the same draw the export uses), then exports.
+ */
+async function lottieProbe() {
+  const o = opts();
+  if (!o.lottie) return;
+  const keys = o.lottie.split("+");
+  for (const packId of new Set(keys.map((k) => k.slice(0, k.indexOf("/"))))) {
+    if (usePlugins.getState().installed.some((i) => i.manifest.id === packId)) continue;
+    await usePlugins.getState().loadCatalog();
+    const entry = usePlugins.getState().catalog?.find((e) => e.id === packId);
+    if (!entry) return log("autotest", `LOTTIE no catalog entry ${packId}`);
+    await usePlugins.getState().installFromCatalog(entry);
+  }
+  const defs = stickerDefs(usePlugins.getState().installed);
+  const ids: string[] = [];
+  engine.seek(0.5);
+  for (const key of keys) {
+    const def = defs.find((d) => d.key === key);
+    if (!def) return log("autotest", `LOTTIE unknown ${key} (have ${defs.length})`);
+    const id = await addSticker(def);
+    if (!id) return log("autotest", `LOTTIE load failed ${key}`);
+    ids.push(id);
+  }
+  const project = useProject.getState().project!;
+  if (o.texts)
+    for (const id of ids) {
+      const c = project.clips.find((x) => x.id === id);
+      if (c?.lottie?.texts?.length) useProject.getState().commit((p) => updateLottie(p, id, { texts: o.texts.split("|").slice(0, c.lottie!.texts!.length) }));
+    }
+  useEditorUi.setState({ panel: "stickers" });
+  engine.seek(1.5);
+  await sleep(2000);
+  const W = 320, H = Math.round((320 * project.settings.height) / project.settings.width);
+  const report = useProject.getState().project!.clips.filter((c) => ids.includes(c.id)).map((c) => {
+    const canvas = document.createElement("canvas");
+    canvas.width = W;
+    canvas.height = H;
+    const ctx = canvas.getContext("2d")!;
+    const drawn = drawLottie(ctx, c, W, H, 1.5 - c.start);
+    const data = ctx.getImageData(0, 0, W, H).data;
+    let cover = 0;
+    for (let i = 3; i < data.length; i += 4) if (data[i] > 24) cover++;
+    return { name: c.lottie!.name, kind: c.lottie!.kind, start: c.start, len: +(c.out - c.in).toFixed(2), texts: c.lottie!.texts, drawn, cover: +(cover / (W * H)).toFixed(4) };
+  });
+  log("autotest", `LOTTIE ${JSON.stringify(report)}`);
   log("autotest", "anim-ready");
   await sleep(Number(o.hold ?? 0) * 1000 + 800);
   await exportProbe(o.export);
