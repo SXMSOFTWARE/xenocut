@@ -6,6 +6,8 @@ import { useSettings } from "../store/settings";
 import { useAssets } from "../store/assets";
 import { needsDecodeProxy } from "../lib/playable";
 import { LutView } from "./lutview";
+import { NativeFxView } from "./nativeview";
+import { fitSize } from "../lib/nativefx";
 import { fileSrc, log, transport } from "../lib/backend";
 import { clipDuration, clipEnd, projectDuration } from "../project/ops";
 import type { Clip, MediaItem, Project, Track } from "../project/types";
@@ -203,6 +205,7 @@ class PlaybackEngine {
   private svgKey = "";
   private svg2Key = "";
   private lutView: LutView | null = null;
+  private nativeView: NativeFxView | null = null;
   /** Second video element: the other side of a transition (and the next clip, prerolled). */
   private spare: HTMLVideoElement | null = null;
   /** Off-DOM image for an image clip on the other side of a transition. */
@@ -346,6 +349,11 @@ class PlaybackEngine {
   private lottieOff: (() => void) | null = null;
 
   /** The WebGL canvas that shows the visible clip through its LUT (null detaches). */
+  attachNative(canvas: HTMLCanvasElement | null) {
+    this.nativeView?.dispose();
+    this.nativeView = canvas ? new NativeFxView(canvas, () => this.render(this.latestTime(), usePlayback.getState().playing)) : null;
+  }
+
   attachLut(canvas: HTMLCanvasElement | null) {
     this.lutView?.dispose();
     this.lutView = canvas ? new LutView(canvas, () => this.render(this.latestTime(), usePlayback.getState().playing)) : null;
@@ -645,7 +653,26 @@ class PlaybackEngine {
     const fxEl = !visual ? null : visual.media.kind === "image" ? image : video;
     this.applyFx(p, visual, fxEl, t);
 
+    // Native effect plug-ins: the processed frame on a canvas stands in for the element (and is
+    // what the LUT view reads when both are on).
+    const native = (el: HTMLVideoElement | HTMLImageElement, op: string) =>
+      visual && this.nativeView
+        ? this.nativeView.update(
+            {
+              source: el,
+              clip: visual.clip,
+              time: visual.clip.in + Math.max(0, t - visual.clip.start) * (visual.clip.speed || 1),
+              playing,
+              full: fitSize(visual.media, p.settings.width, p.settings.height),
+              fps: p.settings.fps || 30,
+            },
+            el.style.filter,
+            op,
+          )
+        : null;
+
     if (!visual) {
+      this.nativeView?.update(null, "", "");
       this.lutView?.update(null, undefined, "", "");
       this.videoClipId = null;
       video.style.visibility = "hidden";
@@ -658,15 +685,19 @@ class PlaybackEngine {
       setSrc(image, visual.media.path);
       image.style.visibility = "visible";
       const op = opacityCss(visual.clip.opacity * fadeGain(visual.clip, t) * animAlpha(visual.clip, t));
-      const lut = this.lutView?.update(image, visual.clip.lut, image.style.filter, op) ?? false;
-      setStyle(image, "opacity", lut ? "0" : op);
+      const nat = native(image, op);
+      const lut = this.lutView?.update(nat ?? image, visual.clip.lut, image.style.filter, op) ?? false;
+      if (nat && lut) setStyle(nat, "opacity", "0");
+      setStyle(image, "opacity", lut || nat ? "0" : op);
     } else {
       image.style.visibility = "hidden";
       setSrc(video, previewPath(visual.media.path));
       video.style.visibility = "visible";
       const op = opacityCss(visual.clip.opacity * fadeGain(visual.clip, t) * animAlpha(visual.clip, t));
-      const lut = this.lutView?.update(video, visual.clip.lut, video.style.filter, op) ?? false;
-      setStyle(video, "opacity", lut ? "0" : op);
+      const nat = native(video, op);
+      const lut = this.lutView?.update(nat ?? video, visual.clip.lut, video.style.filter, op) ?? false;
+      if (nat && lut) setStyle(nat, "opacity", "0");
+      setStyle(video, "opacity", lut || nat ? "0" : op);
       const muted = silent || visual.track.muted || !visual.media.hasAudio;
       video.muted = muted;
       video.volume = Math.min(1, visual.clip.volume * fadeGain(visual.clip, t));
@@ -680,6 +711,7 @@ class PlaybackEngine {
     if (this.trCanvas) setStyle(this.trCanvas, "display", showTr ? "block" : "none");
     if (showTr) {
       this.applyFx(p, visual, fxEl, t, true);
+      this.nativeView?.update(null, "", "");
       this.lutView?.update(null, undefined, "", "");
       if (fxEl) setStyle(fxEl, "opacity", "0");
     } else if (this.spare && this.spare.dataset.clip && !this.spare.paused && !this.prerolling(p, visual, t)) {

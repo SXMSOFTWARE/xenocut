@@ -20,7 +20,8 @@ void main() {
   o = vec4(mix(c.rgb, m, amount), c.a);
 }`;
 
-type Source = HTMLVideoElement | HTMLImageElement;
+/** A canvas source (the native-effects view) is redrawn every frame, like a video. */
+type Source = HTMLVideoElement | HTMLImageElement | HTMLCanvasElement;
 
 export class LutView {
   private gl: WebGL2RenderingContext | null = null;
@@ -160,12 +161,13 @@ export class LutView {
     const src = this.source;
     if (!gl || !src) return;
     const video = src instanceof HTMLVideoElement ? src : null;
-    const w = video ? video.videoWidth : (src as HTMLImageElement).naturalWidth;
-    const h = video ? video.videoHeight : (src as HTMLImageElement).naturalHeight;
+    const still = src instanceof HTMLImageElement ? src : null;
+    const w = video ? video.videoWidth : still ? still.naturalWidth : src.width;
+    const h = video ? video.videoHeight : still ? still.naturalHeight : src.height;
     if (!w || !h || (video && video.readyState < 2)) return;
     // Stills only redraw when something changes.
-    const key = `${src.currentSrc}|${this.amount}|${this.cubePath}|${w}x${h}`;
-    if (!video && key === this.lastImageKey) return;
+    const key = `${still?.currentSrc}|${this.amount}|${this.cubePath}|${w}x${h}`;
+    if (still && key === this.lastImageKey) return;
     this.lastImageKey = key;
     const scale = Math.min(1, 1920 / Math.max(w, h));
     const cw = Math.round(w * scale), ch = Math.round(h * scale);

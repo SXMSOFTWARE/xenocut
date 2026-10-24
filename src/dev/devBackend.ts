@@ -76,6 +76,13 @@ export async function invoke<T>(command: string, args: Record<string, unknown> =
   const known = new Set(m.items.map((i) => i.path));
   const result = await (async (): Promise<unknown> => {
     switch (command) {
+      case "fx_native_catalog":
+      case "fx_native_unblock":
+        return (await import("./nativefx-fixture.json")).default.catalog;
+      case "fx_native_describe":
+        return { ok: true, params: ((await import("./nativefx-fixture.json")).default.describe as Record<string, unknown[]>)[args.id as string] ?? [] };
+      case "fx_native_preview":
+        return devNativePreview(args.body as Uint8Array);
       case "app_info":
         return { os: "linux", version: "dev", defaultOutputDir: "/home/enes/Videos/XenoCut", defaultProjectDir: "/home/enes/Videos/XenoCut/Projects" };
       case "store_read":
@@ -180,4 +187,24 @@ export async function pickFolder(): Promise<string | null> {
 
 export async function pickSavePath(defaultPath: string): Promise<string | null> {
   return defaultPath;
+}
+
+/** Dev stand-in for the effect host: a few plug-ins approximated in JS, the rest pass through. */
+function devNativePreview(body: Uint8Array): ArrayBuffer {
+  const n = new DataView(body.buffer, body.byteOffset).getUint32(0, true);
+  const head = JSON.parse(new TextDecoder().decode(body.subarray(4, 4 + n))) as { chain: { id: string; enabled: boolean; params: Record<string, number[]> }[] };
+  const px = body.slice(4 + n);
+  for (const fx of head.chain) {
+    if (!fx.enabled) continue;
+    for (let i = 0; i < px.length; i += 4) {
+      const [r, g, b] = [px[i], px[i + 1], px[i + 2]];
+      if (fx.id === "ofx:net.sf.openfx.Invert") [px[i], px[i + 1], px[i + 2]] = [255 - r, 255 - g, 255 - b];
+      else if (fx.id === "ofx:net.sf.openfx.SaturationPlugin") {
+        const s = fx.params.saturation?.[0] ?? 1;
+        const y = 0.2126 * r + 0.7152 * g + 0.0722 * b;
+        [px[i], px[i + 1], px[i + 2]] = [y + (r - y) * s, y + (g - y) * s, y + (b - y) * s];
+      }
+    }
+  }
+  return px.buffer;
 }

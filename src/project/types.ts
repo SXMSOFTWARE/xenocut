@@ -76,6 +76,16 @@ export interface Clip {
   name?: string;
   /** Lottie overlay clips (text tracks, mediaId ""): see lottie/render.ts. */
   lottie?: ClipLottie;
+  /** OpenFX / frei0r effects (desktop Linux), run before the built-in effects (lib/nativefx.ts). */
+  nativeFx?: NativeFx[];
+}
+
+export interface NativeFx {
+  /** `ofx:<identifier>` or `frei0r:<library>`. */
+  id: string;
+  /** Values by parameter name; missing ones use the plug-in default. */
+  params: Record<string, number[] | string>;
+  enabled?: boolean;
 }
 
 export interface ClipLottie {

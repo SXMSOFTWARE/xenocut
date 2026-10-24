@@ -685,7 +685,8 @@ fn make_catalog(
     let text = |v: &Value, k: &str| v[k].as_str().unwrap_or("").trim().to_string();
     for p in reply["ofx"]["plugins"].as_array().into_iter().flatten() {
         let id = format!("ofx:{}", text(p, "id"));
-        if blocked.contains_key(&id) {
+        // A bundle can carry several versions of one plug-in; the host uses the newest.
+        if blocked.contains_key(&id) || plugins.iter().any(|q: &PluginInfo| q.id == id) {
             continue;
         }
         plugins.push(PluginInfo {

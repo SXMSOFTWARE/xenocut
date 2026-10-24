@@ -26,6 +26,7 @@ export function Preview() {
   const videoRef = useRef<HTMLVideoElement>(null);
   const imageRef = useRef<HTMLImageElement>(null);
   const lutRef = useRef<HTMLCanvasElement>(null);
+  const nativeRef = useRef<HTMLCanvasElement>(null);
   const spareRef = useRef<HTMLVideoElement>(null);
   const trRef = useRef<HTMLCanvasElement>(null);
   const textRef = useRef<HTMLCanvasElement>(null);
@@ -68,6 +69,7 @@ export function Preview() {
   useEffect(() => {
     engine.attach(videoRef.current!, imageRef.current!);
     engine.attachText(textRef.current);
+    engine.attachNative(nativeRef.current);
     engine.attachLut(lutRef.current);
     engine.attachTransition(spareRef.current, trRef.current);
     engine.attachFx({
@@ -81,6 +83,7 @@ export function Preview() {
     });
     return () => {
       engine.attachFx(null);
+      engine.attachNative(null);
       engine.attachLut(null);
       engine.detach();
     };
@@ -212,6 +215,7 @@ export function Preview() {
                 <video ref={videoRef} className="stage-media" playsInline />
                 <img ref={imageRef} className="stage-media" alt="" draggable={false} />
                 <video ref={spareRef} className="stage-media" playsInline muted aria-hidden />
+                <canvas ref={nativeRef} className="stage-media stage-native" aria-hidden />
                 <canvas ref={lutRef} className="stage-media stage-lut" aria-hidden />
                 <canvas ref={trRef} className="stage-media stage-tr" aria-hidden />
                 <div ref={clipOvRef} className="stage-ov">
