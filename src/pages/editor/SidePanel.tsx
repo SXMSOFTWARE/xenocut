@@ -23,6 +23,7 @@ import { LyricsPanel } from "./LyricsPanel";
 import { AmvPanel } from "./AmvPanel";
 import { SubtitlesPanel } from "./SubtitlesPanel";
 import { MediaBin } from "./MediaBin";
+import { TransitionsPanel } from "./TransitionsPanel";
 import { useSettings } from "../../store/settings";
 import { panelResizeDown } from "./layout";
 
@@ -39,6 +40,7 @@ const TITLES: Record<PanelId, Key> = {
   amv: "amv.title",
   fx: "fx.title",
   anim: "anim.title",
+  trans: "trans.title",
   format: "mobile.format",
 };
 
@@ -61,6 +63,7 @@ export function SidePanel() {
         {panel === "effects" && <Inspector />}
         {panel === "fx" && <EffectsPanel />}
         {panel === "anim" && <AnimPanel />}
+        {panel === "trans" && <TransitionsPanel />}
         {panel === "voice" && <VoicePanel />}
         {panel === "music" && <MusicPanel />}
         {panel === "audio" && <AudioPanel />}

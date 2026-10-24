@@ -21,6 +21,7 @@ import {
   Palette,
   Wand2,
   X,
+  ArrowRightLeft,
 } from "lucide-react";
 import "../../../styles/mobile.css";
 import "../../../styles/themes.css";
@@ -38,6 +39,7 @@ import { deleteSelection, fitTimeline, leaveEditor, splitAtPlayhead } from "../c
 import { Inspector } from "../Inspector";
 import { EffectsPanel } from "../EffectBrowser";
 import { AnimPanel } from "../AnimPanel";
+import { TransitionsPanel } from "../TransitionsPanel";
 import { MediaBin } from "../MediaBin";
 import { Preview } from "../Preview";
 import { AudioPanel, ColorPanel, MusicPanel, VoicePanel } from "../SidePanel";
@@ -55,7 +57,7 @@ const TABS: Tab[] = [
   { id: "edit", icon: Clapperboard, label: "mobile.tab.edit", segs: ["media", "effects", "format"] },
   { id: "audio", icon: Music2, label: "mobile.tab.audio", segs: ["music", "voice", "audio"] },
   { id: "text", icon: Type, label: "mobile.tab.text", segs: ["text"] },
-  { id: "fx", icon: Sparkles, label: "mobile.tab.fx", segs: ["fx", "anim", "color"] },
+  { id: "fx", icon: Sparkles, label: "mobile.tab.fx", segs: ["fx", "trans", "anim", "color"] },
   { id: "captions", icon: Captions, label: "mobile.tab.captions", segs: ["captions", "lyrics"] },
   { id: "beat", icon: AudioLines, label: "mobile.tab.beat", segs: ["amv"] },
 ];
@@ -70,6 +72,7 @@ const SEG_LABEL: Record<PanelId, Key> = {
   text: "rail.text",
   fx: "fx.title",
   anim: "anim.title",
+  trans: "rail.trans",
   color: "rail.color",
   captions: "rail.captions",
   lyrics: "rail.lyrics",
@@ -236,6 +239,7 @@ function ToolBar() {
     ];
     if (sel.clip && !sel.text) tools.push({ key: "adjust", icon: SlidersHorizontal, label: "mobile.adjust", run: () => useEditorUi.setState({ panel: "effects" }) });
     if (sel.visual) tools.push({ key: "fx", icon: Sparkles, label: "fx.title", run: () => useEditorUi.setState({ panel: "fx" }) });
+    if (sel.visual && !sel.text) tools.push({ key: "trans", icon: ArrowRightLeft, label: "rail.trans", run: () => useEditorUi.setState({ panel: "trans" }) });
     if (sel.visual) tools.push({ key: "anim", icon: Wand2, label: "anim.title", run: () => useEditorUi.setState({ panel: "anim" }) });
     if (sel.visual && !sel.text) tools.push({ key: "color", icon: Palette, label: "rail.color", run: () => useEditorUi.setState({ panel: "color" }) });
     if (sel.text) tools.push({ key: "text", icon: Type, label: "mobile.editText", run: () => useEditorUi.setState({ panel: "text" }) });
@@ -317,6 +321,7 @@ function Sheet({ panel }: { panel: PanelId }) {
         {panel === "text" && <TextPanel />}
         {panel === "fx" && <FxPane />}
         {panel === "anim" && <AnimPanel compact />}
+        {panel === "trans" && <TransitionsPanel compact />}
         {panel === "color" && <ColorPanel />}
         {panel === "captions" && <SubtitlesPanel />}
         {panel === "lyrics" && <LyricsPanel />}

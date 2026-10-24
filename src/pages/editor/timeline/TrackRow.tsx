@@ -9,6 +9,7 @@ import { importDialog, addToTimeline } from "../../../project/actions";
 import { clipDuration } from "../../../project/ops";
 import { removeTrack, toggleTrack } from "../commands";
 import { ClipView, EffectLayerView, TextClipView } from "./ClipView";
+import { CutMarks } from "./CutMarks";
 import { useLongPress } from "../../../components/ContextMenu";
 import { clipMenu, laneTime, trackMenu } from "../menus";
 import { Lock, Unlock } from "lucide-react";
@@ -84,6 +85,7 @@ export const TrackRow = memo(function TrackRow({ track, clips, media, pps, heigh
           const tint = track.kind === "video" ? TINTS[i % TINTS.length] : track.kind === "music" ? "gold" : "lavender";
           return m ? <ClipView key={clip.id} clip={clip} media={m} trackKind={track.kind} tint={tint} pps={pps} selected={selected.has(clip.id)} laneHeight={height} /> : null;
         })}
+        {track.kind === "video" && <CutMarks track={track} clips={clips} pps={pps} />}
         {showAdd && (
           <button
             className="tl-add-clip"
@@ -111,6 +113,7 @@ export const TrackRow = memo(function TrackRow({ track, clips, media, pps, heigh
  * marquee over the clips (Shift / Ctrl add to the selection). */
 export function lanePointerDown(e: React.PointerEvent<HTMLDivElement>) {
   if (e.button !== 0 || e.target !== e.currentTarget) return;
+  if (useEditorUi.getState().cut) useEditorUi.setState({ cut: null });
   if (e.pointerType === "touch") {
     useProject.getState().select([]);
     return tapToSeek(e.currentTarget, e.clientX, e.clientY);
