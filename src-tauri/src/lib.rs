@@ -6,6 +6,7 @@ pub mod content_import;
 pub mod diag;
 pub mod effects;
 pub mod export;
+pub mod fxbake;
 pub mod fxhost;
 pub mod grade;
 pub mod media;

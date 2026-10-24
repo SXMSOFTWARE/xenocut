@@ -822,6 +822,43 @@ pub fn run(
     if let Some(parent) = output.parent() {
         std::fs::create_dir_all(parent).map_err(|err| AudioError::Failed(err.to_string()))?;
     }
+    // Native effect plug-ins are baked into intermediates first (removed afterwards).
+    let work = std::env::temp_dir().join(format!(
+        "xenocut-fx-{}-{}",
+        std::process::id(),
+        std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .map(|d| d.as_millis())
+            .unwrap_or(0)
+    ));
+    let baked;
+    let project = if crate::fxbake::needs_bake(project) {
+        let (p, notes) = match crate::fxbake::bake(project, options, &work, progress) {
+            Ok(v) => v,
+            Err(e) => {
+                let _ = std::fs::remove_dir_all(&work);
+                return Err(e);
+            }
+        };
+        for note in notes {
+            crate::diag::log("warn", &format!("export: {note}"));
+        }
+        baked = p;
+        &baked
+    } else {
+        project
+    };
+    let result = run_plan(project, options, progress, &output);
+    let _ = std::fs::remove_dir_all(&work);
+    result
+}
+
+fn run_plan(
+    project: &Project,
+    options: &ExportOptions,
+    progress: &dyn ProgressSink,
+    output: &Path,
+) -> Result<PathBuf, AudioError> {
     let plan = build(project, options).map_err(AudioError::Failed)?;
     let mut args = plan.args;
     let out = args.pop().unwrap_or_default();
@@ -829,11 +866,11 @@ pub fn run(
     progress.report(0.0, "Rendering");
     let result = ffmpeg::run(&args, Some(plan.duration), Some(progress), "Rendering");
     if result.is_err() {
-        let _ = std::fs::remove_file(&output);
+        let _ = std::fs::remove_file(output);
     }
     result?;
     progress.report(1.0, "Done");
-    Ok(output)
+    Ok(output.to_path_buf())
 }
 
 #[cfg(test)]
@@ -882,6 +919,7 @@ pub(crate) mod tests {
             transition: None,
             name: None,
             lottie: None,
+            native_fx: vec![],
         }
     }
 
@@ -945,7 +983,7 @@ pub(crate) mod tests {
         }
     }
 
-    fn options() -> ExportOptions {
+    pub fn options() -> ExportOptions {
         ExportOptions {
             output_path: "out.mp4".into(),
             width: 1280,

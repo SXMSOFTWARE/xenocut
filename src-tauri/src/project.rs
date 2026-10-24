@@ -129,6 +129,10 @@ pub struct Clip {
     /// text layer, so the backend only keeps it for saving.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub lottie: Option<serde_json::Value>,
+    /// OpenFX / frei0r effects (desktop Linux), applied before the built-in effects. Exports
+    /// bake them into an intermediate (see `fxbake.rs`).
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub native_fx: Vec<crate::fxhost::NativeFx>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
@@ -304,6 +308,7 @@ mod tests {
             transition: None,
             name: None,
             lottie: None,
+            native_fx: vec![],
         });
         let text = serde_json::to_string(&project).unwrap();
         assert!(text.contains("\"trackId\":\"v1\""));

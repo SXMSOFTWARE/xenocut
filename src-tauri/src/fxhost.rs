@@ -893,6 +893,7 @@ pub(crate) mod tests {
         let _ = std::fs::remove_dir_all(root);
     }
 
+    #[cfg(unix)]
     unsafe extern "C" {
         #[link_name = "kill"]
         fn libc_kill(pid: i32, sig: i32) -> i32;
