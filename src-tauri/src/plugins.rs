@@ -1094,6 +1094,13 @@ fn wrap_glsl(path: &Path, staging: &Path) -> Result<(), String> {
         .map_err(|e| e.to_string())
 }
 
+/// Whether the main composition carries text layers (`ty` 5).
+fn has_text_layers(v: &Value) -> bool {
+    v.get("layers")
+        .and_then(Value::as_array)
+        .is_some_and(|l| l.iter().any(|l| l.get("ty").and_then(Value::as_i64) == Some(5)))
+}
+
 /// A bare Lottie `.json` becomes a one-animation pack `lottie.<name>`.
 fn wrap_lottie(path: &Path, staging: &Path) -> Result<(), String> {
     let bytes = std::fs::read(path).map_err(|e| e.to_string())?;
@@ -1116,7 +1123,8 @@ fn wrap_lottie(path: &Path, staging: &Path) -> Result<(), String> {
         name,
         category: "imported".into(),
         file: format!("{id}.json"),
-        kind: "overlay".into(),
+        // Animated titles: main-composition text layers become editable strings.
+        kind: if has_text_layers(&v) { "text" } else { "overlay" }.into(),
         author: None,
         license: None,
     });
@@ -1377,6 +1385,14 @@ pub fn install_url(store: &Store, url: &str, sha256: &str) -> Result<Installed, 
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn lottie_text_layers_detected() {
+        let t: Value = serde_json::json!({"layers":[{"ty":4},{"ty":5}]});
+        let o: Value = serde_json::json!({"layers":[{"ty":4}],"assets":[{"layers":[{"ty":5}]}]});
+        assert!(has_text_layers(&t));
+        assert!(!has_text_layers(&o));
+    }
 
     fn tmp(name: &str) -> PathBuf {
         let d = std::env::temp_dir().join(format!("xc-plugins-{name}-{}", std::process::id()));
