@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { AudioLines, Captions, Clapperboard, FolderOpen, Plus, Scissors, Settings, Sparkles, X, Film } from "lucide-react";
+import { AudioLines, Captions, Clapperboard, FolderOpen, Plus, Puzzle, Scissors, Settings, Sparkles, X, Film } from "lucide-react";
 import { Logo } from "../../components/Logo";
 import { useT, type Key } from "../../i18n";
 import { useRecent, type RecentEntry } from "../../store/recent";
@@ -101,6 +101,15 @@ export function HomePage() {
             <span className="tool-text">
               <b>{t("tools.captions")}</b>
               <small>{t("tools.captionsText")}</small>
+            </span>
+          </button>
+          <button className="tool-card live" onClick={() => go("plugins")}>
+            <span className="tool-icon">
+              <Puzzle />
+            </span>
+            <span className="tool-text">
+              <b>{t("home.plugins")}</b>
+              <small>{t("home.pluginsText")}</small>
             </span>
           </button>
           {SOON_TOOLS.map(({ icon: Icon, title, text }) => (

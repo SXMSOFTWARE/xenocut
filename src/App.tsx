@@ -5,10 +5,12 @@ import { useRecent } from "./store/recent";
 import { Toasts } from "./components/Toasts";
 import { HomePage } from "./pages/home/HomePage";
 import { messageOf } from "./lib/format";
+import { usePlugins } from "./lib/plugins";
 
 const EditorPage = lazy(() => import("./pages/editor/EditorPage"));
 const MusicSwapPage = lazy(() => import("./pages/music/MusicSwapPage"));
 const SettingsPage = lazy(() => import("./pages/settings/SettingsPage"));
+const PluginsPage = lazy(() => import("./pages/plugins/PluginsPage"));
 
 export function App() {
   const page = useRouter((s) => s.page);
@@ -19,6 +21,7 @@ export function App() {
   useEffect(() => {
     loadSettings()
       .then(loadRecent)
+      .then(() => usePlugins.getState().refresh())
       .catch((error) => {
         console.error(messageOf(error));
         useSettings.setState({ ready: true });
@@ -44,6 +47,7 @@ export function App() {
         {page === "editor" && <EditorPage />}
         {page === "music" && <MusicSwapPage />}
         {page === "settings" && <SettingsPage />}
+        {page === "plugins" && <PluginsPage />}
       </Suspense>
       <Toasts />
     </>

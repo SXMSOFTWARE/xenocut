@@ -402,7 +402,11 @@ impl Store {
         let staging = self.root.join(".staging");
         let _ = std::fs::remove_dir_all(&staging);
         std::fs::create_dir_all(&staging).map_err(|e| e.to_string())?;
-        let ext = path.extension().and_then(|e| e.to_str()).unwrap_or("").to_ascii_lowercase();
+        let ext = match path.extension().and_then(|e| e.to_str()).unwrap_or("").to_ascii_lowercase() {
+            // Android pickers can hand over files without their name: look at the bytes.
+            e if !matches!(e.as_str(), "cube" | "xcpack" | "zip") && path.is_file() => sniff(path).unwrap_or(e),
+            e => e,
+        };
         let result = if path.is_dir() {
             self.install_dir(path)
         } else if ext == "cube" {
@@ -410,7 +414,10 @@ impl Store {
         } else if ext == "xcpack" || ext == "zip" {
             unzip(path, &staging).and_then(|root| self.install_dir(&root))
         } else {
-            Err("choose a .xcpack, .zip, .cube or a pack folder".into())
+            match ext.as_str() {
+                "json" | "glsl" | "frag" | "ofx" | "so" | "dll" => Err("Lottie, GLSL transitions and OpenFX plugins are planned for v0.7; this version installs .xcpack, .zip and .cube".into()),
+                _ => Err("choose a .xcpack, .zip, .cube or a pack folder".into()),
+            }
         };
         let _ = std::fs::remove_dir_all(&staging);
         result
@@ -564,6 +571,19 @@ fn wrap_cube(path: &Path, staging: &Path) -> Result<(), String> {
         text_presets: vec![],
     };
     std::fs::write(staging.join("manifest.json"), serde_json::to_vec_pretty(&m).unwrap()).map_err(|e| e.to_string())
+}
+
+/// The kind of an unnamed file from its first bytes: "zip" or "cube".
+fn sniff(path: &Path) -> Option<String> {
+    use std::io::Read;
+    let mut head = vec![0u8; 64 * 1024];
+    let n = std::fs::File::open(path).ok()?.read(&mut head).ok()?;
+    head.truncate(n);
+    if head.starts_with(b"PK\x03\x04") {
+        return Some("zip".into());
+    }
+    let text = String::from_utf8_lossy(&head);
+    text.contains("LUT_3D_SIZE").then(|| "cube".into())
 }
 
 pub const CATALOG_URL: &str = "https://raw.githubusercontent.com/sxmsoft/xenocut/main/catalog/index.json";
@@ -787,6 +807,18 @@ mod tests {
         let filter = lut_filter(&f.to_string_lossy(), 1.0).unwrap().unwrap();
         assert!(filter.starts_with("lut3d=file='") && filter.ends_with(":interp=tetrahedral"));
         assert_eq!(lut_filter(&f.to_string_lossy(), 0.0), Ok(None));
+    }
+
+    #[test]
+    fn unnamed_files_are_sniffed() {
+        let base = tmp("sniff");
+        let file = base.join("42");
+        std::fs::write(&file, identity_cube(2)).unwrap();
+        let store = Store::new(base.join("plugins"));
+        assert_eq!(store.install_path(&file).unwrap().manifest.luts.len(), 1);
+        let junk = base.join("43");
+        std::fs::write(&junk, "hello").unwrap();
+        assert!(store.install_path(&junk).is_err());
     }
 
     #[test]

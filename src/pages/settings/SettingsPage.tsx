@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
-import { ArrowLeft, ArrowUpRight, BookOpen, ChevronDown, Coffee, Heart, Info, Cpu, Download, FolderOpen, Gauge, HardDrive, Languages, Save, Trash2 } from "lucide-react";
+import { ArrowLeft, ArrowUpRight, BookOpen, ChevronDown, Coffee, Heart, Info, Cpu, Download, FolderOpen, Gauge, HardDrive, Languages, Puzzle, Save, Trash2 } from "lucide-react";
 import { Segmented, Switch } from "../../components/controls";
 import { useT } from "../../i18n";
 import { api, listen, openExternal, pickFolder, revealInFolder, type ProgressEvent } from "../../lib/backend";
@@ -17,6 +17,7 @@ export default function SettingsPage() {
   const t = useT();
   const s = useSettings();
   const back = useRouter((r) => r.back);
+  const go = useRouter((r) => r.go);
   const [cache, setCache] = useState<{ bytes: number; path: string } | null>(null);
   const [model, setModel] = useState<ModelStatus | null>(null);
   const [download, setDownload] = useState<number | null>(null);
@@ -180,6 +181,14 @@ export default function SettingsPage() {
           </section>
 
           <ModulesSection stemModel={model} />
+
+          <section className="settings-group">
+            <Row title={t("settings.plugins")} text={t("settings.pluginsText")} icon={<Puzzle size={14} />}>
+              <button className="btn btn-sm" onClick={() => go("plugins")}>
+                {t("settings.open")}
+              </button>
+            </Row>
+          </section>
 
           <section className="settings-group about-card">
             <h2 className="section-title">

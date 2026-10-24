@@ -1,0 +1,270 @@
+/* ---------- Plugins page (library + catalog) ---------- */
+.plugins-wrap {
+  max-width: 900px;
+  margin: 0 auto;
+  padding: 24px 24px 48px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+.plugins-tabs {
+  align-self: flex-start;
+}
+.plugins-tabs button {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.plugins-tabs em {
+  font-style: normal;
+  font-size: 10px;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 5px;
+  border-radius: var(--r-pill);
+  background: var(--accent-soft);
+  color: var(--text);
+  display: inline-grid;
+  place-items: center;
+}
+.plugin-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(380px, 1fr));
+  gap: 14px;
+}
+.plugin-card {
+  display: flex;
+  flex-direction: column;
+  background: var(--surface-1);
+  border: 1px solid var(--line);
+  border-radius: var(--r-xl);
+  overflow: hidden;
+  transition: opacity var(--t-med), border-color var(--t-fast);
+}
+.plugin-card:hover {
+  border-color: var(--line-strong);
+}
+.plugin-card.off .plugin-thumb {
+  filter: grayscale(1) brightness(0.6);
+}
+.plugin-thumb {
+  width: 100%;
+  aspect-ratio: 16 / 7;
+  object-fit: cover;
+  display: block;
+  background: var(--surface-2);
+}
+.plugin-thumb.empty {
+  display: grid;
+  place-items: center;
+  position: relative;
+  color: var(--text-3);
+  background: radial-gradient(120% 120% at 20% 0%, var(--accent-soft), transparent 60%), var(--surface-2);
+}
+.plugin-thumb.empty span {
+  position: absolute;
+  right: 14px;
+  bottom: 6px;
+  font-size: 44px;
+  font-weight: 700;
+  opacity: 0.12;
+  color: var(--text);
+}
+.plugin-main {
+  padding: 14px 16px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.plugin-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+.plugin-title {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+.plugin-title b {
+  font-size: var(--fs-md);
+  font-weight: 600;
+}
+.plugin-title small,
+.plugin-size {
+  color: var(--text-3);
+  font-size: var(--fs-xs);
+}
+.plugin-desc {
+  color: var(--text-2);
+  font-size: var(--fs-sm);
+  line-height: 1.45;
+}
+.plugin-meta,
+.plugin-badges,
+.plugin-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 8px;
+}
+.plugin-card .chip {
+  height: 24px;
+  padding: 0 9px;
+  font-size: var(--fs-xs);
+}
+.chip.license {
+  font-family: var(--mono);
+  color: var(--ok);
+  border-color: color-mix(in srgb, var(--ok) 35%, transparent);
+}
+.chip.ok {
+  color: var(--ok);
+  height: 30px;
+}
+.chip.muted {
+  color: var(--text-3);
+}
+.plugin-count svg {
+  color: var(--text-3);
+}
+.plugin-actions .danger:hover:not(:disabled) {
+  color: var(--danger);
+}
+.plugin-actions .flip {
+  transform: rotate(180deg);
+}
+.plugins-page .link-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  color: var(--text-2);
+  font-size: var(--fs-xs);
+}
+.plugins-page .link-btn:hover {
+  color: var(--text);
+}
+.plugin-confirm {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 12px;
+  border-radius: var(--r-md);
+  background: color-mix(in srgb, var(--danger) 10%, var(--surface-2));
+  border: 1px solid color-mix(in srgb, var(--danger) 35%, transparent);
+  font-size: var(--fs-sm);
+  color: var(--text-2);
+}
+.plugin-confirm div {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+.plugin-details {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding-top: 10px;
+  border-top: 1px solid var(--line);
+}
+.plugin-details code {
+  font-family: var(--mono);
+  font-size: var(--fs-xs);
+  color: var(--text-3);
+}
+.plugin-details h4 {
+  font-size: var(--fs-xs);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--text-3);
+  margin-bottom: 3px;
+}
+.plugin-details p {
+  font-size: var(--fs-sm);
+  color: var(--text-2);
+  line-height: 1.5;
+}
+.plugins-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: 10px;
+  padding: 48px 24px;
+  border: 1px dashed var(--line-strong);
+  border-radius: var(--r-xl);
+  color: var(--text-2);
+}
+.plugins-empty > svg {
+  color: var(--text-3);
+}
+.plugins-empty h2 {
+  font-size: var(--fs-lg);
+  color: var(--text);
+}
+.plugins-empty p {
+  max-width: 460px;
+  line-height: 1.5;
+  font-size: var(--fs-sm);
+}
+.plugins-empty div {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 8px;
+  margin-top: 6px;
+}
+.plugins-empty.error p {
+  color: var(--danger);
+}
+.plugins-note {
+  display: flex;
+  gap: 10px;
+  padding: 14px 16px;
+  border-radius: var(--r-lg);
+  background: var(--surface-1);
+  border: 1px solid var(--line);
+  color: var(--text-3);
+  font-size: var(--fs-xs);
+  line-height: 1.5;
+}
+.plugins-note svg {
+  flex: none;
+  color: var(--ok);
+}
+.plugins-page.dropping .plugins-wrap {
+  outline: 2px dashed var(--accent);
+  outline-offset: -8px;
+  border-radius: var(--r-xl);
+}
+
+/* phones */
+@media (max-width: 520px) {
+  .plugin-list {
+    grid-template-columns: 1fr;
+  }
+}
+html.mobile .plugins-page .page-top {
+  padding-top: max(10px, var(--sa-top));
+}
+html.mobile .plugins-page .page-top .icon-btn {
+  width: 44px;
+  height: 44px;
+}
+html.mobile .plugins-wrap {
+  padding: 16px 14px 32px;
+}
+html.mobile .plugins-tabs {
+  align-self: stretch;
+}
+html.mobile .plugins-tabs button {
+  flex: 1;
+  justify-content: center;
+  height: 36px;
+}
+html.mobile .plugins-page .btn-sm {
+  min-height: 40px;
+  padding-inline: 14px;
+}

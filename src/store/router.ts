@@ -1,6 +1,6 @@
 import { create } from "zustand";
 
-export type Page = "home" | "editor" | "music" | "settings";
+export type Page = "home" | "editor" | "music" | "settings" | "plugins";
 
 interface RouterState {
   page: Page;

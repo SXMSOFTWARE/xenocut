@@ -1,7 +1,7 @@
 // CapCut-style clip animations: In / Out / Combo tabs over a grid of live previews, a duration
 // slider, and a stage preview of the animated part whenever one is picked.
-import { Ban, Wand2 } from "lucide-react";
-import { useEffect, useRef, useState } from "react";
+import { Ban, Puzzle, Wand2 } from "lucide-react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Slider } from "../../components/controls";
 import { useT, type Key } from "../../i18n";
 import { engine } from "../../engine/playback";
@@ -16,8 +16,12 @@ import {
   windows,
   type ClipAnim,
   type ComboKind,
+  type ComboDef,
+  type EdgeDef,
   type EdgeKind,
 } from "../../project/anims";
+import { usePlugins } from "../../lib/plugins";
+import { useRouter } from "../../store/router";
 import { clipDuration, updateClip } from "../../project/ops";
 import type { Clip } from "../../project/types";
 import { useProject } from "../../store/project";
@@ -29,11 +33,21 @@ export type AnimTab = "in" | "out" | "combo";
 const TABS: AnimTab[] = ["in", "out", "combo"];
 const HOLD = 0.7;
 
+/** A plugin animation offered in the grid (kind `<pack id>/<entry id>`). */
+interface PluginAnim {
+  kind: string;
+  name: string;
+  pack: string;
+  spec: EdgeDef | ComboDef;
+  duration?: number;
+}
+
 /** The tile animation: what a slot looks like on a small card at `now` seconds. */
-function tileStyle(tab: AnimTab, kind: string, now: number): { transform: string; opacity: string; filter: string } {
-  const d = tab === "combo" ? comboDefault(kind as ComboKind) : DEFAULT_EDGE;
+function tileStyle(tab: AnimTab, kind: string, now: number, plugin?: PluginAnim): { transform: string; opacity: string; filter: string } {
+  const d = plugin?.duration ?? (tab === "combo" ? comboDefault(kind as ComboKind) : DEFAULT_EDGE);
   const length = tab === "combo" ? Math.max(2.4, d * 2) : d + HOLD;
-  const anim: ClipAnim = tab === "in" ? { in: { kind: kind as EdgeKind, duration: d } } : tab === "out" ? { out: { kind: kind as EdgeKind, duration: d } } : { combo: { kind: kind as ComboKind, duration: d } };
+  const spec = plugin?.spec;
+  const anim: ClipAnim = tab === "in" ? { in: { kind, duration: d, spec } } : tab === "out" ? { out: { kind, duration: d, spec } } : { combo: { kind, duration: d, spec } };
   // A short pause between loops (Out tiles end hidden, In tiles end settled).
   const local = Math.min(length - 1e-3, now % (length + 0.3));
   const st = animAt(anim, local, length);
@@ -50,14 +64,14 @@ function tileStyle(tab: AnimTab, kind: string, now: number): { transform: string
 }
 
 /** One rAF loop animating every tile in the grid. */
-function useTileLoop(grid: React.RefObject<HTMLDivElement | null>, tab: AnimTab) {
+function useTileLoop(grid: React.RefObject<HTMLDivElement | null>, tab: AnimTab, plugins: Map<string, PluginAnim>) {
   useEffect(() => {
     let raf = 0;
     const t0 = performance.now();
     const step = () => {
       const now = (performance.now() - t0) / 1000;
       grid.current?.querySelectorAll<HTMLElement>("[data-anim]").forEach((el) => {
-        const s = tileStyle(tab, el.dataset.anim!, now);
+        const s = tileStyle(tab, el.dataset.anim!, now, plugins.get(el.dataset.anim!));
         el.style.transform = s.transform;
         el.style.opacity = s.opacity;
         el.style.filter = s.filter;
@@ -66,7 +80,7 @@ function useTileLoop(grid: React.RefObject<HTMLDivElement | null>, tab: AnimTab)
     };
     raf = requestAnimationFrame(step);
     return () => cancelAnimationFrame(raf);
-  }, [grid, tab]);
+  }, [grid, tab, plugins]);
 }
 
 let previewTimer = 0;
@@ -88,10 +102,15 @@ export function previewAnim(clip: Clip, tab: AnimTab) {
   }, Math.max(200, (b - a) * 1000));
 }
 
-function setSlot(clip: Clip, tab: AnimTab, kind: string | null, duration?: number) {
+function setSlot(clip: Clip, tab: AnimTab, kind: string | null, duration?: number, plugin?: PluginAnim) {
   const store = useProject.getState();
   const anim: ClipAnim = { ...(clip.anim ?? {}) };
   if (!kind) delete anim[tab];
+  else if (plugin) {
+    // Plugin animations are copied into the project, so it plays and exports without the pack.
+    const fallback = tab === "combo" ? (plugin.duration ?? 1) : Math.min(plugin.duration ?? DEFAULT_EDGE, clipDuration(clip) / 2);
+    anim[tab] = { kind, duration: duration ?? fallback, spec: plugin.spec, name: plugin.name };
+  }
   else if (tab === "combo") anim.combo = { kind: kind as ComboKind, duration: duration ?? anim.combo?.duration ?? comboDefault(kind as ComboKind) };
   else anim[tab] = { kind: kind as EdgeKind, duration: duration ?? anim[tab]?.duration ?? Math.min(DEFAULT_EDGE, clipDuration(clip) / 2) };
   // A combo animation replaces In / Out and the other way round, like CapCut.
@@ -109,7 +128,20 @@ export function AnimPanel({ compact = false }: { compact?: boolean }) {
   const clip = target?.kind === "clip" ? target.clip : null;
   const [tab, setTab] = useState<AnimTab>("in");
   const grid = useRef<HTMLDivElement>(null);
-  useTileLoop(grid, tab);
+  const installed = usePlugins((s) => s.installed);
+  const plugins = useMemo(() => {
+    const map = new Map<string, PluginAnim>();
+    for (const pack of installed) {
+      if (!pack.enabled) continue;
+      for (const a of pack.manifest.animations ?? []) {
+        if (a.slot === tab) map.set(`${pack.manifest.id}/${a.id}`, { kind: `${pack.manifest.id}/${a.id}`, name: a.name, pack: pack.manifest.name, spec: a.spec, duration: a.duration });
+      }
+    }
+    return map;
+  }, [installed, tab]);
+  useTileLoop(grid, tab, plugins);
+  const go = useRouter((r) => r.go);
+  const nameOf = (slot: { kind: string; name?: string }) => slot.name ?? t(`anim.${tab === "combo" ? "combo" : "edge"}.${slot.kind}` as Key);
   const kinds: string[] = tab === "combo" ? COMBO_KINDS : EDGE_KINDS;
   const current = clip?.anim?.[tab];
   const length = clip ? clipDuration(clip) : 0;
@@ -163,12 +195,47 @@ export function AnimPanel({ compact = false }: { compact?: boolean }) {
                 </button>
               );
             })}
+            {[...plugins.values()].map((a) => {
+              const on = current?.kind === a.kind;
+              return (
+                <button
+                  key={a.kind}
+                  role="listitem"
+                  className={`fx-card plugin${on ? " active" : ""}`}
+                  data-anim-kind={a.kind}
+                  aria-pressed={on}
+                  disabled={!clip}
+                  title={`${a.name} · ${a.pack}`}
+                  onClick={() => {
+                    if (!clip) return;
+                    setSlot(clip, tab, a.kind, undefined, a);
+                    const fresh = useProject.getState().project?.clips.find((c) => c.id === clip.id);
+                    if (fresh) previewAnim(fresh, tab);
+                  }}
+                >
+                  <span className="fx-thumb anim-thumb">
+                    <img src={thumb} alt="" draggable={false} data-anim={a.kind} />
+                    <em className="fx-badge plugin-badge">
+                      <Puzzle size={9} />
+                    </em>
+                    {on && <i className="fx-on" />}
+                  </span>
+                  <span className="fx-name">{a.name}</span>
+                </button>
+              );
+            })}
+            <button role="listitem" className="fx-card get-more" onClick={() => go("plugins")} title={t("plugins.getMore")}>
+              <span className="fx-thumb anim-thumb none">
+                <Puzzle size={20} />
+              </span>
+              <span className="fx-name">{t("plugins.getMore")}</span>
+            </button>
           </div>
         </div>
         {clip && current && (
           <div className="inspector-section">
             <h3 className="section-title">
-              <Wand2 size={13} /> {t(`anim.tab.${tab}` as Key)} · {t(`anim.${tab === "combo" ? "combo" : "edge"}.${current.kind}` as Key)}
+              <Wand2 size={13} /> {t(`anim.tab.${tab}` as Key)} · {nameOf(current)}
             </h3>
             <Slider
               label={tab === "combo" ? t("anim.period") : t("anim.duration")}
