@@ -130,6 +130,21 @@ export async function invoke<T>(command: string, args: Record<string, unknown> =
         savePlugins(f);
         return null;
       }
+      case "plugin_export": {
+        // Dev: remember the pack so installing the same path brings it back.
+        localStorage.setItem(`xc-dev-export:${args.path as string}`, JSON.stringify(args.manifest));
+        return null;
+      }
+      case "plugin_install": {
+        const saved = localStorage.getItem(`xc-dev-export:${args.path as string}`);
+        if (!saved) return needsDesktop();
+        const f = await plugins();
+        const manifest = JSON.parse(saved);
+        const pack = { manifest, enabled: true, dir: `/dev/plugins/${manifest.id}`, bytes: saved.length };
+        f.installed = [...f.installed.filter((p) => p.manifest.id !== manifest.id), pack];
+        savePlugins(f);
+        return pack;
+      }
       case "plugin_lut":
         return parseCube(await (await fetch(`/@fs${args.path as string}`)).text());
       case "export_cancel":

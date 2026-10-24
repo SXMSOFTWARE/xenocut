@@ -115,6 +115,29 @@ Unknown fields, curves, waves or effect kinds reject the pack.
 
 A preset keeps the text's current position unless it sets `x`/`y`.
 
+### Themes
+
+Settings → Theme and layout exports the current theme as a one-theme pack, and the same screen
+imports theme packs. A theme entry looks like this:
+
+```json
+"themes": [{ "id": "night-blue", "name": "Night blue", "layout": "modern", "density": "compact",
+  "radius": 0.6, "fontScale": 1.0, "accent": "#4f8cff",
+  "tokens": { "--bg": "#10141c", "--surface-1": "#161b25", "--text": "#e9eef7" } }]
+```
+
+* `layout` is one of `xenocut modern basic classic`, and `density` is one of
+  `compact normal comfortable`.
+* `radius` is a corner-radius multiplier from 0 to 1.5. `fontScale` runs from 0.85 to 1.25.
+* `accent` is empty or `#rrggbb`.
+* `tokens` holds at most 64 CSS custom properties.
+  * Names match `--[a-z0-9-]` and are at most 42 characters.
+  * Values are colours, numbers or lengths: letters, digits and ` #%(),.+-/`, up to 160
+    characters.
+  * Values must not contain `url`, `expression`, `image-set` or `attr`.
+* Setting `--bg` makes the theme "solid", which turns off the glass and ambient look.
+* On phones, themes change colours and density but keep the phone layout.
+
 ## Sandbox and limits
 
 * No scripts, shaders, binaries or HTML. Allowed files: `json cube png webp jpg jpeg txt md`.

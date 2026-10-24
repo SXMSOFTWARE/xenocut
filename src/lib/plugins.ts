@@ -6,6 +6,7 @@ import { call, log } from "./backend";
 import type { ComboDef, EdgeDef } from "../project/anims";
 import type { TextStyle } from "../project/text";
 import { FONTS } from "../text/fonts";
+import type { ThemeDef } from "../themes";
 
 export interface PackEffect {
   id: string;
@@ -68,7 +69,10 @@ export interface Manifest {
   textPresets?: PackTextPreset[];
   transitions?: PackTransition[];
   lottie?: PackLottie[];
+  themes?: PackTheme[];
 }
+/** An editor theme (layout + look tokens); see `themes/index.ts`. */
+export type PackTheme = Omit<ThemeDef, "source">;
 export interface Installed {
   manifest: Manifest;
   enabled: boolean;
@@ -88,7 +92,7 @@ export interface CatalogEntry {
   bytes: number;
   thumbnail?: string;
   /** What's inside, for badges: counts per kind. */
-  contents: { effects?: number; animations?: number; luts?: number; textPresets?: number; transitions?: number; lottie?: number };
+  contents: { effects?: number; animations?: number; luts?: number; textPresets?: number; transitions?: number; lottie?: number; themes?: number };
 }
 export interface Cube {
   size: number;

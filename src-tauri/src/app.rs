@@ -484,6 +484,11 @@ pub async fn plugin_install_url(
 }
 
 #[tauri::command]
+pub fn plugin_export(manifest: crate::plugins::Manifest, path: String) -> Result<(), String> {
+    crate::plugins::export_pack(&manifest, std::path::Path::new(&path))
+}
+
+#[tauri::command]
 pub fn plugin_remove(app: AppHandle, id: String) -> Result<(), String> {
     plugin_store(&app).remove(&id)
 }

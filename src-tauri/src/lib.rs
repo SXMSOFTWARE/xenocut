@@ -98,6 +98,7 @@ pub fn run() {
             app::plugin_list,
             app::plugin_install,
             app::plugin_install_url,
+            app::plugin_export,
             app::plugin_remove,
             app::plugin_set_enabled,
             app::plugin_lut,

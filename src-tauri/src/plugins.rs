@@ -54,6 +54,58 @@ pub struct Manifest {
     pub transitions: Vec<TransitionEntry>,
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub lottie: Vec<LottieEntry>,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub themes: Vec<ThemeEntry>,
+}
+
+/// An editor theme: a layout plus look tokens (CSS custom properties). Data only.
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub struct ThemeEntry {
+    pub id: String,
+    pub name: String,
+    pub layout: String,
+    #[serde(default = "normal_density")]
+    pub density: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub radius: Option<f64>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub font_scale: Option<f64>,
+    #[serde(default)]
+    pub accent: String,
+    #[serde(default)]
+    pub tokens: std::collections::BTreeMap<String, String>,
+}
+
+fn normal_density() -> String {
+    "normal".into()
+}
+
+pub const THEME_LAYOUTS: [&str; 4] = ["xenocut", "modern", "basic", "classic"];
+
+/// A theme token must be a plain `--name` with a colour/length/gradient value: nothing that can
+/// load resources (`url(`) or break out of the declaration.
+pub fn safe_token(name: &str, value: &str) -> bool {
+    let name_ok = name.len() > 2
+        && name.len() <= 42
+        && name.starts_with("--")
+        && name[2..]
+            .bytes()
+            .all(|c| c.is_ascii_lowercase() || c.is_ascii_digit() || c == b'-');
+    let lower = value.to_ascii_lowercase();
+    let value_ok = !value.is_empty()
+        && value.len() <= 160
+        && value
+            .bytes()
+            .all(|c| c.is_ascii_alphanumeric() || b" #%(),.+-/".contains(&c))
+        && !["url", "expression", "image-set", "attr"]
+            .iter()
+            .any(|w| lower.contains(w));
+    name_ok && value_ok
+}
+
+fn hex_colour(s: &str) -> bool {
+    s.len() == 7 && s.starts_with('#') && s[1..].bytes().all(|c| c.is_ascii_hexdigit())
 }
 
 /// A GLSL transition in gl-transitions format (`vec4 transition(vec2 uv)` using
@@ -292,7 +344,8 @@ pub fn validate(m: &Manifest, dir: Option<&Path>) -> Result<(), String> {
         + m.luts.len()
         + m.text_presets.len()
         + m.transitions.len()
-        + m.lottie.len();
+        + m.lottie.len()
+        + m.themes.len();
     if total == 0 {
         return Err("the pack has no entries".into());
     }
@@ -403,6 +456,26 @@ pub fn validate(m: &Manifest, dir: Option<&Path>) -> Result<(), String> {
             validate_lottie(&bytes).map_err(|e| format!("lottie {}: {e}", l.id))?;
         }
     }
+    for t in &m.themes {
+        fresh("theme", &t.id)?;
+        if !THEME_LAYOUTS.contains(&t.layout.as_str()) {
+            return Err(format!("theme {}: unknown layout {}", t.id, t.layout));
+        }
+        if !["compact", "normal", "comfortable"].contains(&t.density.as_str()) {
+            return Err(format!("theme {}: density must be compact, normal or comfortable", t.id));
+        }
+        if t.radius.is_some_and(|r| !(0.0..=1.5).contains(&r))
+            || t.font_scale.is_some_and(|f| !(0.85..=1.25).contains(&f))
+        {
+            return Err(format!("theme {}: radius or font scale out of range", t.id));
+        }
+        if !t.accent.is_empty() && !hex_colour(&t.accent) {
+            return Err(format!("theme {}: accent must be #rrggbb", t.id));
+        }
+        if t.tokens.len() > 64 || t.tokens.iter().any(|(k, v)| !safe_token(k, v)) {
+            return Err(format!("theme {}: unsafe or too many tokens", t.id));
+        }
+    }
     if let Some(thumb) = &m.thumbnail {
         let rel = safe_rel(thumb).ok_or("bad thumbnail path")?;
         if dir.is_some_and(|d| !d.join(&rel).is_file()) {
@@ -419,6 +492,7 @@ pub fn validate(m: &Manifest, dir: Option<&Path>) -> Result<(), String> {
         .chain(m.text_presets.iter().map(|t| &t.name))
         .chain(m.transitions.iter().map(|t| &t.name))
         .chain(m.lottie.iter().map(|l| &l.name))
+        .chain(m.themes.iter().map(|t| &t.name))
         .any(|n| !short(n, 48))
     {
         return Err("every entry needs a name (max 48 chars)".into());
@@ -913,12 +987,32 @@ fn wrap_cube(path: &Path, staging: &Path) -> Result<(), String> {
         text_presets: vec![],
         transitions: vec![],
         lottie: vec![],
+        themes: vec![],
     };
     std::fs::write(
         staging.join("manifest.json"),
         serde_json::to_vec_pretty(&m).unwrap(),
     )
     .map_err(|e| e.to_string())
+}
+
+/// Writes a data-only pack (no asset files, e.g. a theme) as a `.xcpack` archive.
+pub fn export_pack(m: &Manifest, path: &Path) -> Result<(), String> {
+    if m.format != FORMAT || !valid_id(&m.id) {
+        return Err("invalid pack id".into());
+    }
+    if !m.luts.is_empty() || !m.transitions.is_empty() || !m.lottie.is_empty() {
+        return Err("only data packs can be exported".into());
+    }
+    validate(m, None)?;
+    let file = std::fs::File::create(path).map_err(|e| e.to_string())?;
+    let mut z = zip::ZipWriter::new(file);
+    z.start_file("manifest.json", zip::write::SimpleFileOptions::default())
+        .map_err(|e| e.to_string())?;
+    z.write_all(&serde_json::to_vec_pretty(m).map_err(|e| e.to_string())?)
+        .map_err(|e| e.to_string())?;
+    z.finish().map_err(|e| e.to_string())?;
+    Ok(())
 }
 
 /// The kind of an unnamed file from its first bytes: "zip" or "cube".
@@ -961,6 +1055,7 @@ fn bare_manifest(id: String, name: String, description: &str) -> Manifest {
         text_presets: vec![],
         transitions: vec![],
         lottie: vec![],
+        themes: vec![],
     }
 }
 
@@ -1301,6 +1396,32 @@ mod tests {
         std::fs::create_dir_all(dir.join("luts")).unwrap();
         std::fs::write(dir.join("manifest.json"), serde_json::to_vec(m).unwrap()).unwrap();
         std::fs::write(dir.join("luts/ident.cube"), identity_cube(2)).unwrap();
+    }
+
+    #[test]
+    fn theme_packs() {
+        let theme = |tokens: Value, layout: &str| -> Manifest {
+            serde_json::from_value(serde_json::json!({
+                "format": FORMAT, "id": "theme.mine", "name": "Mine", "version": "1.0.0", "license": "CC0-1.0",
+                "themes": [{"id": "mine", "name": "Mine", "layout": layout, "density": "compact",
+                    "radius": 0.5, "fontScale": 1.0, "accent": "#4f8cff", "tokens": tokens}]
+            }))
+            .unwrap()
+        };
+        let ok = theme(serde_json::json!({"--bg": "#101010", "--glass-warm": "linear-gradient(165deg, rgba(1, 2, 3, 0.9), #000)"}), "modern");
+        validate(&ok, None).unwrap();
+        assert!(validate(&theme(serde_json::json!({}), "weird"), None).is_err());
+        for (k, v) in [("--bg", "url(http://x)"), ("--bg", "red; color: x"), ("bg", "#000"), ("--bg", "#000}"), ("--Bg", "#000")] {
+            assert!(validate(&theme(serde_json::json!({ k: v }), "basic"), None).is_err(), "{k}: {v}");
+        }
+        // Export round-trips through the normal installer.
+        let dir = tmp("theme-export");
+        let file = dir.join("mine.xcpack");
+        export_pack(&ok, &file).unwrap();
+        let store = Store::new(dir.join("root"));
+        let installed = store.install_path(&file).unwrap();
+        assert_eq!(installed.manifest.themes, ok.themes);
+        let _ = std::fs::remove_dir_all(&dir);
     }
 
     #[test]
