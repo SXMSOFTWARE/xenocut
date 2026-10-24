@@ -35,4 +35,4 @@ Fonts are licensed under the SIL Open Font License 1.1. AI model weights are dow
 
 ## Media
 
-The effect preview animations in `src/assets/fx-demos/` are rendered from two seconds of *Tears of Steel*, (CC) Blender Foundation | mango.blender.org, licensed under Creative Commons Attribution 3.0 (https://creativecommons.org/licenses/by/3.0/). The footage was cropped, scaled and run through XenoCut's effects; `scripts/fetch-demo-clip.sh` fetches the source.
+The effect preview animations in `src/assets/fx-demos/` are rendered from two seconds of *Tears of Steel*, (CC) Blender Foundation | mango.blender.org, licensed under Creative Commons Attribution 3.0 (https://creativecommons.org/licenses/by/3.0/). The footage was cropped, scaled and run through XenoCut's effects; `scripts/fetch-demo-clip.sh` fetches the source. The two stills in `src/assets/trans-demo/` (transition browser demos) are frames of the same film at 0:40 and 4:50, cropped and scaled.
