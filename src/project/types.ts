@@ -1,3 +1,4 @@
+import type { ClipEffect } from "./effects";
 import type { Grade } from "./grade";
 import type { TextContent } from "./text";
 
@@ -59,6 +60,8 @@ export interface Clip {
   fadeOut: number;
   /** Text clips only (mediaId is ""): content, style and animation. */
   text?: TextContent;
+  /** Video effects (see project/effects.ts). */
+  effects?: ClipEffect[];
 }
 
 export interface Project {

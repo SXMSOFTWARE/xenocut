@@ -2,6 +2,7 @@ import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { engine } from "../../engine/playback";
 import { useT } from "../../i18n";
 import { gradeFilter, tintDefs } from "../../project/grade";
+import { temperatureMatrix, temperatureValues } from "../../project/effects";
 import { usePlayback } from "../../store/playback";
 import { useProject } from "../../store/project";
 import { useAssets } from "../../store/assets";
@@ -21,6 +22,10 @@ export function Preview() {
   const videoRef = useRef<HTMLVideoElement>(null);
   const imageRef = useRef<HTMLImageElement>(null);
   const textRef = useRef<HTMLCanvasElement>(null);
+  const layerRef = useRef<HTMLDivElement>(null);
+  const vignetteRef = useRef<HTMLDivElement>(null);
+  const grainRef = useRef<HTMLDivElement>(null);
+  const fxSvgRef = useRef<SVGFilterElement>(null);
   const stageRef = useRef<HTMLDivElement>(null);
   const draggedRef = useRef(false);
   const areaRef = useRef<HTMLDivElement>(null);
@@ -33,6 +38,7 @@ export function Preview() {
   const proxyOn = useSettings((s) => s.previewProxy);
   const media = useProject((s) => s.project?.media);
   const proxies = useAssets((s) => s.proxies);
+  const temps = useProject((s) => (s.project ? temperatureValues(s.project.clips).join(",") : ""));
   // Performance mode skips the live colour grade (a per-frame CSS filter); exports still apply it.
   const liveGrade = grade && grade !== "none" && !lite ? gradeFilter(grade) : undefined;
 
@@ -50,7 +56,11 @@ export function Preview() {
   useEffect(() => {
     engine.attach(videoRef.current!, imageRef.current!);
     engine.attachText(textRef.current);
-    return () => engine.detach();
+    engine.attachFx({ layer: layerRef.current!, vignette: vignetteRef.current!, grain: grainRef.current!, svg: fxSvgRef.current! });
+    return () => {
+      engine.attachFx(null);
+      engine.detach();
+    };
   }, []);
 
   // Text canvas backing store follows the on-screen size (capped for speed in performance mode).
@@ -146,6 +156,11 @@ export function Preview() {
     return () => ro.disconnect();
   }, [width, height]);
 
+  // Blur and RGB split are sized in on-screen pixels: redraw the paused frame after a resize.
+  useEffect(() => {
+    if (box.h && !usePlayback.getState().playing) engine.seek(usePlayback.getState().time);
+  }, [box.h]);
+
   return (
     <div className="stage-area" ref={areaRef}>
       <div
@@ -158,8 +173,12 @@ export function Preview() {
           draggedRef.current = false;
         }}
       >
-        <video ref={videoRef} className="stage-media" playsInline style={{ filter: liveGrade }} />
-        <img ref={imageRef} className="stage-media" alt="" draggable={false} style={{ filter: liveGrade }} />
+        <div ref={layerRef} className="stage-layer" style={{ filter: liveGrade }}>
+          <video ref={videoRef} className="stage-media" playsInline />
+          <img ref={imageRef} className="stage-media" alt="" draggable={false} />
+          <div ref={vignetteRef} className="stage-fx" />
+          <div ref={grainRef} className="stage-fx stage-grain" />
+        </div>
         <canvas ref={textRef} className="stage-text" aria-hidden="true" />
         <TextSelection width={width} height={height} />
         {empty && <div className="stage-empty">{t("preview.empty")}</div>}
@@ -176,6 +195,15 @@ export function Preview() {
             <feColorMatrix type="matrix" values={d.matrix} />
           </filter>
         ))}
+        {temps
+          .split(",")
+          .filter(Boolean)
+          .map((v) => (
+            <filter key={v} id={`xc-fx-temp-${v}`} colorInterpolationFilters="sRGB">
+              <feColorMatrix type="matrix" values={temperatureMatrix(Number(v))} />
+            </filter>
+          ))}
+        <filter ref={fxSvgRef} id="xc-fx-svg" colorInterpolationFilters="sRGB" x="0" y="0" width="100%" height="100%" />
       </svg>
     </div>
   );

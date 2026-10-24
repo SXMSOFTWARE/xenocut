@@ -9,6 +9,7 @@ import type { Clip, MediaItem, Project, Track } from "../project/types";
 import { usePlayback } from "../store/playback";
 import { useProject } from "../store/project";
 import { drawTexts, textStateKey } from "../text/render";
+import { motionAt, motionCss, previewFx, vignetteGradient } from "../project/effects";
 
 const HARD_DRIFT = 0.3;
 const PAUSED_EPS = 1 / 120;
@@ -63,6 +64,20 @@ function previewPath(path: string): string {
   return useAssets.getState().proxies[path] ?? path;
 }
 
+/** Elements the per-clip effects preview drives (see project/effects.ts). */
+export interface FxElements {
+  /** Wrapper around the media and overlays: zoom / shake / flip transforms. */
+  layer: HTMLElement;
+  vignette: HTMLElement;
+  grain: HTMLElement;
+  /** `<filter id="xc-fx-svg">`: sharpen and RGB split. */
+  svg: SVGFilterElement;
+}
+
+function setStyle(el: HTMLElement, prop: "filter" | "transform" | "background" | "opacity" | "display", value: string) {
+  if (el.style[prop] !== value) el.style[prop] = value;
+}
+
 /** Fully opaque media gets no opacity at all, so WebKit never treats the frame as translucent. */
 /** Automated test runs (XENOCUT_AUTOTEST) never make a sound. */
 let silent = false;
@@ -96,6 +111,9 @@ class PlaybackEngine {
   private textCanvas: HTMLCanvasElement | null = null;
   private textKey = "";
   private textProject: Project | null = null;
+  private fx: FxElements | null = null;
+  private fxKey = "";
+  private svgKey = "";
 
   attach(video: HTMLVideoElement, image: HTMLImageElement) {
     this.video = video;
@@ -117,6 +135,73 @@ class PlaybackEngine {
   attachText(canvas: HTMLCanvasElement | null) {
     this.textCanvas = canvas;
     this.invalidateText();
+  }
+
+  attachFx(fx: FxElements | null) {
+    this.fx = fx;
+    this.fxKey = "";
+    this.svgKey = "";
+    this.render(this.latestTime(), usePlayback.getState().playing);
+  }
+
+  /** Effects of the visible clip: filter on the media element, overlays, layer transform. */
+  private applyFx(p: Project, visual: Active | null, el: HTMLElement | null, t: number) {
+    const fx = this.fx;
+    if (!fx) return;
+    const effects = visual?.clip.effects ?? [];
+    if (!visual || !el || effects.length === 0) {
+      if (this.fxKey !== "") {
+        this.fxKey = "";
+        for (const m of [this.video, this.image]) if (m) setStyle(m, "filter", "");
+        setStyle(fx.layer, "transform", "");
+        setStyle(fx.vignette, "display", "none");
+        setStyle(fx.grain, "display", "none");
+      }
+      return;
+    }
+    const stageH = fx.layer.clientHeight || p.settings.height;
+    const look = previewFx(effects, p.settings.height, stageH / p.settings.height);
+    const other = el === this.video ? this.image : this.video;
+    if (other) setStyle(other, "filter", "");
+    setStyle(el, "filter", look.filter);
+    if (look.svg) {
+      const key = `${look.svg.sharpen}|${look.svg.split}`;
+      if (key !== this.svgKey) {
+        this.svgKey = key;
+        fx.svg.innerHTML = svgPrimitives(look.svg.sharpen, look.svg.split);
+      }
+    }
+    // Overlays cover the fitted picture, like the export applies them before padding.
+    const { width: W, height: H } = p.settings;
+    const mw = visual.media.width || W;
+    const mh = visual.media.height || H;
+    const fit = Math.min(W / mw, H / mh);
+    const rw = Math.min(1, (mw * fit) / W) * 100;
+    const rh = Math.min(1, (mh * fit) / H) * 100;
+    const rect = `${(100 - rw) / 2}%|${(100 - rh) / 2}%|${rw}%|${rh}%`;
+    const key = `${visual.clip.id}|${rect}|${look.vignette}|${look.grain}`;
+    if (key !== this.fxKey) {
+      this.fxKey = key;
+      for (const o of [fx.vignette, fx.grain]) {
+        o.style.left = `${(100 - rw) / 2}%`;
+        o.style.top = `${(100 - rh) / 2}%`;
+        o.style.width = `${rw}%`;
+        o.style.height = `${rh}%`;
+      }
+      setStyle(fx.vignette, "display", look.vignette > 0 ? "block" : "none");
+      setStyle(fx.vignette, "background", look.vignette > 0 ? vignetteGradient(look.vignette) : "");
+      setStyle(fx.grain, "display", look.grain > 0 ? "block" : "none");
+      setStyle(fx.grain, "opacity", String(Math.min(1, look.grain * 0.7)));
+    }
+    if (look.grain > 0) {
+      // A new noise offset every frame, stable for a given frame.
+      const frame = Math.floor(t * p.settings.fps);
+      const x = (frame * 73) % 199;
+      const y = (frame * 151) % 197;
+      fx.grain.style.backgroundPosition = `${x}px ${y}px`;
+    }
+    const local = t - visual.clip.start;
+    setStyle(fx.layer, "transform", motionCss(motionAt(effects, local, clipDuration(visual.clip))));
   }
 
   /** Force the next render to redraw text (canvas resized, fonts loaded). */
@@ -280,6 +365,9 @@ class PlaybackEngine {
       if (visual) break;
     }
 
+    const fxEl = !visual ? null : visual.media.kind === "image" ? image : video;
+    this.applyFx(p, visual, fxEl, t);
+
     if (!visual) {
       this.videoClipId = null;
       video.style.visibility = "hidden";
@@ -350,6 +438,30 @@ class PlaybackEngine {
       if (Math.abs(el.currentTime - target) > PAUSED_EPS) el.currentTime = target;
     }
   }
+}
+
+/** SVG primitives for sharpen (3x3 unsharp approximation) and RGB split (`split` CSS px). */
+function svgPrimitives(sharpen: number, split: number): string {
+  const parts: string[] = [];
+  let src = "SourceGraphic";
+  if (sharpen > 0) {
+    const k = (sharpen * 0.5).toFixed(3);
+    const c = (1 + 4 * sharpen * 0.5).toFixed(3);
+    parts.push(`<feConvolveMatrix in="${src}" order="3" kernelMatrix="0 -${k} 0 -${k} ${c} -${k} 0 -${k} 0" divisor="1" edgeMode="duplicate" preserveAlpha="true" result="sharp"/>`);
+    src = "sharp";
+  }
+  if (split > 0) {
+    parts.push(
+      `<feColorMatrix in="${src}" type="matrix" values="1 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 1 0" result="r"/>`,
+      `<feOffset in="r" dx="${-split}" dy="0" result="r2"/>`,
+      `<feColorMatrix in="${src}" type="matrix" values="0 0 0 0 0 0 1 0 0 0 0 0 0 0 0 0 0 0 1 0" result="g"/>`,
+      `<feColorMatrix in="${src}" type="matrix" values="0 0 0 0 0 0 0 0 0 0 0 0 1 0 0 0 0 0 1 0" result="b"/>`,
+      `<feOffset in="b" dx="${split}" dy="0" result="b2"/>`,
+      `<feBlend in="r2" in2="g" mode="screen" result="rg"/>`,
+      `<feBlend in="rg" in2="b2" mode="screen"/>`,
+    );
+  }
+  return parts.join("");
 }
 
 export const engine = new PlaybackEngine();
