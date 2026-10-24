@@ -4,6 +4,7 @@
 import { useSettings } from "../store/settings";
 import { useAssets } from "../store/assets";
 import { needsDecodeProxy } from "../lib/playable";
+import { LutView } from "./lutview";
 import { fileSrc, log, transport } from "../lib/backend";
 import { clipDuration, clipEnd, projectDuration } from "../project/ops";
 import type { Clip, MediaItem, Project, Track } from "../project/types";
@@ -186,10 +187,17 @@ class PlaybackEngine {
   private fx: FxElements | null = null;
   private svgKey = "";
   private svg2Key = "";
+  private lutView: LutView | null = null;
 
   attach(video: HTMLVideoElement, image: HTMLImageElement) {
     this.video = video;
     this.image = image;
+    // The LUT preview reads frames into WebGL, which needs CORS-clean media from the loopback
+    // server (it answers with Access-Control-Allow-Origin: *). Must be set before any src.
+    if (transport.base) {
+      video.crossOrigin = "anonymous";
+      image.crossOrigin = "anonymous";
+    }
     video.preload = "auto";
     video.playsInline = true;
     video.muted = false;
@@ -207,6 +215,13 @@ class PlaybackEngine {
   attachText(canvas: HTMLCanvasElement | null) {
     this.textCanvas = canvas;
     this.invalidateText();
+  }
+
+  /** The WebGL canvas that shows the visible clip through its LUT (null detaches). */
+  attachLut(canvas: HTMLCanvasElement | null) {
+    this.lutView?.dispose();
+    this.lutView = canvas ? new LutView(canvas, () => this.render(this.latestTime(), usePlayback.getState().playing)) : null;
+    this.render(this.latestTime(), usePlayback.getState().playing);
   }
 
   attachFx(fx: FxElements | null) {
@@ -483,6 +498,7 @@ class PlaybackEngine {
     this.applyFx(p, visual, fxEl, t);
 
     if (!visual) {
+      this.lutView?.update(null, undefined, "", "");
       this.videoClipId = null;
       video.style.visibility = "hidden";
       image.style.visibility = "hidden";
@@ -493,12 +509,16 @@ class PlaybackEngine {
       video.style.visibility = "hidden";
       setSrc(image, visual.media.path);
       image.style.visibility = "visible";
-      image.style.opacity = opacityCss(visual.clip.opacity * fadeGain(visual.clip, t) * animAlpha(visual.clip, t));
+      const op = opacityCss(visual.clip.opacity * fadeGain(visual.clip, t) * animAlpha(visual.clip, t));
+      const lut = this.lutView?.update(image, visual.clip.lut, image.style.filter, op) ?? false;
+      setStyle(image, "opacity", lut ? "0" : op);
     } else {
       image.style.visibility = "hidden";
       setSrc(video, previewPath(visual.media.path));
       video.style.visibility = "visible";
-      video.style.opacity = opacityCss(visual.clip.opacity * fadeGain(visual.clip, t) * animAlpha(visual.clip, t));
+      const op = opacityCss(visual.clip.opacity * fadeGain(visual.clip, t) * animAlpha(visual.clip, t));
+      const lut = this.lutView?.update(video, visual.clip.lut, video.style.filter, op) ?? false;
+      setStyle(video, "opacity", lut ? "0" : op);
       const muted = silent || visual.track.muted || !visual.media.hasAudio;
       video.muted = muted;
       video.volume = Math.min(1, visual.clip.volume * fadeGain(visual.clip, t));
