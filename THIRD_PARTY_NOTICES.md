@@ -32,3 +32,7 @@ XenoCut is built on the following open-source projects. Each keeps its own licen
 FFmpeg (with x264) is shipped as a separate, unmodified executable that XenoCut runs as a subprocess. Its GPL source is available from https://ffmpeg.org and the build scripts in `scripts/` (desktop builds come from https://github.com/BtbN/FFmpeg-Builds).
 
 Fonts are licensed under the SIL Open Font License 1.1. AI model weights are downloaded on demand from their original publishers.
+
+## Media
+
+The effect preview animations in `src/assets/fx-demos/` are rendered from two seconds of *Tears of Steel*, (CC) Blender Foundation | mango.blender.org, licensed under Creative Commons Attribution 3.0 (https://creativecommons.org/licenses/by/3.0/). The footage was cropped, scaled and run through XenoCut's effects; `scripts/fetch-demo-clip.sh` fetches the source.
