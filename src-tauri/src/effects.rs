@@ -473,3 +473,68 @@ mod tests {
         assert!(late.contains("fade=t=in:st=0.9000:d=0.25:color=white:enable='gte(t,1.0000)*lt(t,2.0000)'"), "{late}");
     }
 }
+
+/// Effect-browser demos: every effect on the same synthetic scene through the real export filters,
+/// as small looping animated webp files in `src/assets/fx-demos/`. Regenerate after changing an
+/// effect: `cargo test --lib generate_fx_demos -- --ignored`.
+#[cfg(test)]
+mod demos {
+    use super::*;
+
+    const KINDS: [&str; 42] = [
+        "brightness", "contrast", "saturation", "temperature", "sharpen", "punchy", "bw", "sepia", "invert", "cinematic", "noir", "cold",
+        "sunset", "faded", "rgbSplit", "glitch", "beatGlitch", "crt", "blur", "softFocus", "dreamy", "heavyBlur", "vhs", "vintage",
+        "oldFilm", "grain", "scanlines", "fadeIn", "fadeOut", "flash", "zoomIn", "zoomOut", "vignette", "letterbox", "widescreen",
+        "shake", "earthquake", "mirror", "flip", "punch", "hitShake", "amvHit",
+    ];
+
+    /// Amount and range used for a demo: hits fire twice, fades take half the loop.
+    fn demo(kind: &str) -> Vec<Effect> {
+        let e = |amount: f64, from: Option<f64>, to: Option<f64>| Effect { kind: kind.into(), amount, from, to };
+        match kind {
+            "flash" | "punch" | "hitShake" | "amvHit" | "beatGlitch" => {
+                let amount = if kind == "flash" { 0.8 } else { 1.0 };
+                vec![e(amount, Some(0.25), Some(1.25)), e(amount, Some(1.25), None)]
+            }
+            "fadeIn" => vec![e(1.0, Some(0.2), Some(1.4))],
+            "fadeOut" => vec![e(1.0, Some(0.6), Some(1.8))],
+            "brightness" | "contrast" | "saturation" | "temperature" => vec![e(0.7, None, None)],
+            "blur" | "rgbSplit" | "grain" | "sharpen" => vec![e(0.6, None, None)],
+            _ => vec![e(1.0, None, None)],
+        }
+    }
+
+    #[test]
+    #[ignore]
+    fn generate_fx_demos() {
+        let bin = crate::audio::ffmpeg::ffmpeg_binary().expect("ffmpeg");
+        let out = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../src/assets/fx-demos");
+        std::fs::create_dir_all(&out).unwrap();
+        let (w, h, fps, len) = (160u32, 90u32, 15u32, 2.0f64);
+        // A colourful scene with movement: drifting gradient, a bouncing disc, a sliding bar.
+        let scene = format!(
+            "gradients=s={w}x{h}:r={fps}:d={len}:c0=0x3a1c71:c1=0xd76d77:c2=0x1f8fb5:c3=0xffaf7b:nb_colors=4:speed=0.06:type=linear,format=rgba,\
+             geq=r='r(X,Y)':g='g(X,Y)':b='b(X,Y)':a='255',\
+             drawbox=x='{w}*0.15+{w}*0.5*abs(sin(t*1.6))':y='{h}*0.35':w='{h}*0.3':h='{h}*0.3':color=white@0.95:t=fill,\
+             drawbox=x='-{w}+mod(t*{w},2*{w})':y='{h}*0.78':w='{w}*0.4':h='{h}*0.06':color=0x101820:t=fill"
+        );
+        for kind in KINDS {
+            let fx = demo(kind);
+            let mut chain = pre_scale(&fx, len, None);
+            chain.extend(picture(&fx, h, len, None));
+            chain.extend(motion(&fx, len, fps, None));
+            let mut graph = scene.clone();
+            if !chain.is_empty() {
+                graph = format!("{graph},{}", chain.join(","));
+            }
+            graph.push_str(",format=yuv420p");
+            let file = out.join(format!("{kind}.webp"));
+            let status = std::process::Command::new(&bin)
+                .args(["-y", "-loglevel", "error", "-f", "lavfi", "-i", &graph, "-c:v", "libwebp_anim", "-loop", "0", "-q:v", "62", "-compression_level", "6", "-an"])
+                .arg(&file)
+                .status()
+                .unwrap();
+            assert!(status.success(), "{kind}: {graph}");
+        }
+    }
+}
