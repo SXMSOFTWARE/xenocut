@@ -18,7 +18,11 @@ pub const FORMAT: &str = "xenocut-pack/1";
 const MAX_FILES: usize = 400;
 const MAX_FILE_BYTES: u64 = 24 << 20;
 const MAX_PACK_BYTES: u64 = 64 << 20;
-const ASSET_EXTS: [&str; 8] = ["json", "cube", "png", "webp", "jpg", "jpeg", "txt", "md"];
+const ASSET_EXTS: [&str; 9] = [
+    "json", "cube", "png", "webp", "jpg", "jpeg", "txt", "md", "glsl",
+];
+const MAX_GLSL_BYTES: usize = 64 << 10;
+const MAX_LOTTIE_BYTES: u64 = 16 << 20;
 const MAX_LUT_SIZE: usize = 65;
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
@@ -46,6 +50,127 @@ pub struct Manifest {
     pub luts: Vec<LutEntry>,
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub text_presets: Vec<TextPreset>,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub transitions: Vec<TransitionEntry>,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub lottie: Vec<LottieEntry>,
+}
+
+/// A GLSL transition in gl-transitions format (`vec4 transition(vec2 uv)` using
+/// `getFromColor` / `getToColor`, `progress`, `ratio` and `uniform … // = default` params).
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+pub struct TransitionEntry {
+    pub id: String,
+    pub name: String,
+    #[serde(default)]
+    pub category: String,
+    pub file: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub duration: Option<f64>,
+    /// xfade transition used where the shader can't run.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub fallback: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub author: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub license: Option<String>,
+}
+
+/// A Lottie (Bodymovin JSON) animation, placed as an overlay or animated-text layer.
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+pub struct LottieEntry {
+    pub id: String,
+    pub name: String,
+    #[serde(default)]
+    pub category: String,
+    pub file: String,
+    /// "overlay" (sticker / graphic) or "text" (animated title).
+    #[serde(default = "overlay")]
+    pub kind: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub author: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub license: Option<String>,
+}
+
+fn overlay() -> String {
+    "overlay".into()
+}
+
+/// Checks a gl-transitions shader: plain GLSL ES 1.00 that only reads the two pictures through
+/// `getFromColor` / `getToColor` (no own samplers, extensions or version / include lines).
+pub fn validate_glsl(text: &str) -> Result<(), String> {
+    if text.len() > MAX_GLSL_BYTES {
+        return Err("shader too large".into());
+    }
+    let code = strip_comments(text);
+    if !code.is_ascii() {
+        return Err("shader code must be ASCII".into());
+    }
+    if !code.contains("transition(") {
+        return Err("shader must define vec4 transition(vec2 uv)".into());
+    }
+    for bad in [
+        "sampler", "#extension", "#version", "#include", "texture2D", "texture(", "gl_FragColor",
+        "gl_FragData", "__",
+    ] {
+        if code.contains(bad) {
+            return Err(format!("shader uses `{bad}`, which packs can't"));
+        }
+    }
+    Ok(())
+}
+
+/// GLSL source without `//` and `/* */` comments (line breaks kept).
+pub fn strip_comments(text: &str) -> String {
+    let mut out = String::with_capacity(text.len());
+    let mut rest = text;
+    while !rest.is_empty() {
+        if let Some(r) = rest.strip_prefix("//") {
+            rest = r.find('\n').map_or("", |i| &r[i..]);
+        } else if let Some(r) = rest.strip_prefix("/*") {
+            rest = r.find("*/").map_or("", |i| &r[i + 2..]);
+            out.push(' ');
+        } else {
+            let c = rest.chars().next().unwrap();
+            out.push(c);
+            rest = &rest[c.len_utf8()..];
+        }
+    }
+    out
+}
+
+/// Checks a Lottie file: Bodymovin JSON with a sane size and frame range, and images (if any)
+/// embedded as data URIs (nothing is fetched from the network or disk).
+pub fn validate_lottie(bytes: &[u8]) -> Result<(), String> {
+    if bytes.len() as u64 > MAX_LOTTIE_BYTES {
+        return Err("Lottie file too large".into());
+    }
+    let v: Value = serde_json::from_slice(bytes).map_err(|e| format!("not JSON: {e}"))?;
+    let num = |k: &str| v.get(k).and_then(Value::as_f64);
+    let (Some(fr), Some(ip), Some(op), Some(w), Some(h)) =
+        (num("fr"), num("ip"), num("op"), num("w"), num("h"))
+    else {
+        return Err("not a Lottie animation (fr, ip, op, w, h missing)".into());
+    };
+    if !(1.0..=240.0).contains(&fr) || op <= ip || (op - ip) / fr > 600.0 {
+        return Err("Lottie frame rate or range out of bounds".into());
+    }
+    if !(1.0..=8192.0).contains(&w) || !(1.0..=8192.0).contains(&h) {
+        return Err("Lottie size out of bounds".into());
+    }
+    if !v.get("layers").is_some_and(Value::is_array) {
+        return Err("Lottie has no layers".into());
+    }
+    for asset in v.get("assets").and_then(Value::as_array).into_iter().flatten() {
+        if let Some(p) = asset.get("p").and_then(Value::as_str) {
+            let embedded = p.starts_with("data:") || asset.get("e").and_then(Value::as_i64) == Some(1);
+            if !embedded {
+                return Err("Lottie images must be embedded (export with \"Include in json\")".into());
+            }
+        }
+    }
+    Ok(())
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
@@ -160,7 +285,12 @@ pub fn validate(m: &Manifest, dir: Option<&Path>) -> Result<(), String> {
             return Err("homepage must be an https URL".into());
         }
     }
-    let total = m.effects.len() + m.animations.len() + m.luts.len() + m.text_presets.len();
+    let total = m.effects.len()
+        + m.animations.len()
+        + m.luts.len()
+        + m.text_presets.len()
+        + m.transitions.len()
+        + m.lottie.len();
     if total == 0 {
         return Err("the pack has no entries".into());
     }
@@ -238,6 +368,39 @@ pub fn validate(m: &Manifest, dir: Option<&Path>) -> Result<(), String> {
             return Err(format!("text preset {}: style must be a flat object", t.id));
         }
     }
+    for t in &m.transitions {
+        fresh("transition", &t.id)?;
+        let rel = safe_rel(&t.file)
+            .filter(|p| p.extension().is_some_and(|e| e.eq_ignore_ascii_case("glsl")))
+            .ok_or_else(|| format!("transition {}: bad file path", t.id))?;
+        if t.duration.is_some_and(|d| {
+            !(crate::transitions::MIN_DURATION..=crate::transitions::MAX_DURATION).contains(&d)
+        }) {
+            return Err(format!("transition {}: duration out of range", t.id));
+        }
+        if t.fallback.as_deref().is_some_and(|f| !crate::transitions::is_xfade(f)) {
+            return Err(format!("transition {}: unknown fallback", t.id));
+        }
+        if let Some(dir) = dir {
+            let text = std::fs::read_to_string(dir.join(&rel))
+                .map_err(|e| format!("transition {}: {e}", t.id))?;
+            validate_glsl(&text).map_err(|e| format!("transition {}: {e}", t.id))?;
+        }
+    }
+    for l in &m.lottie {
+        fresh("lottie", &l.id)?;
+        if !["overlay", "text"].contains(&l.kind.as_str()) {
+            return Err(format!("lottie {}: kind must be overlay or text", l.id));
+        }
+        let rel = safe_rel(&l.file)
+            .filter(|p| p.extension().is_some_and(|e| e.eq_ignore_ascii_case("json")))
+            .ok_or_else(|| format!("lottie {}: bad file path", l.id))?;
+        if let Some(dir) = dir {
+            let bytes =
+                std::fs::read(dir.join(&rel)).map_err(|e| format!("lottie {}: {e}", l.id))?;
+            validate_lottie(&bytes).map_err(|e| format!("lottie {}: {e}", l.id))?;
+        }
+    }
     if let Some(thumb) = &m.thumbnail {
         let rel = safe_rel(thumb).ok_or("bad thumbnail path")?;
         if dir.is_some_and(|d| !d.join(&rel).is_file()) {
@@ -252,6 +415,8 @@ pub fn validate(m: &Manifest, dir: Option<&Path>) -> Result<(), String> {
     if names
         .chain(m.luts.iter().map(|l| &l.name))
         .chain(m.text_presets.iter().map(|t| &t.name))
+        .chain(m.transitions.iter().map(|t| &t.name))
+        .chain(m.lottie.iter().map(|l| &l.name))
         .any(|n| !short(n, 48))
     {
         return Err("every entry needs a name (max 48 chars)".into());
@@ -510,7 +675,9 @@ impl Store {
             .to_ascii_lowercase()
         {
             // Android pickers can hand over files without their name: look at the bytes.
-            e if !matches!(e.as_str(), "cube" | "xcpack" | "zip") && path.is_file() => {
+            e if !matches!(e.as_str(), "cube" | "xcpack" | "zip" | "glsl" | "json")
+                && path.is_file() =>
+            {
                 sniff(path).unwrap_or(e)
             }
             e => e,
@@ -521,11 +688,12 @@ impl Store {
             wrap_cube(path, &staging).and_then(|_| self.install_dir(&staging))
         } else if ext == "xcpack" || ext == "zip" {
             unzip(path, &staging).and_then(|root| self.install_dir(&root))
+        } else if ext == "glsl" || ext == "frag" {
+            wrap_glsl(path, &staging).and_then(|_| self.install_dir(&staging))
+        } else if ext == "json" || ext == "lottie-json" {
+            wrap_lottie(path, &staging).and_then(|_| self.install_dir(&staging))
         } else {
-            match ext.as_str() {
-                "json" | "glsl" | "frag" | "ofx" | "so" | "dll" => Err("Lottie, GLSL transitions and OpenFX plugins are planned for v0.7; this version installs .xcpack, .zip and .cube".into()),
-                _ => Err("choose a .xcpack, .zip, .cube or a pack folder".into()),
-            }
+            Err("choose a .xcpack, .zip, .cube, .glsl, a Lottie .json or a pack folder".into())
         };
         let _ = std::fs::remove_dir_all(&staging);
         result
@@ -714,6 +882,8 @@ fn wrap_cube(path: &Path, staging: &Path) -> Result<(), String> {
             file: format!("{id}.cube"),
         }],
         text_presets: vec![],
+        transitions: vec![],
+        lottie: vec![],
     };
     std::fs::write(
         staging.join("manifest.json"),
@@ -732,7 +902,101 @@ fn sniff(path: &Path) -> Option<String> {
         return Some("zip".into());
     }
     let text = String::from_utf8_lossy(&head);
-    text.contains("LUT_3D_SIZE").then(|| "cube".into())
+    if text.contains("LUT_3D_SIZE") {
+        return Some("cube".into());
+    }
+    if text.contains("vec4 transition(") {
+        return Some("glsl".into());
+    }
+    let t = text.trim_start();
+    (t.starts_with('{') && text.contains("\"layers\"") && text.contains("\"fr\""))
+        .then(|| "json".into())
+}
+
+/// Fields a bare file contributes to a generated one-entry pack.
+fn bare_manifest(id: String, name: String, description: &str) -> Manifest {
+    Manifest {
+        format: FORMAT.into(),
+        id,
+        name,
+        version: "1".into(),
+        author: String::new(),
+        license: "unknown".into(),
+        homepage: None,
+        description: description.into(),
+        thumbnail: None,
+        effects: vec![],
+        animations: vec![],
+        luts: vec![],
+        text_presets: vec![],
+        transitions: vec![],
+        lottie: vec![],
+    }
+}
+
+/// Reads `// Name: value` header comments (gl-transitions style).
+fn header(text: &str, key: &str) -> Option<String> {
+    text.lines().take(20).find_map(|l| {
+        let rest = l.trim().strip_prefix("//")?.trim();
+        let (k, v) = rest.split_once(':')?;
+        (k.trim().eq_ignore_ascii_case(key) && !v.trim().is_empty())
+            .then(|| v.trim().chars().take(96).collect())
+    })
+}
+
+/// A bare `.glsl` (gl-transitions format) becomes a one-transition pack `transition.<name>`.
+fn wrap_glsl(path: &Path, staging: &Path) -> Result<(), String> {
+    let text = std::fs::read_to_string(path).map_err(|e| e.to_string())?;
+    validate_glsl(&text)?;
+    let stem = path.file_stem().and_then(|s| s.to_str()).unwrap_or("transition");
+    let id = slug(stem);
+    std::fs::write(staging.join(format!("{id}.glsl")), &text).map_err(|e| e.to_string())?;
+    let name: String = stem.chars().take(48).collect();
+    let mut m = bare_manifest(format!("transition.{id}"), name.clone(), "Imported GLSL transition");
+    m.author = header(&text, "Author").unwrap_or_default();
+    m.license = header(&text, "License").unwrap_or_else(|| "unknown".into());
+    m.transitions.push(TransitionEntry {
+        id: id.replace('.', "-"),
+        name,
+        category: "imported".into(),
+        file: format!("{id}.glsl"),
+        duration: None,
+        fallback: None,
+        author: None,
+        license: None,
+    });
+    std::fs::write(staging.join("manifest.json"), serde_json::to_vec_pretty(&m).unwrap())
+        .map_err(|e| e.to_string())
+}
+
+/// A bare Lottie `.json` becomes a one-animation pack `lottie.<name>`.
+fn wrap_lottie(path: &Path, staging: &Path) -> Result<(), String> {
+    let bytes = std::fs::read(path).map_err(|e| e.to_string())?;
+    validate_lottie(&bytes)?;
+    let stem = path.file_stem().and_then(|s| s.to_str()).unwrap_or("lottie");
+    let id = slug(stem);
+    std::fs::write(staging.join(format!("{id}.json")), &bytes).map_err(|e| e.to_string())?;
+    let v: Value = serde_json::from_slice(&bytes).unwrap_or(Value::Null);
+    let name: String = v
+        .get("nm")
+        .and_then(Value::as_str)
+        .filter(|n| !n.trim().is_empty())
+        .unwrap_or(stem)
+        .chars()
+        .take(48)
+        .collect();
+    let mut m = bare_manifest(format!("lottie.{id}"), name.clone(), "Imported Lottie animation");
+    m.lottie.push(LottieEntry {
+        id: id.replace('.', "-"),
+        name,
+        category: "imported".into(),
+        file: format!("{id}.json"),
+        kind: "overlay".into(),
+        author: None,
+        license: None,
+    });
+    std::fs::write(staging.join("manifest.json"), serde_json::to_vec_pretty(&m).unwrap())
+        .map_err(|e| e.to_string())
 }
 
 pub const CATALOG_URL: &str =
@@ -1147,6 +1411,47 @@ mod tests {
         let p = store.install_path(&file).unwrap();
         assert_eq!(p.manifest.id, "lut.teal-orange");
         assert_eq!(p.manifest.luts[0].name, "Ident");
+    }
+
+    #[test]
+    fn glsl_and_lottie_entries() {
+        let fade = "// Author: gre\n// License: MIT\n/* sampler2D in a comment is fine */\nvec4 transition(vec2 uv) { return mix(getFromColor(uv), getToColor(uv), progress); }\n";
+        assert_eq!(validate_glsl(fade), Ok(()));
+        assert!(validate_glsl("vec4 nothing() { return vec4(0.0); }").is_err());
+        assert!(validate_glsl("uniform sampler2D x; vec4 transition(vec2 uv) { return texture2D(x, uv); }").is_err());
+        assert!(validate_glsl("#extension GL_OES_standard_derivatives : enable\nvec4 transition(vec2 uv) { return vec4(1.0); }").is_err());
+        let lottie = br#"{"v":"5.7.4","fr":30,"ip":0,"op":60,"w":512,"h":512,"nm":"Pop","layers":[]}"#;
+        assert_eq!(validate_lottie(lottie), Ok(()));
+        assert!(validate_lottie(br#"{"fr":30,"ip":0,"op":0,"w":5,"h":5,"layers":[]}"#).is_err());
+        assert!(validate_lottie(br#"{"fr":30,"ip":0,"op":60,"w":5,"h":5,"layers":[],"assets":[{"id":"i","p":"img.png","u":"images/"}]}"#).is_err());
+        assert!(validate_lottie(br#"{"fr":30,"ip":0,"op":60,"w":5,"h":5,"layers":[],"assets":[{"id":"i","p":"data:image/png;base64,AA==","e":1}]}"#).is_ok());
+
+        let base = tmp("glsl");
+        let store = Store::new(base.join("plugins"));
+        let file = base.join("Cross Fade.glsl");
+        std::fs::write(&file, fade).unwrap();
+        let p = store.install_path(&file).unwrap();
+        assert_eq!(p.manifest.id, "transition.cross-fade");
+        assert_eq!((p.manifest.license.as_str(), p.manifest.author.as_str()), ("MIT", "gre"));
+        assert_eq!(p.manifest.transitions[0].file, "cross-fade.glsl");
+        let file = base.join("pop.json");
+        std::fs::write(&file, lottie).unwrap();
+        let p = store.install_path(&file).unwrap();
+        assert_eq!((p.manifest.id.as_str(), p.manifest.lottie[0].name.as_str()), ("lottie.pop", "Pop"));
+        // Unnamed (Android picker) files are recognised by content.
+        let file = base.join("77");
+        std::fs::write(&file, fade).unwrap();
+        assert!(store.install_path(&file).unwrap().manifest.transitions.len() == 1);
+        // A pack shader that breaks the rules rejects the whole pack.
+        let dir = base.join("bad");
+        std::fs::create_dir_all(dir.join("t")).unwrap();
+        let m = serde_json::json!({"format": FORMAT, "id": "bad.pack", "name": "Bad", "version": "1", "license": "MIT",
+            "transitions": [{"id": "x", "name": "X", "file": "t/x.glsl"}]});
+        std::fs::write(dir.join("manifest.json"), serde_json::to_vec(&m).unwrap()).unwrap();
+        std::fs::write(dir.join("t/x.glsl"), "uniform sampler2D s; vec4 transition(vec2 uv) { return vec4(1.0); }").unwrap();
+        assert!(store.install_path(&dir).is_err());
+        std::fs::write(dir.join("t/x.glsl"), fade).unwrap();
+        assert_eq!(store.install_path(&dir).unwrap().manifest.transitions.len(), 1);
     }
 
     /// Every pack in the published catalog installs, and its index entry matches the file.
