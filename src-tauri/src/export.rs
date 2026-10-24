@@ -243,11 +243,16 @@ pub fn build(project: &Project, options: &ExportOptions) -> Result<ExportPlan, S
                 format!("setpts=(PTS-STARTPTS)/{speed:.4}")
             }];
             chain.push(format!("fps={fps}"));
-            chain.push(format!(
-                "scale={width}:{height}:force_original_aspect_ratio=decrease:out_range=tv,pad={width}:{height}:(ow-iw)/2:(oh-ih)/2:color=black@0"
-            ));
+            let effects = &clip.effects;
+            chain.extend(crate::effects::pre_scale(effects));
+            chain.push(format!("scale={width}:{height}:force_original_aspect_ratio=decrease:out_range=tv"));
+            chain.extend(crate::effects::picture(effects, height));
+            chain.push(format!("pad={width}:{height}:(ow-iw)/2:(oh-ih)/2:color=black@0"));
             chain.push("setsar=1".into());
             chain.push("format=yuva420p".into());
+            if let Some(motion) = crate::effects::motion(effects, length, fps) {
+                chain.push(motion);
+            }
             if clip.opacity < 0.999 {
                 chain.push(format!("colorchannelmixer=aa={:.3}", clip.opacity.clamp(0.0, 1.0)));
             }
@@ -393,6 +398,7 @@ pub(crate) mod tests {
             fade_in: 0.0,
             fade_out: 0.0,
             text: None,
+            effects: vec![],
         }
     }
 
@@ -676,6 +682,45 @@ pub(crate) mod tests {
         let late = pixel("1.5");
         assert!(early[2] > 150 && early[0] < 80, "expected blue before the title, got {early:?}");
         assert!(late[0] > 150 && late[2] < 80, "expected the red title, got {late:?}");
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    /// End to end: every effect at once goes through the real ffmpeg, and invert turns blue yellow.
+    #[test]
+    fn exports_every_effect() {
+        if ffmpeg::ffmpeg_binary().is_err() {
+            eprintln!("skipping effects export: ffmpeg missing");
+            return;
+        }
+        let dir = std::env::temp_dir().join(format!("xenocut-fxexport-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&dir);
+        std::fs::create_dir_all(&dir).unwrap();
+        let blue = dir.join("blue.mp4");
+        let out = dir.join("out.mp4");
+        assert!(make(&["-y", "-loglevel", "error", "-f", "lavfi", "-i", "color=c=blue:s=320x240:r=30:d=2", "-c:v", "libx264", "-pix_fmt", "yuv420p", blue.to_str().unwrap()]));
+        let mut c = clip("c", "v1", "b", 0.0, 0.0, 2.0);
+        c.effects = ["mirror", "flip", "invert", "sharpen", "rgbSplit", "blur", "vignette", "grain", "zoomIn", "shake"]
+            .iter()
+            .map(|k| crate::effects::Effect { kind: (*k).into(), amount: if *k == "grain" || *k == "vignette" { 0.1 } else { 1.0 } })
+            .collect();
+        let p = project(vec![media("b", MediaKind::Video, blue.to_str().unwrap(), 2.0, false)], vec![c]);
+        cancel::begin();
+        let o = ExportOptions {
+            output_path: out.display().to_string(),
+            width: 320,
+            height: 180,
+            fps: 30,
+            quality: Quality::Fast,
+            text_overlay: None,
+        };
+        run(&p, &o, &Quiet).unwrap();
+        let bin = ffmpeg::ffmpeg_binary().unwrap();
+        let px = std::process::Command::new(bin)
+            .args(["-loglevel", "error", "-ss", "1", "-i", out.to_str().unwrap(), "-frames:v", "1", "-vf", "crop=10:10:155:85,scale=1:1", "-f", "rawvideo", "-pix_fmt", "rgb24", "-"])
+            .output()
+            .unwrap()
+            .stdout;
+        assert!(px[0] > 150 && px[1] > 150 && px[2] < 90, "expected inverted blue (yellow), got {px:?}");
         let _ = std::fs::remove_dir_all(&dir);
     }
 }

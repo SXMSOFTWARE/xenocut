@@ -105,6 +105,9 @@ pub struct Clip {
     /// renders it), but kept verbatim so saving never loses it.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub text: Option<serde_json::Value>,
+    /// Video effects (see `effects.rs`), applied in a fixed order.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub effects: Vec<crate::effects::Effect>,
 }
 
 impl Clip {
@@ -229,6 +232,7 @@ mod tests {
             fade_in: 0.0,
             fade_out: 0.0,
             text: None,
+            effects: vec![],
         });
         let text = serde_json::to_string(&project).unwrap();
         assert!(text.contains("\"trackId\":\"v1\""));

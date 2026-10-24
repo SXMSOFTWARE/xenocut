@@ -2,6 +2,7 @@ pub mod app;
 pub mod audio;
 pub mod content_import;
 pub mod diag;
+pub mod effects;
 pub mod grade;
 pub mod export;
 pub mod media;
