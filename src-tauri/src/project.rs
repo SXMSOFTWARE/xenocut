@@ -113,6 +113,19 @@ pub struct Clip {
     /// In / Out / Combo animations (see `anims.rs`).
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub anim: Option<crate::anims::ClipAnim>,
+    /// Colour LUT from a plugin pack (a `.cube` file), mixed in by `amount`.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub lut: Option<ClipLut>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub struct ClipLut {
+    pub path: String,
+    #[serde(default = "one")]
+    pub amount: f64,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub name: Option<String>,
 }
 
 impl Clip {
@@ -239,6 +252,7 @@ mod tests {
             text: None,
             effects: vec![],
             anim: None,
+            lut: None,
         });
         let text = serde_json::to_string(&project).unwrap();
         assert!(text.contains("\"trackId\":\"v1\""));

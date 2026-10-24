@@ -280,6 +280,48 @@ pub fn parse_cube(text: &str) -> Result<Cube, String> {
     Ok(Cube { size, domain_min: min, domain_max: max, data })
 }
 
+/// The LUT mixed with identity by `amount`, as `.cube` text (for FFmpeg's `lut3d`).
+pub fn bake_cube(c: &Cube, amount: f64) -> String {
+    let a = amount.clamp(0.0, 1.0) as f32;
+    let n = c.size;
+    let mut out = format!("LUT_3D_SIZE {n}\nDOMAIN_MIN {} {} {}\nDOMAIN_MAX {} {} {}\n", c.domain_min[0], c.domain_min[1], c.domain_min[2], c.domain_max[0], c.domain_max[1], c.domain_max[2]);
+    for i in 0..n * n * n {
+        let idx = [i % n, (i / n) % n, i / (n * n)];
+        let v: Vec<String> = (0..3)
+            .map(|ch| {
+                let ident = c.domain_min[ch] + (c.domain_max[ch] - c.domain_min[ch]) * idx[ch] as f32 / (n - 1) as f32;
+                format!("{:.6}", ident + (c.data[i * 3 + ch] - ident) * a)
+            })
+            .collect();
+        out += &v.join(" ");
+        out.push('\n');
+    }
+    out
+}
+
+/// Writes the baked LUT to a content-addressed temp file and returns the `lut3d` filter for it,
+/// or None (with a reason) if the file is missing or invalid.
+pub fn lut_filter(path: &str, amount: f64) -> Result<Option<String>, String> {
+    if amount <= 0.001 {
+        return Ok(None);
+    }
+    let text = std::fs::read_to_string(path).map_err(|e| format!("LUT {path}: {e}"))?;
+    let cube = parse_cube(&text).map_err(|e| format!("LUT {path}: {e}"))?;
+    let baked = bake_cube(&cube, amount);
+    let digest: String = Sha256::digest(baked.as_bytes()).iter().take(10).map(|b| format!("{b:02x}")).collect();
+    let dir = std::env::temp_dir().join("xenocut-luts");
+    std::fs::create_dir_all(&dir).map_err(|e| e.to_string())?;
+    let file = dir.join(format!("{digest}.cube"));
+    if !file.is_file() {
+        std::fs::write(&file, baked).map_err(|e| e.to_string())?;
+    }
+    let p = file.to_string_lossy().replace('\\', "/");
+    if p.contains('\'') {
+        return Err("temp folder path contains a quote".into());
+    }
+    Ok(Some(format!("lut3d=file='{}':interp=tetrahedral", p.replace(':', "\\:"))))
+}
+
 // ---------------------------------------------------------------- store
 
 pub struct Store {
@@ -692,6 +734,22 @@ mod tests {
         let code = base.join("code.xcpack");
         make(&code, &[("manifest.json", &man), ("luts/ident.cube", cube.as_bytes()), ("run.sh", b"rm -rf /")]);
         assert!(store.install_path(&code).is_err());
+    }
+
+    #[test]
+    fn baked_lut_mixes_with_identity() {
+        let mut c = parse_cube(&identity_cube(2)).unwrap();
+        c.data.iter_mut().for_each(|v| *v = 1.0 - *v);
+        let half = parse_cube(&bake_cube(&c, 0.5)).unwrap();
+        assert!(half.data.iter().all(|v| (v - 0.5).abs() < 1e-5));
+        let full = parse_cube(&bake_cube(&c, 1.0)).unwrap();
+        assert_eq!(full.data, c.data);
+        let base = tmp("bake");
+        let f = base.join("x.cube");
+        std::fs::write(&f, identity_cube(2)).unwrap();
+        let filter = lut_filter(&f.to_string_lossy(), 1.0).unwrap().unwrap();
+        assert!(filter.starts_with("lut3d=file='") && filter.ends_with(":interp=tetrahedral"));
+        assert_eq!(lut_filter(&f.to_string_lossy(), 0.0), Ok(None));
     }
 
     #[test]

@@ -288,6 +288,13 @@ pub fn build(project: &Project, options: &ExportOptions) -> Result<ExportPlan, S
             let effects = &all_effects;
             chain.extend(crate::effects::pre_scale(effects, length, None));
             chain.push(format!("scale={width}:{height}:force_original_aspect_ratio=decrease:out_range=tv"));
+            if let Some(lut) = &clip.lut {
+                match crate::plugins::lut_filter(&lut.path, lut.amount) {
+                    Ok(Some(filter)) => chain.push(filter),
+                    Ok(None) => {}
+                    Err(err) => crate::diag::log("warn", &format!("export: skipping LUT: {err}")),
+                }
+            }
             chain.extend(crate::effects::picture(effects, height, length, None));
             chain.push(format!("pad={width}:{height}:(ow-iw)/2:(oh-ih)/2:color=black@0"));
             chain.push("setsar=1".into());
@@ -447,6 +454,7 @@ pub(crate) mod tests {
             text: None,
             effects: vec![],
             anim: None,
+            lut: None,
         }
     }
 
