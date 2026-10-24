@@ -1,7 +1,7 @@
 // Plugins: the installed library (enable, remove, details) and the online catalog.
 // Packs are data only (see docs/plugins.md); installing never runs code.
 import { useEffect, useMemo, useState } from "react";
-import { ArrowLeft, ArrowUpRight, Check, ChevronDown, Download, Film, Library, Palette, Puzzle, RefreshCw, ShieldCheck, Store, Trash2, Type, Wand2 } from "lucide-react";
+import { ArrowLeft, ArrowUpRight, Blend, Check, ChevronDown, Download, Film, Library, Palette, Sparkles, Puzzle, RefreshCw, ShieldCheck, Store, Trash2, Type, Wand2 } from "lucide-react";
 import { Switch } from "../../components/controls";
 import { useT, type Key } from "../../i18n";
 import { fileSrc, isAndroid, onFileDrop, openExternal, pickFiles } from "../../lib/backend";
@@ -19,11 +19,13 @@ const KINDS: { key: keyof Counts; icon: typeof Palette; label: Key }[] = [
   { key: "effects", icon: Film, label: "plugins.n.effects" },
   { key: "animations", icon: Wand2, label: "plugins.n.animations" },
   { key: "textPresets", icon: Type, label: "plugins.n.textPresets" },
+  { key: "transitions", icon: Blend, label: "plugins.n.transitions" },
+  { key: "lottie", icon: Sparkles, label: "plugins.n.lottie" },
 ];
 
 function countsOf(p: Installed): Counts {
   const m = p.manifest;
-  return { luts: m.luts?.length, effects: m.effects?.length, animations: m.animations?.length, textPresets: m.textPresets?.length };
+  return { luts: m.luts?.length, effects: m.effects?.length, animations: m.animations?.length, textPresets: m.textPresets?.length, transitions: m.transitions?.length, lottie: m.lottie?.length };
 }
 
 /** Compare dotted versions numerically ("1.10.0" > "1.9.2"). */
@@ -74,6 +76,8 @@ function LibraryCard({ pack }: { pack: Installed }) {
     ["plugins.sectionEffects", (m.effects ?? []).map((x) => x.name)],
     ["plugins.sectionAnims", (m.animations ?? []).map((x) => x.name)],
     ["plugins.sectionText", (m.textPresets ?? []).map((x) => x.name)],
+    ["plugins.sectionTransitions", (m.transitions ?? []).map((x) => x.name)],
+    ["plugins.sectionLottie", (m.lottie ?? []).map((x) => x.name)],
   ];
   return (
     <article className={`plugin-card${pack.enabled ? "" : " off"}`} data-plugin={m.id}>

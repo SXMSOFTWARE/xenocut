@@ -15,6 +15,7 @@ import zipfile
 import looks
 
 ROOT = pathlib.Path(__file__).resolve().parent
+GL_VENDOR = ROOT / "vendor" / "gl-transitions"
 RAW = "https://raw.githubusercontent.com/sxmsoft/xenocut/main/catalog/"
 STAMP = (2026, 1, 1, 0, 0, 0)
 
@@ -31,6 +32,16 @@ def pack_files(src: pathlib.Path, manifest: dict) -> dict:
             if stem not in looks.LOOKS:
                 sys.exit(f"{manifest['id']}: {rel} is missing and has no recipe in looks.py")
             files[rel] = looks.cube_text(lut["name"], looks.LOOKS[stem]).encode()
+    # Transition shaders come from the vendored gl-transitions copy (see gltransitions.py),
+    # with its MIT licence alongside.
+    for entry in manifest.get("transitions", []):
+        rel = entry["file"]
+        if rel not in files:
+            source = GL_VENDOR / pathlib.PurePosixPath(rel).name
+            if not source.is_file():
+                sys.exit(f"{manifest['id']}: {rel} is missing")
+            files[rel] = source.read_bytes()
+            files["LICENSE.txt"] = (GL_VENDOR / "LICENSE").read_bytes()
     return files
 
 
@@ -68,7 +79,7 @@ def main():
                 "sha256": hashlib.sha256(data).hexdigest(),
                 "bytes": len(data),
                 "thumbnail": RAW + "thumbs/" + thumb.name if thumb.exists() else None,
-                "contents": {k: len(manifest[k]) for k in ("effects", "animations", "luts", "textPresets") if manifest.get(k)},
+                "contents": {k: len(manifest[k]) for k in ("effects", "animations", "luts", "textPresets", "transitions", "lottie") if manifest.get(k)},
             }
         )
         print(f"{name}: {len(data) / 1024:.0f} KB")

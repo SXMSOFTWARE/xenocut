@@ -1,0 +1,212 @@
+{
+  "format": "xenocut-pack/1",
+  "version": "1.0.0",
+  "author": "gl-transitions contributors",
+  "license": "MIT",
+  "homepage": "https://github.com/gl-transitions/gl-transitions",
+  "id": "xenocut.gl-shapes",
+  "name": "Transitions: Shapes & Patterns",
+  "description": "Circles, hearts, stars, bow ties, blinds, chessboards and puzzles from the gl-transitions collection.",
+  "transitions": [
+    {
+      "id": "bow-tie-with-parameter",
+      "name": "Bow Tie",
+      "category": "shape",
+      "file": "transitions/BowTieWithParameter.glsl",
+      "author": "KMojek",
+      "license": "MIT"
+    },
+    {
+      "id": "bow-tie-horizontal",
+      "name": "Bow Tie ↔",
+      "category": "shape",
+      "file": "transitions/BowTieHorizontal.glsl",
+      "author": "huynx",
+      "license": "MIT"
+    },
+    {
+      "id": "bow-tie-vertical",
+      "name": "Bow Tie ↕",
+      "category": "shape",
+      "file": "transitions/BowTieVertical.glsl",
+      "author": "huynx",
+      "license": "MIT"
+    },
+    {
+      "id": "box",
+      "name": "Box",
+      "category": "shape",
+      "file": "transitions/Box.glsl",
+      "author": "lql",
+      "license": "MIT"
+    },
+    {
+      "id": "chessboard",
+      "name": "Chessboard",
+      "category": "pattern",
+      "file": "transitions/chessboard.glsl",
+      "author": "lql",
+      "license": "MIT"
+    },
+    {
+      "id": "circle",
+      "name": "Circle",
+      "category": "shape",
+      "file": "transitions/circle.glsl",
+      "author": "Fernando Kuteken",
+      "license": "MIT"
+    },
+    {
+      "id": "circle-crop",
+      "name": "Circle Crop",
+      "category": "shape",
+      "file": "transitions/CircleCrop.glsl",
+      "author": "fkuteken",
+      "license": "MIT"
+    },
+    {
+      "id": "circleopen",
+      "name": "Circle Open",
+      "category": "shape",
+      "file": "transitions/circleopen.glsl",
+      "author": "gre",
+      "license": "MIT"
+    },
+    {
+      "id": "horizontal-close",
+      "name": "Close ↔",
+      "category": "shape",
+      "file": "transitions/HorizontalClose.glsl",
+      "author": "martiniti",
+      "license": "MIT"
+    },
+    {
+      "id": "vertical-close",
+      "name": "Close ↕",
+      "category": "shape",
+      "file": "transitions/VerticalClose.glsl",
+      "author": "martiniti",
+      "license": "MIT"
+    },
+    {
+      "id": "crosshatch",
+      "name": "Crosshatch",
+      "category": "pattern",
+      "file": "transitions/crosshatch.glsl",
+      "author": "pthrasher",
+      "license": "MIT"
+    },
+    {
+      "id": "fragment",
+      "name": "Fragments",
+      "category": "pattern",
+      "file": "transitions/fragment.glsl",
+      "author": "lbl",
+      "license": "MIT"
+    },
+    {
+      "id": "heart",
+      "name": "Heart",
+      "category": "shape",
+      "file": "transitions/heart.glsl",
+      "author": "gre",
+      "license": "MIT"
+    },
+    {
+      "id": "cannabisleaf",
+      "name": "Leaf",
+      "category": "shape",
+      "file": "transitions/cannabisleaf.glsl",
+      "author": "@Flexi23",
+      "license": "MIT"
+    },
+    {
+      "id": "horizontal-open",
+      "name": "Open ↔",
+      "category": "shape",
+      "file": "transitions/HorizontalOpen.glsl",
+      "author": "martiniti",
+      "license": "MIT"
+    },
+    {
+      "id": "vertical-open",
+      "name": "Open ↕",
+      "category": "shape",
+      "file": "transitions/VerticalOpen.glsl",
+      "author": "martiniti",
+      "license": "MIT"
+    },
+    {
+      "id": "polka-dots-curtain",
+      "name": "Polka Dots",
+      "category": "pattern",
+      "file": "transitions/PolkaDotsCurtain.glsl",
+      "author": "bobylito",
+      "license": "MIT"
+    },
+    {
+      "id": "puzzle-right",
+      "name": "Puzzle",
+      "category": "pattern",
+      "file": "transitions/PuzzleRight.glsl",
+      "author": "JustKirillS",
+      "license": "MIT"
+    },
+    {
+      "id": "randomsquares",
+      "name": "Random Squares",
+      "category": "pattern",
+      "file": "transitions/randomsquares.glsl",
+      "author": "gre",
+      "license": "MIT"
+    },
+    {
+      "id": "rectangle",
+      "name": "Rectangle",
+      "category": "shape",
+      "file": "transitions/Rectangle.glsl",
+      "author": "martiniti",
+      "license": "MIT"
+    },
+    {
+      "id": "rectangle-crop",
+      "name": "Rectangle Crop",
+      "category": "shape",
+      "file": "transitions/RectangleCrop.glsl",
+      "author": "martiniti",
+      "license": "MIT"
+    },
+    {
+      "id": "squareswire",
+      "name": "Squares Wire",
+      "category": "pattern",
+      "file": "transitions/squareswire.glsl",
+      "author": "gre",
+      "license": "MIT"
+    },
+    {
+      "id": "star-wipe",
+      "name": "Star",
+      "category": "shape",
+      "file": "transitions/StarWipe.glsl",
+      "author": "Ben Lucas",
+      "license": "MIT"
+    },
+    {
+      "id": "windowblinds",
+      "name": "Window Blinds",
+      "category": "pattern",
+      "file": "transitions/windowblinds.glsl",
+      "author": "Fabien Benetou",
+      "license": "MIT"
+    },
+    {
+      "id": "windowslice",
+      "name": "Window Slice",
+      "category": "pattern",
+      "file": "transitions/windowslice.glsl",
+      "author": "gre",
+      "license": "MIT"
+    }
+  ]
+}

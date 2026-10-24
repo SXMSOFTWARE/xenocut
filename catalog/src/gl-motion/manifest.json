@@ -1,0 +1,260 @@
+{
+  "format": "xenocut-pack/1",
+  "version": "1.0.0",
+  "author": "gl-transitions contributors",
+  "license": "MIT",
+  "homepage": "https://github.com/gl-transitions/gl-transitions",
+  "id": "xenocut.gl-motion",
+  "name": "Transitions: 3D & Motion",
+  "description": "Cubes, flips, folds, swirls, ripples and warps from the gl-transitions collection.",
+  "transitions": [
+    {
+      "id": "angular",
+      "name": "Angular",
+      "category": "shape",
+      "file": "transitions/angular.glsl",
+      "author": "Fernando Kuteken",
+      "license": "MIT"
+    },
+    {
+      "id": "book-flip",
+      "name": "Book Flip",
+      "category": "motion",
+      "file": "transitions/BookFlip.glsl",
+      "author": "hong",
+      "license": "MIT"
+    },
+    {
+      "id": "bounce",
+      "name": "Bounce",
+      "category": "motion",
+      "file": "transitions/Bounce.glsl",
+      "author": "Adrian Purser",
+      "license": "MIT"
+    },
+    {
+      "id": "butterfly-wave-scrawler",
+      "name": "Butterfly Wave",
+      "category": "motion",
+      "file": "transitions/ButterflyWaveScrawler.glsl",
+      "author": "mandubian",
+      "license": "MIT"
+    },
+    {
+      "id": "crosswarp",
+      "name": "Cross Warp",
+      "category": "smooth",
+      "file": "transitions/crosswarp.glsl",
+      "author": "Eke Péter <peterekepeter@gmail.com>",
+      "license": "MIT"
+    },
+    {
+      "id": "cube",
+      "name": "Cube",
+      "category": "motion",
+      "file": "transitions/cube.glsl",
+      "author": "gre",
+      "license": "MIT"
+    },
+    {
+      "id": "doorway",
+      "name": "Doorway",
+      "category": "motion",
+      "file": "transitions/doorway.glsl",
+      "author": "gre",
+      "license": "MIT"
+    },
+    {
+      "id": "simple-flip",
+      "name": "Flip",
+      "category": "motion",
+      "file": "transitions/SimpleFlip.glsl",
+      "author": "nwoeanhinnogaehr",
+      "license": "MIT"
+    },
+    {
+      "id": "flyeye",
+      "name": "Fly Eye",
+      "category": "motion",
+      "file": "transitions/flyeye.glsl",
+      "author": "gre",
+      "license": "MIT"
+    },
+    {
+      "id": "fold",
+      "name": "Fold",
+      "category": "motion",
+      "file": "transitions/Fold.glsl",
+      "author": "nwoeanhinnogaehr",
+      "license": "MIT"
+    },
+    {
+      "id": "grid-flip",
+      "name": "Grid Flip",
+      "category": "motion",
+      "file": "transitions/GridFlip.glsl",
+      "author": "TimDonselaar",
+      "license": "MIT"
+    },
+    {
+      "id": "kaleidoscope",
+      "name": "Kaleidoscope",
+      "category": "pattern",
+      "file": "transitions/kaleidoscope.glsl",
+      "author": "nwoeanhinnogaehr",
+      "license": "MIT"
+    },
+    {
+      "id": "morph",
+      "name": "Morph",
+      "category": "smooth",
+      "file": "transitions/morph.glsl",
+      "author": "paniq",
+      "license": "MIT"
+    },
+    {
+      "id": "tangent-motion-blur",
+      "name": "Motion Blur",
+      "category": "motion",
+      "file": "transitions/tangentMotionBlur.glsl",
+      "author": "chenkai",
+      "license": "MIT"
+    },
+    {
+      "id": "crazy-parametric-fun",
+      "name": "Parametric",
+      "category": "pattern",
+      "file": "transitions/CrazyParametricFun.glsl",
+      "author": "mandubian",
+      "license": "MIT"
+    },
+    {
+      "id": "pinwheel",
+      "name": "Pinwheel",
+      "category": "shape",
+      "file": "transitions/pinwheel.glsl",
+      "author": "Mr Speaker",
+      "license": "MIT"
+    },
+    {
+      "id": "polar-function",
+      "name": "Polar",
+      "category": "shape",
+      "file": "transitions/polar_function.glsl",
+      "author": "Fernando Kuteken",
+      "license": "MIT"
+    },
+    {
+      "id": "power-kaleido",
+      "name": "Power Kaleido",
+      "category": "pattern",
+      "file": "transitions/powerKaleido.glsl",
+      "author": "Boundless",
+      "license": "MIT"
+    },
+    {
+      "id": "radial",
+      "name": "Radial",
+      "category": "shape",
+      "file": "transitions/Radial.glsl",
+      "author": "Xaychru",
+      "license": "MIT"
+    },
+    {
+      "id": "revolve-left",
+      "name": "Revolve",
+      "category": "motion",
+      "file": "transitions/Revolve_Left.glsl",
+      "author": "bread",
+      "license": "MIT"
+    },
+    {
+      "id": "ripple",
+      "name": "Ripple",
+      "category": "motion",
+      "file": "transitions/ripple.glsl",
+      "author": "gre",
+      "license": "MIT"
+    },
+    {
+      "id": "rolls",
+      "name": "Roll",
+      "category": "motion",
+      "file": "transitions/Rolls.glsl",
+      "author": "Mark Craig",
+      "license": "MIT"
+    },
+    {
+      "id": "rotate-transition",
+      "name": "Rotate",
+      "category": "motion",
+      "file": "transitions/rotateTransition.glsl",
+      "author": "haiyoucuv",
+      "license": "MIT"
+    },
+    {
+      "id": "rotate-scale-fade",
+      "name": "Rotate Fade",
+      "category": "motion",
+      "file": "transitions/rotate_scale_fade.glsl",
+      "author": "Fernando Kuteken",
+      "license": "MIT"
+    },
+    {
+      "id": "rotate-scale-vanish",
+      "name": "Spin Away",
+      "category": "motion",
+      "file": "transitions/RotateScaleVanish.glsl",
+      "author": "Mark Craig",
+      "license": "MIT"
+    },
+    {
+      "id": "swap",
+      "name": "Swap",
+      "category": "motion",
+      "file": "transitions/swap.glsl",
+      "author": "gre",
+      "license": "MIT"
+    },
+    {
+      "id": "swirl",
+      "name": "Swirl",
+      "category": "motion",
+      "file": "transitions/Swirl.glsl",
+      "author": "Sergey Kosarevsky",
+      "license": "MIT"
+    },
+    {
+      "id": "tiles-wave",
+      "name": "Tiles Wave",
+      "category": "pattern",
+      "file": "transitions/TilesWave.glsl",
+      "author": "numb3r23",
+      "license": "MIT"
+    },
+    {
+      "id": "directionalwarp",
+      "name": "Warp",
+      "category": "smooth",
+      "file": "transitions/directionalwarp.glsl",
+      "author": "pschroen",
+      "license": "MIT"
+    },
+    {
+      "id": "water-drop",
+      "name": "Water Drop",
+      "category": "motion",
+      "file": "transitions/WaterDrop.glsl",
+      "author": "Paweł Płóciennik",
+      "license": "MIT"
+    },
+    {
+      "id": "wind",
+      "name": "Wind",
+      "category": "motion",
+      "file": "transitions/wind.glsl",
+      "author": "gre",
+      "license": "MIT"
+    }
+  ]
+}

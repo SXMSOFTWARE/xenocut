@@ -34,6 +34,70 @@
       }
     },
     {
+      "id": "xenocut.gl-essentials",
+      "name": "Transitions: Essentials",
+      "version": "1.0.0",
+      "author": "gl-transitions contributors",
+      "license": "MIT",
+      "homepage": "https://github.com/gl-transitions/gl-transitions",
+      "description": "Crossfades, pushes, splits, blurs and zooms: everyday GLSL transitions from the gl-transitions collection.",
+      "url": "https://raw.githubusercontent.com/sxmsoft/xenocut/main/catalog/packs/xenocut.gl-essentials-1.0.0.xcpack",
+      "sha256": "11d5cf7346685782991d37e85b1418f8b9fc87826ddf2fe2d646a8f4b7b27774",
+      "bytes": 22556,
+      "thumbnail": null,
+      "contents": {
+        "transitions": 40
+      }
+    },
+    {
+      "id": "xenocut.gl-glitch",
+      "name": "Transitions: Glitch & Light",
+      "version": "1.0.0",
+      "author": "gl-transitions contributors",
+      "license": "MIT",
+      "homepage": "https://github.com/gl-transitions/gl-transitions",
+      "description": "Glitches, static, film burns, flickers, mosaics and dissolves from the gl-transitions collection.",
+      "url": "https://raw.githubusercontent.com/sxmsoft/xenocut/main/catalog/packs/xenocut.gl-glitch-1.0.0.xcpack",
+      "sha256": "9c2e6a54e8585f51aca7f9e39beb8a4d0b724ef50d4dff47d632bb601e022815",
+      "bytes": 23641,
+      "thumbnail": null,
+      "contents": {
+        "transitions": 25
+      }
+    },
+    {
+      "id": "xenocut.gl-motion",
+      "name": "Transitions: 3D & Motion",
+      "version": "1.0.0",
+      "author": "gl-transitions contributors",
+      "license": "MIT",
+      "homepage": "https://github.com/gl-transitions/gl-transitions",
+      "description": "Cubes, flips, folds, swirls, ripples and warps from the gl-transitions collection.",
+      "url": "https://raw.githubusercontent.com/sxmsoft/xenocut/main/catalog/packs/xenocut.gl-motion-1.0.0.xcpack",
+      "sha256": "f698d827384d5343cc88b4997052d2799e782ee2fdeb353a2416dbfc725b644b",
+      "bytes": 22129,
+      "thumbnail": null,
+      "contents": {
+        "transitions": 31
+      }
+    },
+    {
+      "id": "xenocut.gl-shapes",
+      "name": "Transitions: Shapes & Patterns",
+      "version": "1.0.0",
+      "author": "gl-transitions contributors",
+      "license": "MIT",
+      "homepage": "https://github.com/gl-transitions/gl-transitions",
+      "description": "Circles, hearts, stars, bow ties, blinds, chessboards and puzzles from the gl-transitions collection.",
+      "url": "https://raw.githubusercontent.com/sxmsoft/xenocut/main/catalog/packs/xenocut.gl-shapes-1.0.0.xcpack",
+      "sha256": "c9fea2281eaa045d058751e7576f892ac7a07700918bebd9e59e646e854aad48",
+      "bytes": 16026,
+      "thumbnail": null,
+      "contents": {
+        "transitions": 25
+      }
+    },
+    {
       "id": "xenocut.motion-essentials",
       "name": "Motion Essentials",
       "version": "1.0.0",

@@ -1,0 +1,332 @@
+{
+  "format": "xenocut-pack/1",
+  "version": "1.0.0",
+  "author": "gl-transitions contributors",
+  "license": "MIT",
+  "homepage": "https://github.com/gl-transitions/gl-transitions",
+  "id": "xenocut.gl-essentials",
+  "name": "Transitions: Essentials",
+  "description": "Crossfades, pushes, splits, blurs and zooms: everyday GLSL transitions from the gl-transitions collection.",
+  "transitions": [
+    {
+      "id": "colorphase",
+      "name": "Color Phase",
+      "category": "light",
+      "file": "transitions/colorphase.glsl",
+      "author": "gre",
+      "license": "MIT"
+    },
+    {
+      "id": "colour-distance",
+      "name": "Colour Distance",
+      "category": "basic",
+      "file": "transitions/ColourDistance.glsl",
+      "author": "P-Seebauer",
+      "license": "MIT"
+    },
+    {
+      "id": "cross-zoom",
+      "name": "Cross Zoom",
+      "category": "zoom",
+      "file": "transitions/CrossZoom.glsl",
+      "author": "rectalogic",
+      "license": "MIT"
+    },
+    {
+      "id": "fade",
+      "name": "Crossfade",
+      "category": "basic",
+      "file": "transitions/fade.glsl",
+      "author": "gre",
+      "license": "MIT"
+    },
+    {
+      "id": "defocus-blur",
+      "name": "Defocus Blur",
+      "category": "smooth",
+      "file": "transitions/DefocusBlur.glsl",
+      "author": "Sergey Kosarevsky",
+      "license": "MIT"
+    },
+    {
+      "id": "dreamy",
+      "name": "Dreamy",
+      "category": "smooth",
+      "file": "transitions/Dreamy.glsl",
+      "author": "mikolalysenko",
+      "license": "MIT"
+    },
+    {
+      "id": "dreamy-zoom",
+      "name": "Dreamy Zoom",
+      "category": "zoom",
+      "file": "transitions/DreamyZoom.glsl",
+      "author": "Zeh Fernando",
+      "license": "MIT"
+    },
+    {
+      "id": "fadecolor",
+      "name": "Fade Through Color",
+      "category": "basic",
+      "file": "transitions/fadecolor.glsl",
+      "author": "gre",
+      "license": "MIT"
+    },
+    {
+      "id": "fadegrayscale",
+      "name": "Fade Through Gray",
+      "category": "basic",
+      "file": "transitions/fadegrayscale.glsl",
+      "author": "gre",
+      "license": "MIT"
+    },
+    {
+      "id": "wipe-down",
+      "name": "Hard Wipe Down",
+      "category": "wipe",
+      "file": "transitions/wipeDown.glsl",
+      "author": "Jake Nelson",
+      "license": "MIT"
+    },
+    {
+      "id": "wipe-left",
+      "name": "Hard Wipe Left",
+      "category": "wipe",
+      "file": "transitions/wipeLeft.glsl",
+      "author": "Jake Nelson",
+      "license": "MIT"
+    },
+    {
+      "id": "wipe-right",
+      "name": "Hard Wipe Right",
+      "category": "wipe",
+      "file": "transitions/wipeRight.glsl",
+      "author": "Jake Nelson",
+      "license": "MIT"
+    },
+    {
+      "id": "wipe-up",
+      "name": "Hard Wipe Up",
+      "category": "wipe",
+      "file": "transitions/wipeUp.glsl",
+      "author": "Jake Nelson",
+      "license": "MIT"
+    },
+    {
+      "id": "hsvfade",
+      "name": "HSV Fade",
+      "category": "basic",
+      "file": "transitions/HSVfade.glsl",
+      "author": "nwoeanhinnogaehr",
+      "license": "MIT"
+    },
+    {
+      "id": "left-right",
+      "name": "Left Right",
+      "category": "wipe",
+      "file": "transitions/LeftRight.glsl",
+      "author": "zhmy",
+      "license": "MIT"
+    },
+    {
+      "id": "linear-blur",
+      "name": "Linear Blur",
+      "category": "smooth",
+      "file": "transitions/LinearBlur.glsl",
+      "author": "gre",
+      "license": "MIT"
+    },
+    {
+      "id": "coord-from-in",
+      "name": "Melt In",
+      "category": "smooth",
+      "file": "transitions/coord-from-in.glsl",
+      "author": "haiyoucuv",
+      "license": "MIT"
+    },
+    {
+      "id": "multiply-blend",
+      "name": "Multiply Blend",
+      "category": "light",
+      "file": "transitions/multiply_blend.glsl",
+      "author": "Fernando Kuteken",
+      "license": "MIT"
+    },
+    {
+      "id": "overexposure",
+      "name": "Overexposure",
+      "category": "light",
+      "file": "transitions/Overexposure.glsl",
+      "author": "Ben Zhang",
+      "license": "MIT"
+    },
+    {
+      "id": "directional",
+      "name": "Push",
+      "category": "slide",
+      "file": "transitions/Directional.glsl",
+      "author": "Gaëtan Renaudeau",
+      "license": "MIT"
+    },
+    {
+      "id": "directional-easing",
+      "name": "Push Eased",
+      "category": "slide",
+      "file": "transitions/directional-easing.glsl",
+      "author": "Max Plotnikov",
+      "license": "MIT"
+    },
+    {
+      "id": "directional-scaled",
+      "name": "Push Scaled",
+      "category": "slide",
+      "file": "transitions/DirectionalScaled.glsl",
+      "author": "Thibaut Foussard",
+      "license": "MIT"
+    },
+    {
+      "id": "scale-in",
+      "name": "Scale In",
+      "category": "zoom",
+      "file": "transitions/scale-in.glsl",
+      "author": "haiyoucuv",
+      "license": "MIT"
+    },
+    {
+      "id": "x-axis-translation",
+      "name": "Sideways",
+      "category": "slide",
+      "file": "transitions/x_axis_translation.glsl",
+      "author": "lizhongjian",
+      "license": "MIT"
+    },
+    {
+      "id": "slides",
+      "name": "Slides",
+      "category": "slide",
+      "file": "transitions/Slides.glsl",
+      "author": "Mark Craig",
+      "license": "MIT"
+    },
+    {
+      "id": "directionalwipe",
+      "name": "Soft Wipe",
+      "category": "wipe",
+      "file": "transitions/directionalwipe.glsl",
+      "author": "gre",
+      "license": "MIT"
+    },
+    {
+      "id": "split-slide-in-horizontal",
+      "name": "Split In ↔",
+      "category": "slide",
+      "file": "transitions/splitSlideInHorizontal.glsl",
+      "author": "OllyOllyOlly",
+      "license": "MIT"
+    },
+    {
+      "id": "split-slide-in-vertical",
+      "name": "Split In ↕",
+      "category": "slide",
+      "file": "transitions/splitSlideInVertical.glsl",
+      "author": "OllyOllyOlly",
+      "license": "MIT"
+    },
+    {
+      "id": "split-slide-out-horizontal",
+      "name": "Split Out ↔",
+      "category": "slide",
+      "file": "transitions/splitSlideOutHorizontal.glsl",
+      "author": "OllyOllyOlly",
+      "license": "MIT"
+    },
+    {
+      "id": "split-slide-out-vertical",
+      "name": "Split Out ↕",
+      "category": "slide",
+      "file": "transitions/splitSlideOutVertical.glsl",
+      "author": "OllyOllyOlly",
+      "license": "MIT"
+    },
+    {
+      "id": "split-slide-in-out-horizontal",
+      "name": "Split Swap ↔",
+      "category": "slide",
+      "file": "transitions/splitSlideInOutHorizontal.glsl",
+      "author": "OllyOllyOlly",
+      "license": "MIT"
+    },
+    {
+      "id": "split-slide-in-out-vertical",
+      "name": "Split Swap ↕",
+      "category": "slide",
+      "file": "transitions/splitSlideInOutVertical.glsl",
+      "author": "OllyOllyOlly",
+      "license": "MIT"
+    },
+    {
+      "id": "squeeze",
+      "name": "Squeeze",
+      "category": "zoom",
+      "file": "transitions/squeeze.glsl",
+      "author": "gre",
+      "license": "MIT"
+    },
+    {
+      "id": "top-bottom",
+      "name": "Top Bottom",
+      "category": "wipe",
+      "file": "transitions/TopBottom.glsl",
+      "author": "zhmy",
+      "license": "MIT"
+    },
+    {
+      "id": "zoom-in-circles",
+      "name": "Zoom Circles",
+      "category": "zoom",
+      "file": "transitions/ZoomInCircles.glsl",
+      "author": "dycm8009",
+      "license": "MIT"
+    },
+    {
+      "id": "zoom-in-out",
+      "name": "Zoom In Out",
+      "category": "zoom",
+      "file": "transitions/zoomInOut.glsl",
+      "author": "OllyOllyOlly",
+      "license": "MIT"
+    },
+    {
+      "id": "simple-zoom-out",
+      "name": "Zoom Out",
+      "category": "zoom",
+      "file": "transitions/SimpleZoomOut.glsl",
+      "author": "Tianshuo",
+      "license": "MIT"
+    },
+    {
+      "id": "simple-zoom",
+      "name": "Zoom Through",
+      "category": "zoom",
+      "file": "transitions/SimpleZoom.glsl",
+      "author": "0gust1",
+      "license": "MIT"
+    },
+    {
+      "id": "zoom-left-wipe",
+      "name": "Zoom Wipe Left",
+      "category": "zoom",
+      "file": "transitions/ZoomLeftWipe.glsl",
+      "author": "Handk",
+      "license": "MIT"
+    },
+    {
+      "id": "zoom-rigth-wipe",
+      "name": "Zoom Wipe Right",
+      "category": "zoom",
+      "file": "transitions/ZoomRigthWipe.glsl",
+      "author": "Handk",
+      "license": "MIT"
+    }
+  ]
+}

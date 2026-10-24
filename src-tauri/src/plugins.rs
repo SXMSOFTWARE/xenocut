@@ -107,14 +107,16 @@ pub fn validate_glsl(text: &str) -> Result<(), String> {
     if !code.is_ascii() {
         return Err("shader code must be ASCII".into());
     }
-    if !code.contains("transition(") {
+    // Without whitespace, so `transition (` and `texture (` are caught too.
+    let compact: String = code.chars().filter(|c| !c.is_ascii_whitespace()).collect();
+    if !compact.contains("vec4transition(") {
         return Err("shader must define vec4 transition(vec2 uv)".into());
     }
     for bad in [
         "sampler", "#extension", "#version", "#include", "texture2D", "texture(", "gl_FragColor",
         "gl_FragData", "__",
     ] {
-        if code.contains(bad) {
+        if compact.contains(bad) {
             return Err(format!("shader uses `{bad}`, which packs can't"));
         }
     }
@@ -932,7 +934,8 @@ fn sniff(path: &Path) -> Option<String> {
     if text.contains("LUT_3D_SIZE") {
         return Some("cube".into());
     }
-    if text.contains("vec4 transition(") {
+    let compact: String = text.chars().filter(|c| !c.is_ascii_whitespace()).collect();
+    if compact.contains("vec4transition(") {
         return Some("glsl".into());
     }
     let t = text.trim_start();
@@ -1040,6 +1043,22 @@ const BUNDLED_PACKS: &[(&str, &[u8])] = &[
     (
         "xenocut.film-looks-1.0.0.xcpack",
         include_bytes!("../../catalog/packs/xenocut.film-looks-1.0.0.xcpack"),
+    ),
+    (
+        "xenocut.gl-essentials-1.0.0.xcpack",
+        include_bytes!("../../catalog/packs/xenocut.gl-essentials-1.0.0.xcpack"),
+    ),
+    (
+        "xenocut.gl-glitch-1.0.0.xcpack",
+        include_bytes!("../../catalog/packs/xenocut.gl-glitch-1.0.0.xcpack"),
+    ),
+    (
+        "xenocut.gl-motion-1.0.0.xcpack",
+        include_bytes!("../../catalog/packs/xenocut.gl-motion-1.0.0.xcpack"),
+    ),
+    (
+        "xenocut.gl-shapes-1.0.0.xcpack",
+        include_bytes!("../../catalog/packs/xenocut.gl-shapes-1.0.0.xcpack"),
     ),
     (
         "xenocut.motion-essentials-1.0.0.xcpack",
@@ -1505,7 +1524,13 @@ mod tests {
                 .install_path(&file)
                 .unwrap_or_else(|err| panic!("{name}: {err}"));
             assert_eq!(p.manifest.id, e["id"].as_str().unwrap());
-            assert_eq!(p.manifest.license, "CC0-1.0");
+            let gl = p.manifest.id.starts_with("xenocut.gl-");
+            assert_eq!(p.manifest.license, if gl { "MIT" } else { "CC0-1.0" });
+            for t in &p.manifest.transitions {
+                let path = Path::new(&p.dir).join(&t.file);
+                store.asset_text(&path).unwrap_or_else(|err| panic!("{name} {}: {err}", t.id));
+            }
+            assert_eq!(gl, Path::new(&p.dir).join("LICENSE.txt").is_file());
             for lut in &p.manifest.luts {
                 let cube = store.lut(&Path::new(&p.dir).join(&lut.file)).unwrap();
                 assert_eq!(cube.size, 25);

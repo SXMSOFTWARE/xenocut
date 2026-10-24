@@ -1,0 +1,212 @@
+{
+  "format": "xenocut-pack/1",
+  "version": "1.0.0",
+  "author": "gl-transitions contributors",
+  "license": "MIT",
+  "homepage": "https://github.com/gl-transitions/gl-transitions",
+  "id": "xenocut.gl-glitch",
+  "name": "Transitions: Glitch & Light",
+  "description": "Glitches, static, film burns, flickers, mosaics and dissolves from the gl-transitions collection.",
+  "transitions": [
+    {
+      "id": "block-dissolve",
+      "name": "Block Dissolve",
+      "category": "glitch",
+      "file": "transitions/BlockDissolve.glsl",
+      "author": "nwoeanhinnogaehr",
+      "license": "MIT"
+    },
+    {
+      "id": "burn",
+      "name": "Burn",
+      "category": "light",
+      "file": "transitions/burn.glsl",
+      "author": "gre",
+      "license": "MIT"
+    },
+    {
+      "id": "undulating-burn-out",
+      "name": "Burn Out",
+      "category": "light",
+      "file": "transitions/undulatingBurnOut.glsl",
+      "author": "pthrasher",
+      "license": "MIT"
+    },
+    {
+      "id": "burn0",
+      "name": "Burn Through",
+      "category": "light",
+      "file": "transitions/burn0.glsl",
+      "author": "liubailin2020@gmail.com",
+      "license": "MIT"
+    },
+    {
+      "id": "strip-datamosh-glitch",
+      "name": "Datamosh Strips",
+      "category": "glitch",
+      "file": "transitions/StripDatamoshGlitch.glsl",
+      "author": "bread",
+      "license": "MIT"
+    },
+    {
+      "id": "dissolve",
+      "name": "Dissolve",
+      "category": "glitch",
+      "file": "transitions/dissolve.glsl",
+      "author": "hjm1fb",
+      "license": "MIT"
+    },
+    {
+      "id": "edge-transition",
+      "name": "Edges",
+      "category": "light",
+      "file": "transitions/EdgeTransition.glsl",
+      "author": "Woohyun Kim",
+      "license": "MIT"
+    },
+    {
+      "id": "film-burn",
+      "name": "Film Burn",
+      "category": "light",
+      "file": "transitions/FilmBurn.glsl",
+      "author": "Anastasia Dunbar",
+      "license": "MIT"
+    },
+    {
+      "id": "drop-zone-flicker",
+      "name": "Flicker",
+      "category": "light",
+      "file": "transitions/Drop_Zone_Flicker.glsl",
+      "author": "bread",
+      "license": "MIT"
+    },
+    {
+      "id": "parametric-glitch",
+      "name": "Glitch",
+      "category": "glitch",
+      "file": "transitions/parametric_glitch.glsl",
+      "author": "Yoni Maltsman @friendlyspinach",
+      "license": "MIT"
+    },
+    {
+      "id": "glitch-displace",
+      "name": "Glitch Displace",
+      "category": "glitch",
+      "file": "transitions/GlitchDisplace.glsl",
+      "author": "Matt DesLauriers",
+      "license": "MIT"
+    },
+    {
+      "id": "glitch-memories",
+      "name": "Glitch Memories",
+      "category": "glitch",
+      "file": "transitions/GlitchMemories.glsl",
+      "author": "Gunnar Roth",
+      "license": "MIT"
+    },
+    {
+      "id": "hexagonalize",
+      "name": "Hexagons",
+      "category": "pattern",
+      "file": "transitions/hexagonalize.glsl",
+      "author": "Fernando Kuteken",
+      "license": "MIT"
+    },
+    {
+      "id": "old-tv-lost-signal",
+      "name": "Lost Signal",
+      "category": "glitch",
+      "file": "transitions/old_tv_lost_signal.glsl",
+      "author": "mernking (gitlab.com/Godswork)",
+      "license": "MIT"
+    },
+    {
+      "id": "luminance-melt",
+      "name": "Luminance Melt",
+      "category": "light",
+      "file": "transitions/luminance_melt.glsl",
+      "author": "0gust1",
+      "license": "MIT"
+    },
+    {
+      "id": "doom-screen-transition",
+      "name": "Melt Down",
+      "category": "glitch",
+      "file": "transitions/DoomScreenTransition.glsl",
+      "author": "Zeh Fernando",
+      "license": "MIT"
+    },
+    {
+      "id": "mosaic-transition",
+      "name": "Mosaic",
+      "category": "pattern",
+      "file": "transitions/mosaic_transition.glsl",
+      "author": "YueDev",
+      "license": "MIT"
+    },
+    {
+      "id": "advanced-mosaic",
+      "name": "Mosaic Pro",
+      "category": "pattern",
+      "file": "transitions/AdvancedMosaic.glsl",
+      "author": "Sergey Kosarevsky",
+      "license": "MIT"
+    },
+    {
+      "id": "mosaic",
+      "name": "Mosaic Shift",
+      "category": "pattern",
+      "file": "transitions/Mosaic.glsl",
+      "author": "Xaychru",
+      "license": "MIT"
+    },
+    {
+      "id": "random-noisex",
+      "name": "Noise",
+      "category": "glitch",
+      "file": "transitions/randomNoisex.glsl",
+      "author": "towrabbit",
+      "license": "MIT"
+    },
+    {
+      "id": "perlin",
+      "name": "Perlin",
+      "category": "glitch",
+      "file": "transitions/perlin.glsl",
+      "author": "Rich Harris",
+      "license": "MIT"
+    },
+    {
+      "id": "pixelize",
+      "name": "Pixelize",
+      "category": "glitch",
+      "file": "transitions/pixelize.glsl",
+      "author": "gre",
+      "license": "MIT"
+    },
+    {
+      "id": "static-fade",
+      "name": "Static Fade",
+      "category": "glitch",
+      "file": "transitions/StaticFade.glsl",
+      "author": "Ben Lucas",
+      "license": "MIT"
+    },
+    {
+      "id": "static-wipe",
+      "name": "Static Wipe",
+      "category": "glitch",
+      "file": "transitions/static_wipe.glsl",
+      "author": "Ben Lucas",
+      "license": "MIT"
+    },
+    {
+      "id": "tvstatic",
+      "name": "TV Static",
+      "category": "glitch",
+      "file": "transitions/TVStatic.glsl",
+      "author": "Brandon Anzaldi",
+      "license": "MIT"
+    }
+  ]
+}

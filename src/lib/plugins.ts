@@ -30,6 +30,28 @@ export interface PackTextPreset {
   name: string;
   style: Partial<TextStyle>;
 }
+export interface PackTransition {
+  id: string;
+  name: string;
+  category: string;
+  /** A gl-transitions GLSL file. */
+  file: string;
+  duration?: number;
+  /** xfade used when the shader can't run. */
+  fallback?: string;
+  author?: string;
+  license?: string;
+}
+export interface PackLottie {
+  id: string;
+  name: string;
+  category: string;
+  /** Bodymovin JSON. */
+  file: string;
+  kind: "overlay" | "text";
+  author?: string;
+  license?: string;
+}
 export interface Manifest {
   format: string;
   id: string;
@@ -44,6 +66,8 @@ export interface Manifest {
   animations?: PackAnimation[];
   luts?: PackLut[];
   textPresets?: PackTextPreset[];
+  transitions?: PackTransition[];
+  lottie?: PackLottie[];
 }
 export interface Installed {
   manifest: Manifest;
@@ -64,7 +88,7 @@ export interface CatalogEntry {
   bytes: number;
   thumbnail?: string;
   /** What's inside, for badges: counts per kind. */
-  contents: { effects?: number; animations?: number; luts?: number; textPresets?: number };
+  contents: { effects?: number; animations?: number; luts?: number; textPresets?: number; transitions?: number; lottie?: number };
 }
 export interface Cube {
   size: number;
@@ -171,6 +195,21 @@ export function loadCube(path: string): Promise<Cube | null> {
       return null;
     });
     cubes.set(path, p);
+  }
+  return p;
+}
+
+const assets = new Map<string, Promise<string | null>>();
+/** A pack's GLSL or Lottie JSON text (validated again by the backend; cached; null on error). */
+export function loadPackAsset(path: string): Promise<string | null> {
+  let p = assets.get(path);
+  if (!p) {
+    p = call<string>("plugin_asset", { path }).catch((e) => {
+      log("warn", `plugins: asset ${path}: ${e}`);
+      assets.delete(path);
+      return null;
+    });
+    assets.set(path, p);
   }
   return p;
 }
