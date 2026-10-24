@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
-import { ArrowLeft, ArrowUpRight, Coffee, Heart, Info, Cpu, Download, FolderOpen, Gauge, HardDrive, Languages, Save, Trash2 } from "lucide-react";
+import { ArrowLeft, ArrowUpRight, BookOpen, ChevronDown, Coffee, Heart, Info, Cpu, Download, FolderOpen, Gauge, HardDrive, Languages, Save, Trash2 } from "lucide-react";
 import { Segmented, Switch } from "../../components/controls";
 import { useT } from "../../i18n";
 import { api, listen, openExternal, pickFolder, revealInFolder, type ProgressEvent } from "../../lib/backend";
@@ -7,6 +7,7 @@ import { bytes, messageOf } from "../../lib/format";
 import { useRouter } from "../../store/router";
 import { useSettings, type Language } from "../../store/settings";
 import { toast } from "../../store/toast";
+import { CREDITS } from "../../lib/credits";
 import "../../styles/settings.css";
 
 type ModelStatus = Awaited<ReturnType<typeof api.modelStatus>>;
@@ -19,6 +20,7 @@ export default function SettingsPage() {
   const [model, setModel] = useState<ModelStatus | null>(null);
   const [download, setDownload] = useState<number | null>(null);
   const [busy, setBusy] = useState(false);
+  const [showOss, setShowOss] = useState(false);
 
   const refresh = useCallback(() => {
     void api.cacheInfo().then(setCache).catch(() => setCache(null));
@@ -208,6 +210,25 @@ export default function SettingsPage() {
                 </button>
               </div>
             </Row>
+            <Row title={t("about.oss")} text={t("about.ossText")} icon={<BookOpen />}>
+              <button className={`btn btn-sm oss-toggle${showOss ? " open" : ""}`} onClick={() => setShowOss(!showOss)}>
+                {showOss ? t("about.ossHide") : t("about.ossShow")} <ChevronDown />
+              </button>
+            </Row>
+            {showOss && (
+              <ul className="oss-list">
+                {CREDITS.map((c) => (
+                  <li key={c.name}>
+                    <button className="oss-item" onClick={() => void openExternal(c.url)}>
+                      <b>{c.name}</b>
+                      <span className="muted">{t(`about.use.${c.use}`)}</span>
+                      <span className="oss-license tnum">{c.license}</span>
+                      <ArrowUpRight />
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            )}
           </section>
         </div>
       </div>
