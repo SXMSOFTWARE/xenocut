@@ -47,6 +47,16 @@ fn session_dir(cache: &Path, session: &str) -> Result<PathBuf, String> {
     Ok(dir)
 }
 
+/// A transition source frame (`src/t<n>/<from|to>_<k>.png`, see `export::transition_sources`).
+pub fn read_source_frame(cache: &Path, session: &str, transition: u32, side: &str, frame: u32) -> Result<Vec<u8>, String> {
+    if side != "from" && side != "to" {
+        return Err("bad side".into());
+    }
+    let dir = session_dir(cache, session)?;
+    let path = dir.join("src").join(format!("t{transition}")).join(format!("{side}_{frame:05}.png"));
+    std::fs::read(&path).map_err(|e| format!("transition frame {}: {e}", path.display()))
+}
+
 pub fn frame_name(index: u32) -> String {
     format!("f{index:06}.png")
 }

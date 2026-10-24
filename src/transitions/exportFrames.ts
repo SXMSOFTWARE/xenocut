@@ -3,7 +3,7 @@
 // the same renderer the preview uses, and the backend gets one ffconcat list per transition.
 // Built-in xfade transitions need none of this; a transition that fails here falls back to
 // its xfade in the export.
-import { convertFileSrc, invoke } from "@tauri-apps/api/core";
+import { invoke } from "@tauri-apps/api/core";
 import { call, isTauri } from "../lib/backend";
 import type { Project } from "../project/types";
 import { TransitionRenderer } from "./gl";
@@ -31,17 +31,10 @@ export function hasShaderTransitions(project: Project): boolean {
   return false;
 }
 
-function loadImage(path: string): Promise<HTMLImageElement> {
-  return new Promise((resolve, reject) => {
-    const img = new Image();
-    img.crossOrigin = "anonymous";
-    img.onload = () => resolve(img);
-    img.onerror = () => reject(new Error(`Could not read ${path}`));
-    img.src = convertFileSrc(path);
-  });
+async function sourceFrame(session: string, transition: number, side: "from" | "to", frame: number): Promise<ImageBitmap> {
+  const bytes = await invoke<ArrayBuffer>("transition_source_frame", { session, transition, side, frame });
+  return createImageBitmap(new Blob([bytes], { type: "image/png" }));
 }
-
-const frameFile = (dir: string, side: "from" | "to", k: number) => `${dir}/${side}_${String(k).padStart(5, "0")}.png`;
 
 /** Throws "cancelled" when `cancelled()` turns true. Returns null when nothing needs WebGL. */
 export async function renderTransitionFrames(
@@ -76,9 +69,12 @@ export async function renderTransitionFrames(
       let ok = true;
       for (let k = 0; k < src.frames; k++) {
         if (cancelled()) throw new Error("cancelled");
-        const [from, to] = await Promise.all([loadImage(frameFile(src.dir, "from", k)), loadImage(frameFile(src.dir, "to", k))]);
+        const [from, to] = await Promise.all([sourceFrame(session, i, "from", k), sourceFrame(session, i, "to", k)]);
         // Frame k of the window has progress k/N, like xfade.
-        if (!renderer.render({ ...shader, params: clip.transition.params, from, to, progress: k / src.frames })) {
+        const drawn = renderer.render({ ...shader, params: clip.transition.params, from, to, progress: k / src.frames });
+        from.close();
+        to.close();
+        if (!drawn) {
           ok = false;
           break;
         }

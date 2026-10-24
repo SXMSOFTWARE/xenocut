@@ -384,6 +384,19 @@ pub async fn transition_sources(
     .map_err(|e| e.to_string())?
 }
 
+/// One source frame of a shader transition as PNG bytes (no file URLs: works with any transport).
+#[tauri::command]
+pub fn transition_source_frame(
+    app: AppHandle,
+    session: String,
+    transition: u32,
+    side: String,
+    frame: u32,
+) -> Result<tauri::ipc::Response, String> {
+    textlayer::read_source_frame(&cache_root(&app), &session, transition, &side, frame)
+        .map(tauri::ipc::Response::new)
+}
+
 #[tauri::command]
 pub fn text_layer_discard(app: AppHandle, session: String) {
     textlayer::discard(&cache_root(&app), &session);
