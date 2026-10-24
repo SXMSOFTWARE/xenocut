@@ -1,0 +1,54 @@
+{
+  "format": "xenocut-pack/1",
+  "version": "1.0.0",
+  "author": "XenoCut contributors",
+  "license": "CC0-1.0",
+  "homepage": "https://github.com/sxmsoft/xenocut/tree/main/catalog",
+  "id": "xenocut.lottie-titles",
+  "name": "Animated Titles",
+  "description": "Six Lottie titles with editable text: lower third, title pop, chapter, quote card, subscribe button and a 3-2-1 countdown.",
+  "lottie": [
+    {
+      "id": "lower-third",
+      "name": "Lower Third",
+      "category": "titles",
+      "file": "lottie/lower-third.json",
+      "kind": "text"
+    },
+    {
+      "id": "title-pop",
+      "name": "Title Pop",
+      "category": "titles",
+      "file": "lottie/title-pop.json",
+      "kind": "text"
+    },
+    {
+      "id": "chapter",
+      "name": "Chapter Title",
+      "category": "titles",
+      "file": "lottie/chapter.json",
+      "kind": "text"
+    },
+    {
+      "id": "quote",
+      "name": "Quote Card",
+      "category": "titles",
+      "file": "lottie/quote.json",
+      "kind": "text"
+    },
+    {
+      "id": "subscribe",
+      "name": "Subscribe Button",
+      "category": "social",
+      "file": "lottie/subscribe.json",
+      "kind": "text"
+    },
+    {
+      "id": "countdown",
+      "name": "Countdown 3-2-1",
+      "category": "titles",
+      "file": "lottie/countdown.json",
+      "kind": "text"
+    }
+  ]
+}

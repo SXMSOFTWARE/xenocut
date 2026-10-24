@@ -1,0 +1,103 @@
+{
+  "format": "xenocut-pack/1",
+  "version": "1.0.0",
+  "author": "XenoCut contributors",
+  "license": "CC0-1.0",
+  "homepage": "https://github.com/sxmsoft/xenocut/tree/main/catalog",
+  "id": "xenocut.lottie-stickers",
+  "name": "Animated Stickers",
+  "description": "Thirteen looping Lottie stickers: sparkles, hearts, confetti, badges, social prompts and hand-drawn highlights.",
+  "lottie": [
+    {
+      "id": "sparkle-burst",
+      "name": "Sparkle Burst",
+      "category": "sparkle",
+      "file": "lottie/sparkle-burst.json",
+      "kind": "overlay"
+    },
+    {
+      "id": "heart-pop",
+      "name": "Heart Pop",
+      "category": "love",
+      "file": "lottie/heart-pop.json",
+      "kind": "overlay"
+    },
+    {
+      "id": "confetti",
+      "name": "Confetti",
+      "category": "celebrate",
+      "file": "lottie/confetti.json",
+      "kind": "overlay"
+    },
+    {
+      "id": "done-check",
+      "name": "Done Check",
+      "category": "badge",
+      "file": "lottie/done-check.json",
+      "kind": "overlay"
+    },
+    {
+      "id": "five-stars",
+      "name": "Five Stars",
+      "category": "badge",
+      "file": "lottie/five-stars.json",
+      "kind": "overlay"
+    },
+    {
+      "id": "bell",
+      "name": "Notification Bell",
+      "category": "social",
+      "file": "lottie/bell.json",
+      "kind": "overlay"
+    },
+    {
+      "id": "swipe-up",
+      "name": "Swipe Up",
+      "category": "social",
+      "file": "lottie/swipe-up.json",
+      "kind": "overlay"
+    },
+    {
+      "id": "location-pin",
+      "name": "Location Pin",
+      "category": "badge",
+      "file": "lottie/location-pin.json",
+      "kind": "overlay"
+    },
+    {
+      "id": "radar-pulse",
+      "name": "Radar Pulse",
+      "category": "shape",
+      "file": "lottie/radar-pulse.json",
+      "kind": "overlay"
+    },
+    {
+      "id": "loading",
+      "name": "Loading Ring",
+      "category": "shape",
+      "file": "lottie/loading.json",
+      "kind": "overlay"
+    },
+    {
+      "id": "wink",
+      "name": "Wink",
+      "category": "emoji",
+      "file": "lottie/wink.json",
+      "kind": "overlay"
+    },
+    {
+      "id": "scribble-circle",
+      "name": "Scribble Circle",
+      "category": "highlight",
+      "file": "lottie/scribble-circle.json",
+      "kind": "overlay"
+    },
+    {
+      "id": "underline",
+      "name": "Scribble Underline",
+      "category": "highlight",
+      "file": "lottie/underline.json",
+      "kind": "overlay"
+    }
+  ]
+}
