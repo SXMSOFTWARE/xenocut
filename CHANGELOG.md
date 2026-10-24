@@ -2,6 +2,48 @@
 
 Tüm önemli değişiklikler bu dosyada. Sürümler GitHub'da ön sürüm (pre-release) olarak yayınlanır.
 
+## v0.7.0 — 2026-10-24
+
+Geçiş motoru (yerleşik geçişler ve gl-transitions GLSL paketleri), Lottie çıkartma ve başlıkları, Linux'ta OpenFX/frei0r eklenti efektleri, temalar, sağ tık menüleri, kısayollar ve çok daha zengin bir hazır içerik kataloğu.
+
+### Geçişler
+- Aynı izdeki iki komşu klip arasına geçiş eklenebilir. Yeni "Geçişler" paneli CapCut tarzı kategorilere ayrılmış ve her kartta canlı oynayan bir önizleme var: Temel, Kayma, Silme, Şekil, Bulanıklık, Glitch, 3B/Hareket.
+- 58 yerleşik geçiş FFmpeg xfade ile dışa aktarılır. Önizlemede aynı formüller WebGL ile çizilir; her geçiş FFmpeg çıktısıyla piksel piksel karşılaştırılarak test edildi.
+- gl-transitions koleksiyonundan 121 GLSL geçiş, katalogda 4 paket olarak geliyor (MIT lisanslı, lisans paketin içinde). Önizlemede WebGL ile, dışa aktarmada FFmpeg'in verdiği kareler WebGL ile işlenerek çizilir, bu yüzden ikisi aynı sonucu verir.
+- Zaman çizelgesinde kesim işaretleri var ve süre tutamaçlarla ayarlanır. Denetçide süre, değiştirme ve kaldırma seçenekleri bulunur. Telefonda alttan açılan sayfa olarak çalışır.
+- Geçiş paketleri `.glsl` dosyası veya paket olarak yüklenebilir.
+
+### Lottie (After Effects / Bodymovin)
+- Bodymovin JSON dosyaları animasyonlu katman olarak eklenebiliyor. Önizlemede lottie-web ile oynatılır, dışa aktarmada kare kare rasterleştirilir.
+- Metin katmanı içeren Lottie dosyaları başlık olarak eklenir ve yazıları düzenlenebilir.
+- Yeni "Çıkartmalar" paneli: Lottie tarayıcısı, önizlemede sürükleme, zaman çizelgesinde etiketler. Masaüstünde ve telefonda çalışır.
+- Katalogda iki yeni CC0 paket var: Animasyonlu Çıkartmalar (13 döngü: parıltı, kalpler, konfeti, rozetler, sosyal medya çağrıları) ve Animasyonlu Başlıklar (6 düzenlenebilir başlık: alt yazı bandı, bölüm, alıntı kartı, abone ol...).
+
+### Eklenti efektleri: OpenFX ve frei0r (Linux)
+- Linux masaüstünde, kullanıcının kendi kurduğu OpenFX (`.ofx.bundle`) ve frei0r eklentileri klip efekti olarak kullanılabilir. Eklentiler `OFX_PLUGIN_PATH`, `/usr/OFX/Plugins`, `FREI0R_PATH` ve standart frei0r klasörlerinde aranır.
+- Eklentiler ayrı bir yardımcı süreçte çalışır ve kareler paylaşılan bellek üzerinden aktarılır. Bir eklenti çökerse yardımcı süreç yeniden başlatılır ve çöken eklenti engellenir; uygulama kapanmaz.
+- Parametre arayüzü eklentinin bildirdiği parametrelerden otomatik üretilir (kaydırıcı, onay kutusu, renk, seçim).
+- Önizlemede kare yardımcı süreçten geçirilerek gösterilir. Dışa aktarmada efekt, klibin sesiyle birlikte bir ara dosyaya işlenir; ses hiçbir zaman kaybolmaz.
+- XenoCut hiçbir OpenFX/frei0r eklentisi içermez. Windows ve Android'de bu bölüm şimdilik yok.
+
+### Daha zengin hazır içerik
+- **Efektler:** 20 yeni görünüm, toplam 62. Örnekler: karamsar, canlı, pastel, altın saat, arktik, bleach bypass, gümüş perde, anı, polaroid, röntgen, siber glitch, TV karıncalanması, kamera kaydı, sinemaskop, rüya ışıltısı, müzik klibi, elde çekim, dramatik zoom ve vuruş flaşı/zoom'u.
+- **Metin animasyonları:** 6 yeni giriş, 5 yeni çıkış ve 6 yeni vurgu animasyonu. Örnekler: kelime kelime yükselme, dönme, zıplama, uçma, esneme, silinme, glitch, sallanma, kalp atışı, nefes, titreme, gökkuşağı.
+- **Yazı stilleri:** 6 yeni hazır stil, toplam 21: glitch başlık, gökkuşağı, aşk notu, dönen başlık, hikâye başlığı, esnek bant.
+- **Klip animasyonları:** 10 yeni giriş/çıkış ve 7 yeni kombo animasyonu. Örnekler: yükselme, düşme, yuvarlanma, eğilme, esnek, zoom bulanıklığı, flaş zoom, RGB giriş, Ken Burns, vuruş darbesi, glitch döngüsü.
+- **Geçişler:** Bulanık Karışım ve Renk Mesafesi.
+
+### Düzenleyici
+- Temalar: yerleşik XenoCut, Modern, Basic ve Classic temaları; Modern, Classic ve Basic için yerleşik düzenler. Renk ve yoğunluk ayarları, kendi temanı kaydetme, dışa ve içe aktarma. Tema paketleri eklenti olarak yüklenebilir.
+- Her yerde sağ tık menüsü (klip, iz, medya, önizleme, efektler); telefonda uzun basma. Seçim kutusuyla çoklu seçim ve grup halinde sürükleme, iz kilidi, cetvel işaretleri, giriş/çıkış aralığı.
+- Kısayollar: Premiere ve CapCut tuş düzenleri, kısayol listesi (`?`), Ayarlar'dan tuş değiştirme.
+- Klip kopyala/kes/yapıştır/çoğalt, efekt ve özellik kopyalama, sesi ayırma, klibi yeniden adlandırma.
+
+### Bilinen sınırlar
+- OpenFX/frei0r yalnızca Linux masaüstünde var.
+- GLSL geçişlerinin önizlemesi, geçiş süresince klibin efektsiz, işlenmemiş görüntüsünü kullanır. Dışa aktarmada klip efektleri ve animasyonları geçişe dahildir.
+- Bazı OpenFX eklentileri, ör. analiz ve izleme eklentileri (ImageStatistics, TrackerPM) ile çoklu giriş isteyenler (Shuffle, Switch), henüz desteklenmiyor.
+
 ## v0.6.0 — 2026-10-24
 
 Eklenti sistemi (LUT, görünüm, animasyon ve yazı stili paketleri), CapCut tarzı klip animasyonları ve Linux AppImage'da önizlemenin açılmaması (MediaError 4) sorununun düzeltmesi.
