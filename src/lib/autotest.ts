@@ -14,6 +14,7 @@ import { useAssets } from "../store/assets";
 import type { Grade } from "../project/grade";
 import { addTextClip, projectDuration, updateClip } from "../project/ops";
 import type { EffectKind } from "../project/effects";
+import { PRESETS } from "../project/presets";
 import { textFromPreset } from "../project/text";
 import { renderTextLayer, discardTextLayer } from "../text/exportLayer";
 import { api } from "./backend";
@@ -82,8 +83,9 @@ export async function runAutotest(file: string) {
 /** fx=blur:30+vignette:60[,at=2][,export=out.mp4]: puts effects on the first video clip. */
 async function fxProbe() {
   const o = opts();
-  if (!o.fx) return;
-  const effects = o.fx.split("+").map((part) => {
+  if (!o.fx && !o.look) return;
+  const look = PRESETS.find((p) => p.id === o.look);
+  const effects = look ? look.effects : o.fx.split("+").map((part) => {
     const [kind, amount] = part.split(":");
     return { kind: kind as EffectKind, amount: amount === undefined ? 1 : Number(amount) / 100 };
   });
