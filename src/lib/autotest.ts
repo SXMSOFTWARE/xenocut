@@ -23,6 +23,7 @@ import type { Clip } from "../project/types";
 import { PRESETS } from "../project/presets";
 import { textFromPreset } from "../project/text";
 import { renderTextLayer, discardTextLayer } from "../text/exportLayer";
+import { discardTransitionFrames, renderTransitionFrames } from "../transitions/exportFrames";
 import { api } from "./backend";
 import { cuesFromProject, maxCharsFor, setSubtitles, shiftLines } from "../project/subtitles";
 import { fitToSong, songRange, splitLyrics, spreadLines } from "../pages/editor/LyricsPanel";
@@ -519,6 +520,8 @@ export async function exportProbe(path: string | undefined) {
   try {
     const layer = await renderTextLayer(project, project.settings.width, project.settings.height, project.settings.fps, () => {}, () => false);
     const t1 = performance.now();
+    const shaders = await renderTransitionFrames(project, project.settings.width, project.settings.height, project.settings.fps, () => {}, () => false);
+    const t2 = performance.now();
     const out = await api.exportStart(project, {
       outputPath: path,
       width: project.settings.width,
@@ -526,9 +529,11 @@ export async function exportProbe(path: string | undefined) {
       fps: project.settings.fps,
       quality: "fast",
       textOverlay: layer?.list,
+      transitionFrames: shaders?.lists,
     });
     discardTextLayer(layer);
-    log("autotest", `EXPORT ok ${JSON.stringify({ path: out.path, bytes: out.bytes, frames: layer?.frames, textMs: Math.round(t1 - t0), totalMs: Math.round(performance.now() - t0), duration: projectDuration(project) })}`);
+    discardTransitionFrames(shaders);
+    log("autotest", `EXPORT ok ${JSON.stringify({ path: out.path, bytes: out.bytes, frames: layer?.frames, textMs: Math.round(t1 - t0), shaderFrames: shaders?.frames, shaderFailed: shaders?.failed, shaderMs: Math.round(t2 - t1), totalMs: Math.round(performance.now() - t0), duration: projectDuration(project) })}`);
   } catch (error) {
     log("autotest", `EXPORT failed ${String(error)}`);
   }

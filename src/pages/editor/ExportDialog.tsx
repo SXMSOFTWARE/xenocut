@@ -11,8 +11,9 @@ import { useEditorUi } from "../../store/editorUi";
 import { useProject } from "../../store/project";
 import { useSettings } from "../../store/settings";
 import { discardTextLayer, hasVisibleText, renderTextLayer, type TextLayerJob } from "../../text/exportLayer";
+import { discardTransitionFrames, hasShaderTransitions, renderTransitionFrames, type TransitionFramesJob } from "../../transitions/exportFrames";
 
-type Phase = { kind: "setup" } | { kind: "running"; progress: number; step: "text" | "video" } | { kind: "done"; path: string; bytes: number; seconds: number } | { kind: "error"; message: string } | { kind: "cancelled" };
+type Phase = { kind: "setup" } | { kind: "running"; progress: number; step: "text" | "transitions" | "video" } | { kind: "done"; path: string; bytes: number; seconds: number } | { kind: "error"; message: string } | { kind: "cancelled" };
 
 const SAFE = /[\\/:*?"<>|]+/g;
 
@@ -49,17 +50,22 @@ export function ExportDialog() {
   };
 
   const withText = hasVisibleText(project);
-  // Text frames are drawn first (about the first 15% of the bar), then FFmpeg renders.
+  const withShaders = hasShaderTransitions(project);
+  // Text frames are drawn first (about the first 15% of the bar), then shader transitions
+  // (about 10%), then FFmpeg renders.
   const textShare = withText ? 0.15 : 0;
+  const shaderShare = withShaders ? 0.1 : 0;
+  const preShare = textShare + shaderShare;
 
   const start = async () => {
     cancelRef.current = false;
     setPhase({ kind: "running", progress: 0, step: withText ? "text" : "video" });
     const began = performance.now();
     const unlisten = await listen<ProgressEvent>("export-progress", (p) =>
-      setPhase((prev) => (prev.kind === "running" ? { kind: "running", step: "video", progress: textShare + (1 - textShare) * p.progress } : prev)),
+      setPhase((prev) => (prev.kind === "running" ? { kind: "running", step: "video", progress: preShare + (1 - preShare) * p.progress } : prev)),
     );
     let layer: TextLayerJob | null = null;
+    let shaders: TransitionFramesJob | null = null;
     try {
       layer = await renderTextLayer(
         project,
@@ -70,7 +76,24 @@ export function ExportDialog() {
         () => cancelRef.current,
       );
       if (cancelRef.current) throw new Error("cancelled");
-      const result = await api.exportStart(project, { outputPath: path, width: size.width, height: size.height, fps, quality, textOverlay: layer?.list });
+      shaders = await renderTransitionFrames(
+        project,
+        size.width,
+        size.height,
+        fps,
+        (p) => setPhase((prev) => (prev.kind === "running" ? { kind: "running", step: "transitions", progress: textShare + shaderShare * p } : prev)),
+        () => cancelRef.current,
+      );
+      if (cancelRef.current) throw new Error("cancelled");
+      const result = await api.exportStart(project, {
+        outputPath: path,
+        width: size.width,
+        height: size.height,
+        fps,
+        quality,
+        textOverlay: layer?.list,
+        transitionFrames: shaders?.lists,
+      });
       setPhase({ kind: "done", path: result.path, bytes: result.bytes, seconds: (performance.now() - began) / 1000 });
     } catch (error) {
       const message = messageOf(error);
@@ -78,6 +101,7 @@ export function ExportDialog() {
     } finally {
       unlisten();
       discardTextLayer(layer);
+      discardTransitionFrames(shaders);
     }
   };
 
@@ -199,7 +223,7 @@ export function ExportDialog() {
           <div className="progress">
             <i style={{ width: `${Math.max(2, phase.progress * 100)}%` }} />
           </div>
-          <p className="muted">{t(phase.step === "text" ? "export.renderingText" : "export.rendering")}</p>
+          <p className="muted">{t(phase.step === "text" ? "export.renderingText" : phase.step === "transitions" ? "export.renderingTransitions" : "export.rendering")}</p>
         </div>
       )}
 

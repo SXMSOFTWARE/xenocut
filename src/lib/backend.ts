@@ -204,6 +204,8 @@ export interface ExportOptions {
   quality: "fast" | "balanced" | "high";
   /** ffconcat list of the pre-rendered text layer (see text/exportLayer.ts). */
   textOverlay?: string;
+  /** Outgoing clip id → ffconcat list of a pre-rendered shader transition (transitions/exportFrames.ts). */
+  transitionFrames?: Record<string, string>;
 }
 
 export interface ProgressEvent {
