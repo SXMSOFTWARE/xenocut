@@ -2,18 +2,32 @@
 import { create } from "zustand";
 import { api } from "../lib/backend";
 import type { MediaAssets, MediaItem } from "../project/types";
+import { needsDecodeProxy, proxyCodec } from "../lib/playable";
+import { useSettings } from "./settings";
 
 interface AssetState {
   assets: Record<string, MediaAssets | undefined>;
   pending: Record<string, boolean>;
   /** Preview proxies by original path: a file path when ready, null while building or after a failure. */
   proxies: Record<string, string | null | undefined>;
+  /** Paths whose preview must use the proxy whatever the setting says (the original cannot be decoded here). */
+  forced: Record<string, true>;
+  /** Paths whose proxy could not be built, with FFmpeg's message. */
+  failed: Record<string, string>;
   request: (media: MediaItem) => void;
-  requestProxy: (media: MediaItem) => void;
+  /**
+   * Queue a preview copy when the setting asks for one, when this web view cannot decode the file,
+   * or when `force`d after a playback failure. Resolves to the proxy path (null when none).
+   */
+  requestProxy: (media: MediaItem, force?: boolean) => Promise<string | null>;
   reset: () => void;
 }
 
 export const PROXY_HEIGHT = 540;
+
+/** Containers / codecs every supported web view decodes (WebKitGTK's bundled GStreamer included). */
+const ALWAYS_PLAYABLE = /\.(webm|mkv|ogg|ogv|oga|opus|mp3|wav|flac)$/i;
+const inflight = new Map<string, Promise<string | null>>();
 let proxyChain: Promise<unknown> = Promise.resolve();
 
 const queue: MediaItem[] = [];
@@ -41,6 +55,8 @@ export const useAssets = create<AssetState>((set, get) => ({
   assets: {},
   pending: {},
   proxies: {},
+  forced: {},
+  failed: {},
   request: (media) => {
     const { assets, pending } = get();
     if (assets[media.path] || pending[media.path]) return;
@@ -48,14 +64,40 @@ export const useAssets = create<AssetState>((set, get) => ({
     queue.push(media);
     pump();
   },
-  requestProxy: (media) => {
-    if (media.kind !== "video" || media.height <= PROXY_HEIGHT || media.path in get().proxies) return;
-    set((s) => ({ proxies: { ...s.proxies, [media.path]: null } }));
+  requestProxy: (media, force = false) => {
+    if (media.kind === "image") return Promise.resolve(null);
+    const decode = force || (needsDecodeProxy() && !ALWAYS_PLAYABLE.test(media.path));
+    if (!decode && !(useSettings.getState().previewProxy && media.kind === "video" && media.height > PROXY_HEIGHT)) {
+      return Promise.resolve(null);
+    }
+    const codec = decode ? proxyCodec() : "h264";
+    const key = `${codec}:${media.path}`;
+    if (decode && !get().forced[media.path]) set((s) => ({ forced: { ...s.forced, [media.path]: true } }));
+    const existing = get().proxies[media.path];
+    // A ready proxy is reused unless it is an MP4 and this web view needs WebM.
+    if (existing && !(codec === "webm" && !existing.endsWith(".webm"))) return Promise.resolve(existing);
+    const running = inflight.get(key);
+    if (running) return running;
+    if (!existing) set((s) => ({ proxies: { ...s.proxies, [media.path]: null } }));
     // One FFmpeg encode at a time so a big import never pins every core.
-    proxyChain = proxyChain
-      .then(() => api.mediaProxy(media.path))
-      .then((proxy) => set((s) => ({ proxies: { ...s.proxies, [media.path]: proxy } })))
-      .catch(() => {});
+    const job = proxyChain
+      .then(() => api.mediaProxy(media.path, codec, media.kind === "video" && media.hasVideo !== false))
+      .then((proxy) => {
+        set((s) => {
+          const failed = { ...s.failed };
+          delete failed[media.path];
+          return { proxies: { ...s.proxies, [media.path]: proxy }, failed };
+        });
+        return proxy;
+      })
+      .catch((error) => {
+        set((s) => ({ failed: { ...s.failed, [media.path]: String(error) } }));
+        return null;
+      })
+      .finally(() => inflight.delete(key));
+    inflight.set(key, job);
+    proxyChain = job;
+    return job;
   },
-  reset: () => set({ assets: {}, pending: {}, proxies: {} }),
+  reset: () => set({ assets: {}, pending: {}, proxies: {}, forced: {}, failed: {} }),
 }));

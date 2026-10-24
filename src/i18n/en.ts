@@ -65,6 +65,8 @@ export const en: Record<keyof typeof tr, string> = {
   "bin.remove": "Remove",
   "preview.empty": "Drag media onto the timeline to preview it",
   "preview.mediaError": "This media could not be played",
+  "preview.converting": "Preparing a preview copy…",
+  "preview.convertingHint": "{name} can't be decoded directly on this system, so a playable preview copy is being made. Exports always use the original file.",
   "preview.start": "Go to start",
   "preview.prevFrame": "Previous frame",
   "preview.play": "Play / pause",

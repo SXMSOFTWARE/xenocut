@@ -70,6 +70,8 @@ export const tr = {
   // preview
   "preview.empty": "Önizleme için medyayı zaman çizelgesine sürükle",
   "preview.mediaError": "Bu medya oynatılamadı",
+  "preview.converting": "Önizleme kopyası hazırlanıyor…",
+  "preview.convertingHint": "{name} bu sistemde doğrudan çözülemiyor; oynatılabilir bir önizleme kopyası oluşturuluyor. Dışa aktarma her zaman orijinal dosyayı kullanır.",
   "preview.start": "Başa git",
   "preview.prevFrame": "Önceki kare",
   "preview.play": "Oynat / duraklat",

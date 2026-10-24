@@ -147,7 +147,7 @@ export const api = {
   projectSave: (path: string, project: Project) => call<void>("project_save", { path, project }),
   projectLoad: (path: string) => call<Project>("project_load", { path }),
   mediaProbe: (paths: string[]) => call<{ items: ProbeInfo[]; errors: string[] }>("media_probe", { paths }),
-  mediaProxy: (path: string) => call<string>("media_proxy", { path }),
+  mediaProxy: (path: string, codec: "h264" | "webm" = "h264", video = true) => call<string>("media_proxy", { path, codec, video }),
   mediaAssets: (path: string, kind: MediaKind, duration: number, hasAudio: boolean) =>
     call<MediaAssets>("media_assets", { path, kind, duration, hasAudio }),
   cacheInfo: () => call<{ bytes: number; path: string }>("cache_info"),

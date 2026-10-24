@@ -194,5 +194,5 @@ export async function openMediaAsProject(path: string, name: string): Promise<bo
 /** Thumbnails/waveforms, and the 540p preview copy in the background when that option is on. */
 function requestAssets(media: MediaItem) {
   useAssets.getState().request(media);
-  if (useSettings.getState().previewProxy) useAssets.getState().requestProxy(media);
+  void useAssets.getState().requestProxy(media);
 }

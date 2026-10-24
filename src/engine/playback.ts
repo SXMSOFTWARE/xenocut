@@ -3,6 +3,7 @@
 // clock (smooth A/V); in gaps or audio-only stretches the wall clock takes over.
 import { useSettings } from "../store/settings";
 import { useAssets } from "../store/assets";
+import { needsDecodeProxy } from "../lib/playable";
 import { fileSrc, log } from "../lib/backend";
 import { clipDuration, clipEnd, projectDuration } from "../project/ops";
 import type { Clip, MediaItem, Project, Track } from "../project/types";
@@ -53,18 +54,50 @@ function watch(el: HTMLMediaElement | HTMLImageElement) {
     if (!el.dataset.path) return; // src removed on purpose
     const message = describeError(el);
     log("error", `playback: ${message}`);
-    usePlayback.setState({ mediaError: message });
+    if (!(el instanceof HTMLImageElement) && convertUndecodable(el.dataset.path, el.error?.code ?? 0, message)) return;
+    usePlayback.setState({ mediaError: message, mediaConverting: null });
   });
   const ok = () => {
-    if (usePlayback.getState().mediaError) usePlayback.setState({ mediaError: null });
+    const s = usePlayback.getState();
+    if (s.mediaError || s.mediaConverting) usePlayback.setState({ mediaError: null, mediaConverting: null });
   };
   el.addEventListener(el instanceof HTMLImageElement ? "load" : "loadeddata", ok);
 }
 
+/**
+ * "Format not supported" / "decode" errors on an original file: build a preview copy this web view
+ * can decode (WebM where H.264 is missing) and swap to it, instead of leaving a dead preview.
+ * Returns false when there is nothing to convert (the failing file already is a proxy).
+ */
+function convertUndecodable(playing: string, code: number, message: string): boolean {
+  if (code !== 3 && code !== 4) return false;
+  const assets = useAssets.getState();
+  if (Object.values(assets.proxies).includes(playing)) return false;
+  const media = useProject.getState().project?.media.find((m) => m.path === playing);
+  if (!media) return false;
+  usePlayback.setState({ mediaError: null, mediaConverting: media.name });
+  void assets.requestProxy(media, true).then((proxy) => {
+    if (usePlayback.getState().mediaConverting !== media.name) return;
+    if (proxy) {
+      log("info", `playback: using preview copy ${proxy} for ${playing}`);
+      usePlayback.setState({ mediaConverting: null });
+      engine.seek(usePlayback.getState().time);
+    } else {
+      const why = useAssets.getState().failed[playing] ?? "";
+      usePlayback.setState({ mediaConverting: null, mediaError: `${message}${why ? ` · proxy: ${why.slice(0, 200)}` : ""}` });
+    }
+  });
+  return true;
+}
+
 /** The file the preview should actually play: the 540p proxy when that option is on and it is ready. */
 function previewPath(path: string): string {
-  if (!useSettings.getState().previewProxy) return path;
-  return useAssets.getState().proxies[path] ?? path;
+  const assets = useAssets.getState();
+  if (!useSettings.getState().previewProxy && !assets.forced[path]) return path;
+  const proxy = assets.proxies[path];
+  // An older MP4 proxy is no use where H.264 cannot be decoded; wait for the WebM one.
+  if (proxy && assets.forced[path] && needsDecodeProxy() && !proxy.endsWith(".webm")) return path;
+  return proxy ?? path;
 }
 
 /** Elements the per-clip effects preview drives (see project/effects.ts). */

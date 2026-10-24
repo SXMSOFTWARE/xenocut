@@ -239,41 +239,68 @@ pub fn wave_args(input: &Path, duration: f64, out: &Path) -> Vec<String> {
 /// Height of the optional low-resolution preview copy.
 pub const PROXY_HEIGHT: u32 = 540;
 
-/// A light 540p H.264 copy for preview only (exports always read the original). Keyframes every
-/// half second keep scrubbing cheap; `faststart` lets playback begin before the file is read.
-pub fn proxy_args(input: &Path, out: &Path) -> Vec<String> {
-    [
-        "-hide_banner", "-loglevel", "error", "-y", "-i",
-    ]
-    .iter()
-    .map(|s| s.to_string())
-    .chain([input.display().to_string()])
-    .chain(
-        [
-            "-map", "0:v:0", "-map", "0:a:0?", "-sn", "-dn",
-            "-vf", &format!("scale=-2:'min({PROXY_HEIGHT},ih)'"),
-            "-c:v", "libx264", "-preset", "veryfast", "-crf", "26", "-g", "15", "-pix_fmt", "yuv420p",
-            "-c:a", "aac", "-b:a", "128k", "-movflags", "+faststart",
-        ]
-        .iter()
-        .map(|s| s.to_string()),
-    )
-    .chain([out.display().to_string()])
-    .collect()
+/// Which codecs a preview proxy is written in.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, serde::Deserialize)]
+#[serde(rename_all = "lowercase")]
+pub enum ProxyCodec {
+    /// H.264 + AAC in MP4: the light default where the web view can decode H.264.
+    H264,
+    /// VP8 + Opus in WebM. Some Linux builds (e.g. the AppImage's bundled GStreamer) ship VP8/Opus
+    /// decoders but no H.264/AAC ones; this is what those can always play.
+    Webm,
+}
+
+impl ProxyCodec {
+    fn extension(self) -> &'static str {
+        match self {
+            ProxyCodec::H264 => "mp4",
+            ProxyCodec::Webm => "webm",
+        }
+    }
+}
+
+/// A light 540p copy for preview only (exports always read the original). Keyframes every
+/// half second keep scrubbing cheap; MP4s get `faststart` so playback begins before the file is
+/// read. Audio-only inputs (`video == false`) keep just the sound.
+pub fn proxy_args(input: &Path, out: &Path, codec: ProxyCodec, video: bool) -> Vec<String> {
+    let mut args: Vec<String> = ["-hide_banner", "-loglevel", "error", "-y", "-i"].iter().map(|s| s.to_string()).collect();
+    args.push(input.display().to_string());
+    let mut push = |items: &[&str]| args.extend(items.iter().map(|s| s.to_string()));
+    if video {
+        push(&["-map", "0:v:0", "-map", "0:a:0?", "-sn", "-dn"]);
+        push(&["-vf", &format!("scale=-2:'min({PROXY_HEIGHT},ih)',format=yuv420p")]);
+        match codec {
+            ProxyCodec::H264 => push(&["-c:v", "libx264", "-preset", "veryfast", "-crf", "26", "-g", "15"]),
+            ProxyCodec::Webm => push(&[
+                "-c:v", "libvpx", "-deadline", "realtime", "-cpu-used", "8", "-b:v", "2500k", "-crf", "10",
+                "-qmin", "4", "-qmax", "40", "-g", "15", "-auto-alt-ref", "0", "-threads", "4",
+            ]),
+        }
+    } else {
+        push(&["-map", "0:a:0", "-vn", "-sn", "-dn"]);
+    }
+    match codec {
+        ProxyCodec::H264 => push(&["-c:a", "aac", "-b:a", "128k", "-movflags", "+faststart"]),
+        ProxyCodec::Webm => push(&["-c:a", "libopus", "-b:a", "128k", "-ar", "48000"]),
+    }
+    args.push(out.display().to_string());
+    args
 }
 
 /// Build (or reuse) the preview proxy of `input`. Written to a temp name first so a half-written
 /// file is never served.
-pub fn proxy(cache_dir: &Path, input: &Path) -> Result<String, String> {
+pub fn proxy(cache_dir: &Path, input: &Path, codec: ProxyCodec, video: bool) -> Result<String, String> {
     let dir = cache_dir.join("media");
-    let out = dir.join(format!("{}-proxy{PROXY_HEIGHT}.mp4", cache_key(input)));
+    let ext = codec.extension();
+    let tag = if video { format!("proxy{PROXY_HEIGHT}") } else { "proxya".to_string() };
+    let out = dir.join(format!("{}-{tag}.{ext}", cache_key(input)));
     if out.is_file() {
         return Ok(out.display().to_string());
     }
     std::fs::create_dir_all(&dir).map_err(|e| e.to_string())?;
-    let tmp = out.with_extension("part.mp4");
+    let tmp = out.with_extension(format!("part.{ext}"));
     let bin = ffmpeg::ffmpeg_binary().map_err(|e| e.to_string())?;
-    let output = Command::new(bin).args(proxy_args(input, &tmp)).output().map_err(|e| e.to_string())?;
+    let output = Command::new(bin).args(proxy_args(input, &tmp, codec, video)).output().map_err(|e| e.to_string())?;
     if !output.status.success() {
         let _ = std::fs::remove_file(&tmp);
         return Err(String::from_utf8_lossy(&output.stderr).trim().to_string());
@@ -395,5 +422,35 @@ mod tests {
         assert_eq!(strip_count(2.0), 6);
         assert_eq!(strip_count(20.2), 21);
         assert_eq!(strip_count(3600.0), 60);
+    }
+
+    /// A WebM proxy (VP8 + Opus) of an H.264/AAC source, and an audio-only one, through the real ffmpeg.
+    #[test]
+    fn builds_webm_proxies() {
+        let Ok(bin) = ffmpeg::ffmpeg_binary() else {
+            eprintln!("skipping: ffmpeg missing");
+            return;
+        };
+        let dir = std::env::temp_dir().join(format!("xc-proxy-{}", std::process::id()));
+        std::fs::create_dir_all(&dir).unwrap();
+        let src = dir.join("src.mp4");
+        let ok = Command::new(&bin)
+            .args(["-y", "-loglevel", "error", "-f", "lavfi", "-i", "testsrc2=s=1280x720:r=30:d=2", "-f", "lavfi", "-i", "sine=f=440:d=2"])
+            .args(["-c:v", "libx264", "-pix_fmt", "yuvj420p", "-c:a", "aac", "-shortest"])
+            .arg(&src)
+            .status()
+            .unwrap();
+        assert!(ok.success());
+        let out = proxy(&dir, &src, ProxyCodec::Webm, true).unwrap();
+        assert!(out.ends_with(".webm"), "{out}");
+        let probe = Command::new(&bin).args(["-hide_banner", "-i", &out]).output().unwrap();
+        let text = String::from_utf8_lossy(&probe.stderr);
+        assert!(text.contains("Video: vp8") && text.contains("yuv420p") && text.contains("Audio: opus"), "{text}");
+        assert!(text.contains("x540"), "{text}");
+        let audio = proxy(&dir, &src, ProxyCodec::Webm, false).unwrap();
+        let probe = Command::new(&bin).args(["-hide_banner", "-i", &audio]).output().unwrap();
+        let text = String::from_utf8_lossy(&probe.stderr);
+        assert!(text.contains("Audio: opus") && !text.contains("Video:"), "{text}");
+        let _ = std::fs::remove_dir_all(&dir);
     }
 }

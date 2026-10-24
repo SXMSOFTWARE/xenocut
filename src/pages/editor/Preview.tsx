@@ -40,6 +40,7 @@ export function Preview() {
   const grade = useProject((s) => s.project?.settings.grade);
   const empty = useProject((s) => (s.project?.clips.length ?? 0) === 0);
   const mediaError = usePlayback((s) => s.mediaError);
+  const converting = usePlayback((s) => s.mediaConverting);
   const lite = useSettings((s) => s.performanceMode);
   const proxyOn = useSettings((s) => s.previewProxy);
   const media = useProject((s) => s.project?.media);
@@ -49,8 +50,8 @@ export function Preview() {
   const liveGrade = grade && grade !== "none" && !lite ? gradeFilter(grade) : undefined;
 
   useEffect(() => {
-    if (!proxyOn || !media) return;
-    for (const m of media) useAssets.getState().requestProxy(m);
+    if (!media) return;
+    for (const m of media) void useAssets.getState().requestProxy(m);
   }, [proxyOn, media]);
 
   // Swap sources when a proxy finishes or the option is toggled.
@@ -208,6 +209,12 @@ export function Preview() {
         <TextSelection width={width} height={height} />
         {empty && <div className="stage-empty">{t("preview.empty")}</div>}
       </div>
+      {converting && !mediaError && (
+        <div className="stage-error stage-notice" role="status" style={{ width: box.w }}>
+          <strong>{t("preview.converting")}</strong>
+          <span>{t("preview.convertingHint", { name: converting })}</span>
+        </div>
+      )}
       {mediaError && (
         <div className="stage-error" role="alert" style={{ width: box.w }}>
           <strong>{t("preview.mediaError")}</strong>

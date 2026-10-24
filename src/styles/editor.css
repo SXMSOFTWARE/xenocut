@@ -2217,3 +2217,9 @@ body.is-resizing .title-row {
   flex-direction: column;
   gap: 8px;
 }
+.stage-notice {
+  background: rgba(24, 20, 30, 0.92);
+  border-color: rgba(255, 255, 255, 0.18);
+  color: rgba(255, 255, 255, 0.86);
+  word-break: normal;
+}

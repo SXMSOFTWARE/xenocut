@@ -174,9 +174,11 @@ pub async fn media_assets(
 }
 
 #[tauri::command]
-pub async fn media_proxy(app: AppHandle, path: String) -> Result<String, String> {
+pub async fn media_proxy(app: AppHandle, path: String, codec: Option<media::ProxyCodec>, video: Option<bool>) -> Result<String, String> {
     let cache = cache_dir(&app);
-    tauri::async_runtime::spawn_blocking(move || media::proxy(&cache, Path::new(&path)))
+    let codec = codec.unwrap_or(media::ProxyCodec::H264);
+    let video = video.unwrap_or(true);
+    tauri::async_runtime::spawn_blocking(move || media::proxy(&cache, Path::new(&path), codec, video))
         .await
         .map_err(|e| e.to_string())?
 }
