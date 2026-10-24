@@ -1,11 +1,12 @@
 import type { Grade } from "./grade";
+import type { TextContent } from "./text";
 
 // The .xcut project model. Mirrored by `src-tauri/src/project.rs` (serde, camelCase).
 
 export type Aspect = "16:9" | "9:16" | "1:1" | "4:5";
 export type Resolution = "720p" | "1080p" | "1440p" | "4K";
 export type MediaKind = "video" | "audio" | "image";
-export type TrackKind = "video" | "audio" | "music";
+export type TrackKind = "video" | "audio" | "music" | "text";
 
 export interface ProjectSettings {
   aspect: Aspect;
@@ -54,6 +55,8 @@ export interface Clip {
   opacity: number;
   fadeIn: number;
   fadeOut: number;
+  /** Text clips only (mediaId is ""): content, style and animation. */
+  text?: TextContent;
 }
 
 export interface Project {

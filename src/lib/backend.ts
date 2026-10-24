@@ -192,6 +192,8 @@ export interface ExportOptions {
   height: number;
   fps: number;
   quality: "fast" | "balanced" | "high";
+  /** ffconcat list of the pre-rendered text layer (see text/exportLayer.ts). */
+  textOverlay?: string;
 }
 
 export interface ProgressEvent {
