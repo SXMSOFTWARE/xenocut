@@ -18,7 +18,8 @@ import { PRESETS } from "../project/presets";
 import { textFromPreset } from "../project/text";
 import { renderTextLayer, discardTextLayer } from "../text/exportLayer";
 import { api } from "./backend";
-import { maxCharsFor, setSubtitles } from "../project/subtitles";
+import { cuesFromProject, maxCharsFor, setSubtitles, shiftLines } from "../project/subtitles";
+import { fitToSong, songRange, splitLyrics, spreadLines } from "../pages/editor/LyricsPanel";
 import { useSubtitleJob } from "../store/subtitleJob";
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
@@ -76,6 +77,7 @@ export async function runAutotest(file: string) {
   snapshot("paused");
   await textProbe();
   await subsProbe();
+  await lyricsProbe();
   await fxProbe();
   await perfProbe();
 }
@@ -282,6 +284,60 @@ async function subsProbe() {
   log("autotest", "subs-ready");
   await sleep(800);
   await exportProbe(o.export);
+}
+
+/** lrc=/path.lrc[,style=lyric][,spread=1][,shift=0.5][,lrcout=/tmp/x.lrc][,at=s][,export=out.mp4]: lyrics round trip. */
+async function lyricsProbe() {
+  const o = opts();
+  if (!o.lrc) return;
+  const style = o.style ?? "lyric";
+  let cues = await api.subtitleRead(o.lrc);
+  if (o.tapsim) return tapProbe(cues.map((c) => c.text), o.tapsim.split(";").map(Number));
+  if (o.spread) {
+    const p = useProject.getState().project!;
+    cues = spreadLines(splitLyrics(cues.map((c) => c.text).join("\n")), songRange(p));
+  }
+  useProject.getState().commit((p) => setSubtitles(p, fitToSong(cues, songRange(p)), style, "Lyrics", undefined, "lyrics"));
+  if (o.shift) useProject.getState().commit((p) => shiftLines(p, Number(o.shift), "lyrics"));
+  useEditorUi.setState({ panel: "lyrics" });
+  const project = useProject.getState().project!;
+  const out = cuesFromProject(project, "lyrics").map((c) => ({ start: +c.start.toFixed(2), end: +c.end.toFixed(2), text: c.text }));
+  const subtitles = cuesFromProject(project, "subtitles").length;
+  let written: string | null = null;
+  if (o.lrcout) written = await api.subtitleWrite(o.lrcout, cuesFromProject(project, "lyrics"));
+  log("autotest", `LYRICS ${JSON.stringify({ n: out.length, subtitles, written, cues: out })}`);
+  engine.seek(o.at ? Number(o.at) : (out[0]?.start ?? 0) + 1);
+  await sleep(1800);
+  log("autotest", "lyrics-ready");
+  await sleep(800);
+  await exportProbe(o.export);
+}
+
+/** Drives the real tap-sync UI: types the lines, starts tapping and presses Space at each time. */
+async function tapProbe(lines: string[], times: number[]) {
+  useEditorUi.setState({ panel: "lyrics" });
+  engine.seek(0);
+  await sleep(1200);
+  const area = document.querySelector<HTMLTextAreaElement>(".lyrics-draft")!;
+  Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, "value")!.set!.call(area, lines.join("\n"));
+  area.dispatchEvent(new Event("input", { bubbles: true }));
+  await sleep(300);
+  document.querySelector<HTMLButtonElement>(".lyrics-actions .btn-primary")!.click();
+  const space = () => window.dispatchEvent(new KeyboardEvent("keydown", { key: " ", bubbles: true }));
+  for (let i = 0; i < times.length; i++) {
+    while (usePlayback.getState().time < times[i]) await sleep(10);
+    space();
+    if (i === 1) {
+      await sleep(400);
+      log("autotest", "lyrics-ready");
+    }
+  }
+  await sleep(300);
+  window.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true }));
+  await sleep(500);
+  const project = useProject.getState().project!;
+  const out = cuesFromProject(project, "lyrics").map((c) => ({ start: +c.start.toFixed(2), end: +c.end.toFixed(2), text: c.text }));
+  log("autotest", `LYRICS ${JSON.stringify({ tapped: times, playing: usePlayback.getState().playing, cues: out })}`);
 }
 
 async function exportProbe(path: string | undefined) {

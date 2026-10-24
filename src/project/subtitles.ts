@@ -15,19 +15,22 @@ export const SUBTITLE_PRESETS = ["subtitle", "captionPop", "lyric", "clean", "he
 
 const MIN_CUE = 0.3;
 
-export function subtitleTrack(project: Project): Track | undefined {
-  return project.tracks.find((t) => t.kind === "text" && t.role === "subtitles");
+/** Text tracks with a job: generated / imported subtitles, or song lyrics. */
+export type LineRole = "subtitles" | "lyrics";
+
+export function subtitleTrack(project: Project, role: LineRole = "subtitles"): Track | undefined {
+  return project.tracks.find((t) => t.kind === "text" && t.role === role);
 }
 
-export function subtitleClips(project: Project): Clip[] {
-  const track = subtitleTrack(project);
+export function subtitleClips(project: Project, role: LineRole = "subtitles"): Clip[] {
+  const track = subtitleTrack(project, role);
   if (!track) return [];
   return project.clips.filter((c) => c.trackId === track.id && c.text).sort((a, b) => a.start - b.start);
 }
 
 /** Cues as they stand on the timeline (after any edits), for SRT export. */
-export function cuesFromProject(project: Project): Cue[] {
-  return subtitleClips(project).map((c) => ({ start: c.start, end: c.start + (c.out - c.in) / (c.speed || 1), text: c.text!.content }));
+export function cuesFromProject(project: Project, role: LineRole = "subtitles"): Cue[] {
+  return subtitleClips(project, role).map((c) => ({ start: c.start, end: c.start + (c.out - c.in) / (c.speed || 1), text: c.text!.content }));
 }
 
 /** Clean, ordered, non-overlapping cues; tiny or empty ones dropped. */
@@ -66,11 +69,11 @@ export function guessLang(cues: Cue[]): string | undefined {
   return /[ğışĞİŞ]/.test(sample) ? "tr" : /[a-z]/i.test(sample) ? "und" : undefined;
 }
 
-export function setSubtitles(project: Project, cues: Cue[], presetId: string, trackName: string, lang?: string): Project {
-  let track = subtitleTrack(project);
+export function setSubtitles(project: Project, cues: Cue[], presetId: string, trackName: string, lang?: string, role: LineRole = "subtitles"): Project {
+  let track = subtitleTrack(project, role);
   let tracks = project.tracks;
   if (!track) {
-    track = { ...makeTrack("text", tracks), name: trackName, role: "subtitles" };
+    track = { ...makeTrack("text", tracks), name: trackName, role };
     tracks = sortTracks([...tracks, track]);
   }
   const id = track.id;
@@ -79,8 +82,8 @@ export function setSubtitles(project: Project, cues: Cue[], presetId: string, tr
 }
 
 /** Re-style every subtitle with a preset, keeping words and timing. */
-export function restyleSubtitles(project: Project, presetId: string): Project {
-  const track = subtitleTrack(project);
+export function restyleSubtitles(project: Project, presetId: string, role: LineRole = "subtitles"): Project {
+  const track = subtitleTrack(project, role);
   if (!track) return project;
   return {
     ...project,
@@ -88,8 +91,17 @@ export function restyleSubtitles(project: Project, presetId: string): Project {
   };
 }
 
-export function clearSubtitles(project: Project): Project {
-  const track = subtitleTrack(project);
+export function clearSubtitles(project: Project, role: LineRole = "subtitles"): Project {
+  const track = subtitleTrack(project, role);
   if (!track) return project;
   return { ...project, tracks: project.tracks.filter((t) => t.id !== track.id), clips: project.clips.filter((c) => c.trackId !== track.id) };
+}
+
+/** Moves every line of a role by `delta` seconds (lyrics sync nudge); never before 0. */
+export function shiftLines(project: Project, delta: number, role: LineRole): Project {
+  const track = subtitleTrack(project, role);
+  if (!track) return project;
+  const first = Math.min(...project.clips.filter((c) => c.trackId === track.id).map((c) => c.start));
+  const d = Math.max(-first, delta);
+  return { ...project, clips: project.clips.map((c) => (c.trackId === track.id ? { ...c, start: c.start + d } : c)) };
 }

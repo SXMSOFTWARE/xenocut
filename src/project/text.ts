@@ -165,6 +165,24 @@ export const TEXT_PRESETS: TextPreset[] = [
     style: { size: 70, shadow: 0.6, highlight: "#ffb347", y: 0.8, width: 0.8, color: "#ffffff" },
     anim: { in: "rise", out: "fade", inDur: 0.3, outDur: 0.25, emphasis: "karaoke" },
   },
+  {
+    id: "lyricGlow",
+    role: "lyric",
+    style: { font: "montserrat", weight: 700, size: 72, color: "#ffffff", highlight: "#ff7ce6", glow: 0.8, shadow: 0, y: 0.5, width: 0.8, spacing: 0.02 },
+    anim: { in: "fade", out: "fade", inDur: 0.25, outDur: 0.25, emphasis: "karaoke" },
+  },
+  {
+    id: "lyricBold",
+    role: "lyric",
+    style: { font: "anton", weight: 400, uppercase: true, size: 104, color: "#ffffff", highlight: "#ffd400", stroke: 8, shadow: 0.4, y: 0.5, width: 0.78, lineHeight: 1.05 },
+    anim: { in: "pop", out: "zoom", inDur: 0.25, outDur: 0.2, emphasis: "karaoke" },
+  },
+  {
+    id: "lyricSerif",
+    role: "lyric",
+    style: { font: "playfair", weight: 700, italic: true, size: 76, color: "#fff6e8", highlight: "#ffb347", shadow: 0.55, y: 0.78, width: 0.82 },
+    anim: { in: "fade", out: "fade", inDur: 0.45, outDur: 0.4, emphasis: "karaoke" },
+  },
 ];
 
 export function presetById(id: string): TextPreset {

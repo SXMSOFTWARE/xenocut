@@ -207,7 +207,7 @@ export function SubtitlesPanel() {
   );
 }
 
-function CueRow({ clipId, start, content }: { clipId: string; start: number; content: string }) {
+export function CueRow({ clipId, start, content }: { clipId: string; start: number; content: string }) {
   const [value, setValue] = useState(content);
   useEffect(() => setValue(content), [content]);
   const save = () => {

@@ -16,6 +16,7 @@ import { useRouter } from "../../store/router";
 import { addTrack, toggleTrack } from "./commands";
 import { Inspector } from "./Inspector";
 import { TextPanel } from "./TextPanel";
+import { LyricsPanel } from "./LyricsPanel";
 import { SubtitlesPanel } from "./SubtitlesPanel";
 import { MediaBin } from "./MediaBin";
 
@@ -28,6 +29,7 @@ const TITLES: Record<PanelId, Key> = {
   color: "grade.title",
   text: "text.title",
   captions: "subs.title",
+  lyrics: "lyrics.title",
 };
 
 /** Floating rounded panel on the right of the preview; the rail picks its content. */
@@ -52,6 +54,7 @@ export function SidePanel() {
         {panel === "color" && <ColorPanel />}
         {panel === "text" && <TextPanel />}
         {panel === "captions" && <SubtitlesPanel />}
+        {panel === "lyrics" && <LyricsPanel />}
       </div>
     </aside>
   );
