@@ -114,6 +114,12 @@ async function perfProbe() {
     nobars: ".editor-top,.titlebar,.bottom-bar,.rail{display:none!important}",
     plain: "body *:not(video):not(.stage):not(.stage-area):not(#root):not(#root *:has(video)){display:none!important}",
   };
+  if (o.css) {
+    // Free-form CSS experiment, base64url so it survives the k=v,k=v option format.
+    const st = document.createElement("style");
+    st.textContent = atob(o.css.replace(/-/g, "+").replace(/_/g, "/"));
+    document.head.appendChild(st);
+  }
   if (o.x) {
     const st = document.createElement("style");
     st.textContent = o.x.split("+").map((k) => EXP[k] ?? "").join("\n");
