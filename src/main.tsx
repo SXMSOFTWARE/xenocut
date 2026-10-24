@@ -26,6 +26,7 @@ if (import.meta.env.DEV) {
   void Promise.all([import("./store/settings"), import("./store/router"), import("./lib/plugins"), import("./store/editorUi")]).then(([{ useSettings }, { useRouter }, { usePlugins }, { useEditorUi }]) =>
     Object.assign(window, { __xcSettings: useSettings, __xcRouter: useRouter, __xcPlugins: usePlugins, __xcUi: useEditorUi }),
   );
+  void import("./engine/playback").then(({ engine }) => Object.assign(window, { __xcEngine: engine }));
 }
 
 window.addEventListener("error", (e) => log("error", `window error: ${e.message} @ ${e.filename}:${e.lineno}`));

@@ -145,6 +145,11 @@ export async function invoke<T>(command: string, args: Record<string, unknown> =
         savePlugins(f);
         return pack;
       }
+      case "plugin_asset": {
+        const r = await fetch(`/@fs${args!.path as string}`);
+        if (!r.ok) throw new Error(`asset ${r.status}`);
+        return (await r.text()) as T;
+      }
       case "plugin_lut":
         return parseCube(await (await fetch(`/@fs${args.path as string}`)).text());
       case "export_cancel":
