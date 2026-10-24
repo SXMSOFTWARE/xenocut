@@ -3,6 +3,7 @@ import { engine } from "../../engine/playback";
 import { useT } from "../../i18n";
 import { gradeFilter, tintDefs } from "../../project/grade";
 import { temperatureMatrix, temperatureValues } from "../../project/effects";
+import { PRESET_TEMPERATURES } from "../../project/presets";
 import { usePlayback } from "../../store/playback";
 import { useProject } from "../../store/project";
 import { useAssets } from "../../store/assets";
@@ -38,7 +39,7 @@ export function Preview() {
   const proxyOn = useSettings((s) => s.previewProxy);
   const media = useProject((s) => s.project?.media);
   const proxies = useAssets((s) => s.proxies);
-  const temps = useProject((s) => (s.project ? temperatureValues(s.project.clips).join(",") : ""));
+  const temps = useProject((s) => [...new Set([...(s.project ? temperatureValues(s.project.clips) : []), ...PRESET_TEMPERATURES])].join(","));
   // Performance mode skips the live colour grade (a per-frame CSS filter); exports still apply it.
   const liveGrade = grade && grade !== "none" && !lite ? gradeFilter(grade) : undefined;
 

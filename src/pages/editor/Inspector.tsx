@@ -6,6 +6,7 @@ import {
   Droplet,
   FlipHorizontal2,
   FlipVertical2,
+  Layers,
   Focus,
   Scissors,
   SlidersHorizontal,
@@ -29,6 +30,8 @@ import type { Clip, MediaItem, Project } from "../../project/types";
 import { useProject } from "../../store/project";
 import { useEditorUi } from "../../store/editorUi";
 import { deleteSelection, splitAtPlayhead } from "./commands";
+import { matchingPreset, PRESETS, presetSwatch } from "../../project/presets";
+import { usePosterThumb } from "./SidePanel";
 import { EFFECT_DEF, EFFECTS, type ClipEffect, type EffectGroup, type EffectKind } from "../../project/effects";
 
 
@@ -260,6 +263,19 @@ function EffectsSection({ clip }: { clip: Clip }) {
     else setEffects([...effects, { kind, amount: EFFECT_DEF[kind].initial }]);
   };
   const sliders = effects.filter((e) => !EFFECT_DEF[e.kind]?.toggle && EFFECT_DEF[e.kind]);
+  const preset = matchingPreset(effects);
+  const thumb = usePosterThumb();
+  const visualCount = useProject((s) => {
+    const p = s.project;
+    if (!p) return 0;
+    const visual = new Set(p.media.filter((m) => m.kind !== "audio").map((m) => m.id));
+    return p.clips.filter((c) => visual.has(c.mediaId)).length;
+  });
+  const applyToAll = () =>
+    commit((p) => {
+      const visual = new Set(p.media.filter((m) => m.kind !== "audio").map((m) => m.id));
+      return { ...p, clips: p.clips.map((c) => (visual.has(c.mediaId) ? { ...c, effects: effects.length ? effects.map((e) => ({ ...e })) : undefined } : c)) };
+    });
 
   return (
     <div className="inspector-section fx-section">
@@ -271,6 +287,32 @@ function EffectsSection({ clip }: { clip: Clip }) {
           </button>
         )}
       </h3>
+      <span className="fx-group-label">{t("preset.title")}</span>
+      <div className="preset-grid">
+        {PRESETS.map((pr) => {
+          const look = presetSwatch(pr);
+          const on = preset === pr.id;
+          return (
+            <button
+              key={pr.id}
+              className={`grade-card preset-card${on ? " active" : ""}`}
+              aria-pressed={on}
+              onClick={() => setEffects(on ? [] : pr.effects.map((e) => ({ ...e })))}
+            >
+              <span className="grade-swatch" style={{ filter: look.filter, backgroundImage: thumb ? `url("${thumb}")` : undefined }}>
+                {look.overlay && <i style={{ background: look.overlay }} />}
+              </span>
+              <span>{t(`preset.${pr.id}`)}</span>
+            </button>
+          );
+        })}
+      </div>
+      {visualCount > 1 && effects.length > 0 && (
+        <button className="btn btn-sm btn-block fx-apply-all" onClick={applyToAll}>
+          <Layers />
+          {t("preset.applyAll")}
+        </button>
+      )}
       {sliders.map((e) => {
         const def = EFFECT_DEF[e.kind];
         return (

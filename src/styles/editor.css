@@ -1942,3 +1942,35 @@
   padding: 0 10px;
   font-size: var(--fs-xs);
 }
+
+/* edit presets */
+.preset-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 6px;
+  margin: 2px 0 10px;
+}
+.preset-card {
+  padding: 4px;
+  gap: 4px;
+  border-radius: 11px;
+  font-size: 11px;
+}
+.preset-card .grade-swatch {
+  position: relative;
+  overflow: hidden;
+  border-radius: 8px;
+}
+.preset-card .grade-swatch i {
+  position: absolute;
+  inset: 0;
+}
+.preset-card > span:last-child {
+  padding: 0 2px 1px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.fx-apply-all {
+  margin: 0 0 12px;
+}
