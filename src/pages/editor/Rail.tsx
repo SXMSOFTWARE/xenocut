@@ -1,4 +1,4 @@
-import { ArrowLeft, AudioWaveform, Captions, Clapperboard, Mic, MicVocal, Music, Type } from "lucide-react";
+import { ArrowLeft, AudioWaveform, Captions, Clapperboard, Mic, AudioLines, MicVocal, Music, Type } from "lucide-react";
 import type { ComponentType } from "react";
 import { useT, type Key } from "../../i18n";
 import { useEditorUi, type PanelId } from "../../store/editorUi";
@@ -15,6 +15,7 @@ const ITEMS: { id: PanelId; icon: ComponentType<{ size?: number; strokeWidth?: n
   { id: "text", icon: Type, label: "rail.text" },
   { id: "captions", icon: Captions, label: "rail.captions" },
   { id: "lyrics", icon: MicVocal, label: "rail.lyrics" },
+  { id: "amv", icon: AudioLines, label: "rail.amv" },
 ];
 
 /** The reference's vertical rail of round tool buttons; each opens its panel on the right. */

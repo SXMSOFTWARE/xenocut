@@ -2,7 +2,10 @@
 // Imports the file into a fresh project, plays it and logs what the <video> element reports,
 // so playback can be verified on a headless machine (Xvfb) from the log file.
 import { engine, setSilent } from "../engine/playback";
-import { openMediaAsProject } from "../project/actions";
+import { addToTimeline, importPaths, openMediaAsProject } from "../project/actions";
+import { mainVideoTrack, timelineBeats } from "../project/beats";
+import { songBeats, useBeats } from "../store/beats";
+import { addTrack } from "../pages/editor/commands";
 import { usePlayback } from "../store/playback";
 import { log, transport } from "./backend";
 import { perfCounters } from "./perfHook";
@@ -78,6 +81,7 @@ export async function runAutotest(file: string) {
   await textProbe();
   await subsProbe();
   await lyricsProbe();
+  await amvProbe();
   await fxProbe();
   await perfProbe();
 }
@@ -309,6 +313,57 @@ async function lyricsProbe() {
   engine.seek(o.at ? Number(o.at) : (out[0]?.start ?? 0) + 1);
   await sleep(1800);
   log("autotest", "lyrics-ready");
+  await sleep(800);
+  await exportProbe(o.export);
+}
+
+/**
+ * amv=cut+hits[,song=/music.mp3][,more=/clip2.mp4;/clip3.mp4][,every=2][,mute=0][,at=][,export=]:
+ * adds a song (and extra clips), opens the Beat sync panel and clicks its buttons in order.
+ */
+async function amvProbe() {
+  const o = opts();
+  if (!o.amv) return;
+  if (o.more) {
+    const items = await importPaths(o.more.split(";"));
+    const track = useProject.getState().project!.tracks.find((t) => t.kind === "video")!;
+    for (const m of items) addToTimeline(m, projectDuration(useProject.getState().project!), track.id);
+  }
+  if (o.song) {
+    const [song] = await importPaths([o.song]);
+    let music = useProject.getState().project!.tracks.find((t) => t.kind === "music");
+    if (!music) {
+      addTrack("music");
+      music = useProject.getState().project!.tracks.find((t) => t.kind === "music");
+    }
+    addToTimeline(song, 0, music!.id);
+  }
+  useEditorUi.setState({ panel: "amv" });
+  for (let i = 0; i < 100 && !document.querySelector(".amv-panel [data-op=cut]:not(:disabled)"); i++) await sleep(100);
+  if (o.every) {
+    const seg = [...document.querySelectorAll<HTMLButtonElement>(".amv-panel .seg button")];
+    seg[[1, 2, 4, 8].indexOf(Number(o.every))]?.click();
+  }
+  if (o.mute === "0") (document.querySelector(".amv-panel .switch-row:last-of-type .switch") as HTMLElement | null)?.click();
+  await sleep(200);
+  for (const op of o.amv.split("+")) {
+    const btn = document.querySelector<HTMLButtonElement>(`.amv-panel [data-op=${op}]`);
+    log("autotest", `AMV click ${op} ${btn ? (btn.disabled ? "disabled" : "ok") : "missing"}`);
+    btn?.click();
+    await sleep(300);
+  }
+  const p = useProject.getState().project!;
+  const s = songBeats(p, useBeats.getState().grids);
+  const track = mainVideoTrack(p);
+  const clips = p.clips
+    .filter((c) => c.trackId === track?.id)
+    .sort((a, b) => a.start - b.start)
+    .map((c) => [+c.start.toFixed(3), +c.in.toFixed(3), +c.out.toFixed(3), c.volume, (c.effects ?? []).map((e) => `${e.kind}:${e.amount}`).join("+")]);
+  const beats = s?.grid ? timelineBeats(s.clip, s.grid) : [];
+  log("autotest", `AMV ${JSON.stringify({ bpm: s?.grid?.bpm, downbeat: s?.grid?.downbeat, beats: beats.slice(0, 12).map((b) => +b.toFixed(3)), n: beats.length, note: document.querySelector(".amv-panel .sp-note:last-child")?.textContent, clips })}`);
+  engine.seek(Number(o.at ?? 1));
+  await sleep(1500);
+  log("autotest", "amv-ready");
   await sleep(800);
   await exportProbe(o.export);
 }

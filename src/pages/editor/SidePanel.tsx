@@ -17,6 +17,7 @@ import { addTrack, toggleTrack } from "./commands";
 import { Inspector } from "./Inspector";
 import { TextPanel } from "./TextPanel";
 import { LyricsPanel } from "./LyricsPanel";
+import { AmvPanel } from "./AmvPanel";
 import { SubtitlesPanel } from "./SubtitlesPanel";
 import { MediaBin } from "./MediaBin";
 
@@ -30,6 +31,7 @@ const TITLES: Record<PanelId, Key> = {
   text: "text.title",
   captions: "subs.title",
   lyrics: "lyrics.title",
+  amv: "amv.title",
 };
 
 /** Floating rounded panel on the right of the preview; the rail picks its content. */
@@ -55,6 +57,7 @@ export function SidePanel() {
         {panel === "text" && <TextPanel />}
         {panel === "captions" && <SubtitlesPanel />}
         {panel === "lyrics" && <LyricsPanel />}
+        {panel === "amv" && <AmvPanel />}
       </div>
     </aside>
   );
