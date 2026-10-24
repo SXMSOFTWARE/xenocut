@@ -28,8 +28,14 @@ XenoCut is built on the following open-source projects. Each keeps its own licen
 | hound | Apache-2.0 | https://github.com/ruuda/hound |
 | Serde | MIT / Apache-2.0 | https://github.com/serde-rs/serde |
 | reqwest | MIT / Apache-2.0 | https://github.com/seanmonstar/reqwest |
+| lottie-web | MIT | https://github.com/airbnb/lottie-web |
+| gl-transitions (shaders in the transition packs) | MIT | https://github.com/gl-transitions/gl-transitions |
+| OpenFX API headers and HostSupport library | BSD-3-Clause | https://github.com/AcademySoftwareFoundation/openfx |
+| Expat (XML parser, used by the OpenFX HostSupport library) | MIT | https://github.com/libexpat/libexpat |
 
 FFmpeg (with x264) is shipped as a separate, unmodified executable that XenoCut runs as a subprocess. Its GPL source is available from https://ffmpeg.org and the build scripts in `scripts/` (desktop builds come from https://github.com/BtbN/FFmpeg-Builds).
+
+The OpenFX headers, the OpenFX HostSupport library and Expat are compiled into the Linux effect host (`src-tauri/fxhost/vendor/`, with their license files). The frei0r ABI is declared in our own code; no frei0r or OpenFX plug-ins ship with XenoCut, and the host only loads plug-ins the user installs. The built-in transitions' GLSL previews are ports of FFmpeg's `xfade` formulas (LGPL-2.1+, libavfilter/vf_xfade.c).
 
 Fonts are licensed under the SIL Open Font License 1.1. AI model weights are downloaded on demand from their original publishers.
 

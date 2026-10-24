@@ -18,10 +18,14 @@ Everything runs locally. XenoCut never calls Suno or any other music API: you pi
 
 | Panel | What it does |
 | --- | --- |
-| **Text** | 12 styled presets, bundled OFL fonts, in/out animations, drag on the preview. |
+| **Text** | 21 styled presets, bundled OFL fonts, 15 in / 12 out / 11 emphasis animations (typewriter, word-by-word, spin, bounce, glitch, karaoke, heartbeat, rainbow, ...), drag on the preview. |
 | **Captions** | On-device Whisper (tiny/base/small), speech-aligned cues, styles, SRT/VTT/LRC import and export. |
 | **Lyrics** | LRC/SRT import or pasted text, tap-to-sync while playing, karaoke styles, LRC export. |
-| **Effects** | Per-clip colour, look and motion effects, 12 one-click edit presets, beat hits (flash, zoom punch, hit shake). |
+| **Effects** | 62 per-clip colour, look and motion effects with live demos, 12 one-click edit presets, beat hits (flash, zoom punch, hit shake). On Linux also OpenFX and frei0r plug-ins you install yourself, run in a separate crash-isolated helper process with auto-generated parameter controls. |
+| **Transitions** | 58 built-in transitions (FFmpeg xfade, with matching WebGL previews) in CapCut-style categories, duration handles on the timeline, and 121 GLSL transitions from gl-transitions in the catalog packs. |
+| **Animation** | Clip animations: 26 In/Out and 17 Combo (loop) animations, plus plug-in animations. |
+| **Stickers** | Lottie (Bodymovin JSON) stickers and titles, with editable text; import your own `.json` from After Effects. |
+| **Plug-ins** | Catalog of installable packs (LUTs, looks, animations, text styles, GLSL transitions, Lottie), bundled for offline use. |
 | **Beat sync** | Finds the song's tempo and beats on the device, shows them on the ruler, snaps to them, cuts every 1/2/4/8 beats, builds a beat montage from your clips and adds hits on the cuts. |
 
 The layout button in the bottom bar switches between the reference layout, panel on the left, a large timeline and a preview-only focus view. Drag the timeline's top edge or the panel's inner edge to resize them; double-click resets.

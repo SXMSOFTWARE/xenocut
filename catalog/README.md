@@ -5,7 +5,7 @@ installs packs from `packs/` after checking their SHA-256. The same index, packs
 are compiled into the app, which uses them when GitHub is unreachable and to install without a
 download. After rebuilding, keep `BUNDLED_PACKS` / `BUNDLED_THUMBS` in `src-tauri/src/plugins.rs`
 in sync (`cargo test --lib plugins` fails otherwise). Every pack here is data only
-(see [docs/plugins.md](../docs/plugins.md)) and released under **CC0 1.0**.
+(see [docs/plugins.md](../docs/plugins.md)) and released under **CC0 1.0**, except the transition packs, which carry the gl-transitions shaders under their **MIT** license (author and license are in each manifest).
 
 | Pack | Contents |
 | --- | --- |
@@ -14,6 +14,12 @@ in sync (`cargo test --lib plugins` fails otherwise). Every pack here is data on
 | Social Looks | 10 effect stacks: Moody, Clean Pop, Retro Cam, Summer, Night Drive, Lo-fi, Comic, Ghost, Documentary, Epic |
 | Motion Essentials | 14 clip animations (6 In, 4 Out, 4 Combo) |
 | Title Styles | 8 text styles using the bundled fonts |
+| Transitions: Essentials | gl-transitions shaders (MIT): crossfades, pushes, splits, blurs, zooms |
+| Transitions: Glitch & Light | gl-transitions shaders (MIT): glitches, static, film burns, flickers, mosaics |
+| Transitions: 3D & Motion | gl-transitions shaders (MIT): cubes, flips, folds, swirls, ripples, warps |
+| Transitions: Shapes & Patterns | gl-transitions shaders (MIT): circles, hearts, stars, blinds, chessboards, puzzles |
+| Animated Stickers | 13 looping Lottie stickers |
+| Animated Titles | 6 Lottie titles with editable text |
 
 ## Building
 
