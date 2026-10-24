@@ -93,7 +93,7 @@ export async function runAutotest(file: string) {
 }
 
 /** A file this web view cannot decode gets a preview copy first: wait for it (up to 5 minutes). */
-async function waitForPreviewCopy() {
+export async function waitForPreviewCopy() {
   const building = () => {
     const { proxies, failed } = useAssets.getState();
     return usePlayback.getState().mediaConverting != null || Object.entries(proxies).some(([path, v]) => v === null && !(path in failed));
@@ -468,7 +468,7 @@ async function tapProbe(lines: string[], times: number[]) {
   log("autotest", `LYRICS ${JSON.stringify({ tapped: times, playing: usePlayback.getState().playing, cues: out })}`);
 }
 
-async function exportProbe(path: string | undefined) {
+export async function exportProbe(path: string | undefined) {
   if (!path) return;
   const project = useProject.getState().project!;
   const t0 = performance.now();

@@ -30,4 +30,5 @@ void initBackend().then(() => {
     </React.StrictMode>,
   );
   if (transport.autotest) void import("./lib/autotest").then((m) => m.runAutotest(transport.autotest!));
+  else if (transport.audiocheck) void import("./lib/audiocheck").then((m) => m.runAudioCheck(transport.audiocheck!));
 });

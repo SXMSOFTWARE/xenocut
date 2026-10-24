@@ -49,17 +49,27 @@ pub struct MediaTransport {
     autotest: Option<String>,
     /// Extra autotest knobs, `key=value,key=value` (grade, perf, secs).
     autotest_opts: Option<String>,
+    /// `XENOCUT_AUDIOCHECK=<media>|<export.mp4>`: a normal (never muted) run that logs the preview audio state.
+    audiocheck: Option<String>,
+}
+
+/// Test hooks come only from their env vars; a normal launch has none, so nothing is ever muted.
+fn test_hooks(get: impl Fn(&str) -> Option<String>) -> (Option<String>, Option<String>, Option<String>) {
+    let var = |k: &str| get(k).filter(|s| !s.is_empty());
+    (var("XENOCUT_AUTOTEST"), var("XENOCUT_AUTOTEST_OPTS"), var("XENOCUT_AUDIOCHECK"))
 }
 
 #[tauri::command]
 pub fn media_transport() -> MediaTransport {
     // XENOCUT_MEDIA_TRANSPORT=asset forces the old asset:// path (used to reproduce the bug).
     let force_asset = std::env::var("XENOCUT_MEDIA_TRANSPORT").map(|v| v == "asset").unwrap_or(false);
+    let (autotest, autotest_opts, audiocheck) = test_hooks(|k| std::env::var(k).ok());
     MediaTransport {
         base: if force_asset { None } else { mediaserver::get().map(|s| s.base_url()) },
         log_path: LOG_PATH.get().map(|p| p.display().to_string()),
-        autotest: std::env::var("XENOCUT_AUTOTEST").ok().filter(|s| !s.is_empty()),
-        autotest_opts: std::env::var("XENOCUT_AUTOTEST_OPTS").ok().filter(|s| !s.is_empty()),
+        autotest,
+        autotest_opts,
+        audiocheck,
     }
 }
 
@@ -76,4 +86,20 @@ pub fn media_allow(paths: Vec<String>) {
 pub fn autotest_exit(app: AppHandle, code: i32) {
     log("autotest", &format!("exit {code}"));
     app.exit(code);
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn normal_runs_have_no_test_hooks() {
+        assert_eq!(test_hooks(|_| None), (None, None, None));
+        // An empty var is the same as unset.
+        assert_eq!(test_hooks(|_| Some(String::new())), (None, None, None));
+        let only_audiocheck = test_hooks(|k| (k == "XENOCUT_AUDIOCHECK").then(|| "a.mp4|b.mp4".to_string()));
+        assert_eq!(only_audiocheck.0, None, "the audio check must not enable the (muted) autotest");
+        let autotest = test_hooks(|k| (k == "XENOCUT_AUTOTEST").then(|| "a.mp4".to_string()));
+        assert_eq!(autotest.0.as_deref(), Some("a.mp4"));
+    }
 }

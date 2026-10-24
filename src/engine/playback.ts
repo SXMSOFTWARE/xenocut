@@ -4,7 +4,7 @@
 import { useSettings } from "../store/settings";
 import { useAssets } from "../store/assets";
 import { needsDecodeProxy } from "../lib/playable";
-import { fileSrc, log } from "../lib/backend";
+import { fileSrc, log, transport } from "../lib/backend";
 import { clipDuration, clipEnd, projectDuration } from "../project/ops";
 import type { Clip, MediaItem, Project, Track } from "../project/types";
 import { usePlayback } from "../store/playback";
@@ -140,10 +140,19 @@ function setStyle(el: HTMLElement, prop: "filter" | "transform" | "background" |
 }
 
 /** Fully opaque media gets no opacity at all, so WebKit never treats the frame as translucent. */
-/** Automated test runs (XENOCUT_AUTOTEST) never make a sound. */
+/** Automated test runs (XENOCUT_AUTOTEST) never make a sound. Normal runs can never be silenced: without the
+ *  env var this refuses and logs, so preview audio always plays at the clip's volume. */
 let silent = false;
 export function setSilent(on: boolean) {
+  if (on && !transport.autotest) {
+    log("warn", "playback: setSilent refused, not an autotest run");
+    return;
+  }
   silent = on;
+}
+/** Test hook: whether the preview is currently forced silent (always false outside autotest runs). */
+export function isSilent(): boolean {
+  return silent;
 }
 
 function opacityCss(value: number): string {

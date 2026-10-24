@@ -25,6 +25,8 @@ interface MediaTransport {
   logPath: string | null;
   autotest: string | null;
   autotestOpts?: string | null;
+  /** XENOCUT_AUDIOCHECK: a normal, never-muted run that logs the preview audio state and exports. */
+  audiocheck?: string | null;
 }
 
 /** Filled once at boot by `initBackend()`. */
