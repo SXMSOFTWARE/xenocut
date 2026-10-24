@@ -67,6 +67,7 @@ export async function runAutotest(file: string) {
   log("autotest", `project opened: ${ok}`);
   for (let i = 0; i < 50 && !document.querySelector("video.stage-media"); i++) await sleep(200);
   await sleep(2000);
+  await waitForPreviewCopy();
   const before = snapshot("before-play");
   engine.play();
   let last = before;
@@ -87,6 +88,20 @@ export async function runAutotest(file: string) {
   await layoutProbe();
   await fxProbe();
   await perfProbe();
+}
+
+/** A file this web view cannot decode gets a preview copy first: wait for it (up to 5 minutes). */
+async function waitForPreviewCopy() {
+  const building = () => {
+    const { proxies, failed } = useAssets.getState();
+    return usePlayback.getState().mediaConverting != null || Object.entries(proxies).some(([path, v]) => v === null && !(path in failed));
+  };
+  if (!building()) return;
+  log("autotest", "waiting for the preview copy");
+  const t0 = performance.now();
+  for (let i = 0; i < 600 && building(); i++) await sleep(500);
+  log("autotest", `preview copy ready after ${((performance.now() - t0) / 1000).toFixed(1)}s: ${JSON.stringify(useAssets.getState().proxies)}`);
+  await sleep(1500);
 }
 
 /** "blur:30@1-2.5+vignette:60" → effects; `@from-to` limits one to part of its clip / layer. */

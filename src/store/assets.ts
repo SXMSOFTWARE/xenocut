@@ -26,7 +26,7 @@ interface AssetState {
 export const PROXY_HEIGHT = 540;
 
 /** Containers / codecs every supported web view decodes (WebKitGTK's bundled GStreamer included). */
-const ALWAYS_PLAYABLE = /\.(webm|mkv|ogg|ogv|oga|opus|mp3|wav|flac)$/i;
+const ALWAYS_PLAYABLE = /\.(webm|ogg|ogv|oga|opus|mp3|wav|flac)$/i;
 const inflight = new Map<string, Promise<string | null>>();
 let proxyChain: Promise<unknown> = Promise.resolve();
 
