@@ -1,6 +1,6 @@
 # XenoCut
 
-XenoCut is a light desktop video editor (Tauri 2 + React) for Linux and Windows, with Android planned. It has a home screen with projects, a multi-track editor, MP4 export, and one-click tools. The first one-click tool is **Music Swap**: keep the voices in a video and replace the background music with a song file you already have.
+XenoCut is a light video editor (Tauri 2 + React) for Linux, Windows and Android (arm64 APK). It has a home screen with projects, a multi-track editor, MP4 export, and one-click tools. The first one-click tool is **Music Swap**: keep the voices in a video and replace the background music with a song file you already have.
 
 Everything runs locally. XenoCut never calls Suno or any other music API: you pick a downloaded `mp3`/`wav`/`m4a`/`flac` file.
 
@@ -13,6 +13,18 @@ Everything runs locally. XenoCut never calls Suno or any other music API: you pi
 | **Export** | MP4 (H.264 + AAC). Resolution (project, 720p, 1080p, 1440p, 4K), fps, quality (fast/balanced/high). Real progress from FFmpeg, cancel, overwrite warning, file size and time when done, "Open folder". |
 | **Music Swap** | 1) choose a video, 2) separate vocals and music on the device (UVR MDX-Net, ONNX), 3) choose your song, 4) set vocal/music gain, offset, fades, loop, preview the mix, render. The result can be opened as a new project in the editor. |
 | **Settings** | Export and project folders, autosave, language (Türkçe default, English), performance mode (on by default on Linux), cache size/clear, vocal model download/delete, version. |
+
+### Editor panels
+
+| Panel | What it does |
+| --- | --- |
+| **Text** | 12 styled presets, bundled OFL fonts, in/out animations, drag on the preview. |
+| **Captions** | On-device Whisper (tiny/base/small), speech-aligned cues, styles, SRT/VTT/LRC import and export. |
+| **Lyrics** | LRC/SRT import or pasted text, tap-to-sync while playing, karaoke styles, LRC export. |
+| **Effects** | Per-clip colour, look and motion effects, 12 one-click edit presets, beat hits (flash, zoom punch, hit shake). |
+| **Beat sync** | Finds the song's tempo and beats on the device, shows them on the ruler, snaps to them, cuts every 1/2/4/8 beats, builds a beat montage from your clips and adds hits on the cuts. |
+
+The layout button in the bottom bar switches between the reference layout, panel on the left, a large timeline and a preview-only focus view. Drag the timeline's top edge or the panel's inner edge to resize them; double-click resets.
 
 ### Timeline
 
@@ -115,7 +127,7 @@ Pages other than Home are lazy-loaded. Performance mode removes blur and glow ef
 
 ### Android
 
-Android does not use this sidecar. `ffmpeg_binary()` returns a clear error on that target. The plan is a prebuilt FFmpeg (an ffmpeg-kit successor, or a static library built with the NDK) linked into the Rust crate and called through the same `extract_wav` / `run` helpers. That library is not linked in this tree. `src-tauri/gen/android` is also absent until `npm run android:init` runs on a machine with the Android SDK and NDK.
+Android does not use the sidecar. `scripts/build-android-ffmpeg.sh` builds an arm64 FFmpeg executable (with x264) with the NDK and installs it as `src-tauri/gen/android/app/src/main/jniLibs/arm64-v8a/libffmpeg.so`, so it lands in the app's native library directory and runs as a subprocess there. Build the APK with `npx tauri android build --apk --target aarch64` (JDK 17, Android SDK, NDK 27). `.cargo/config.toml` enables the ARMv8.2 `fp16` feature for that target because candle's half-precision kernels need it. Vocal separation (ONNX Runtime) is desktop-only.
 
 ## Vocal model
 
@@ -144,5 +156,5 @@ XENOCUT_MODEL=/path/to/UVR-MDX-NET-Voc_FT.onnx \
 - Preview plays the audio of the top visible video clip and the audio/music tracks; audio from lower, covered video tracks is heard only in the export.
 - Preview volume is capped at 100% (the export honors values above 100%). The same holds for the Music Swap preview.
 - Dragging moves one clip; multi-clip move is not implemented yet.
-- No transitions, text, or color effects yet. Other Quick Tools (auto subtitles, silence cutter, vertical reframe) are marked "Yakında".
-- Android: the FFmpeg library is not linked and `src-tauri/gen/android` is not generated.
+- No transitions yet. The silence cutter and vertical reframe Quick Tools are marked "Yakında".
+- Android: arm64 only; vocal separation is not available there, and the APK is signed with a debug key.

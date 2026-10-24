@@ -2,7 +2,46 @@
 
 Tüm önemli değişiklikler bu dosyada. Sürümler GitHub'da ön sürüm (pre-release) olarak yayınlanır.
 
-## v0.2.0 — 2026-10-24
+## v0.3.0 — 2026-10-24
+
+İlk yayınlanan sürüm. v0.2.0 ayrı olarak yayınlanmadı; değişiklikleri (aşağıda) bu sürümün içinde.
+
+### Yazı katmanları
+- Metin paneli: 12 hazır stil (başlık, alt yazı, neon, kutu, el yazısı…), yazı tipi, boyut, renk, kontur, gölge, arka plan kutusu, hizalama.
+- Metin animasyonları: giriş (solma, yükselme, düşme, kayma, pop, zoom, daktilo, kelime kelime) ve çıkış (solma, yükselme, batma, kayma, pop, zoom).
+- Yazı önizlemede sürüklenerek konumlanır; zaman çizelgesinde ayrı metin izleri. Dışa aktarmada önizlemedeki ile aynı çizici kullanılır.
+- Uygulamaya gömülü OFL yazı tipleri: Inter, Montserrat, Anton, Bangers, Bebas Neue, Caveat, Oswald, Playfair Display.
+
+### Altyazılar (cihaz üzerinde)
+- Altyazılar paneli: Whisper (tiny/base/small) cihazda çalışır, internet yalnızca modelin ilk indirilmesi için gerekir. Dil seçimi veya otomatik algılama.
+- Altyazılar konuşmaya hizalanır, cümle yapısına göre satırlara bölünür; satır düzenleme, kaydırma, stiller.
+- SRT/VTT/LRC içe ve dışa aktarma. Ana sayfada hızlı "Altyazı" aracı.
+
+### Şarkı sözleri
+- Şarkı sözü paneli: LRC/SRT içe aktarma veya düz metin yapıştırma, çalarken dokunarak senkronlama, şarkıya yayma, toplu kaydırma.
+- 4 karaoke stili (satır söylendikçe dolan yazı) ve LRC olarak dışa aktarma.
+
+### Efektler ve hazır düzenlemeler
+- Klip efektleri: parlaklık/kontrast/doygunluk/sıcaklık, siyah-beyaz, sepya, keskinlik, RGB kayması, bulanıklık, vinyet, gren, çevirme, yakınlaştırma, sarsıntı. Önizleme dışa aktarmayla eşleşir.
+- 12 tek tıkla hazır düzenleme (look), örnek kareli; tüm kliplere uygulanabilir.
+- Vuruş efektleri: flaş, zoom vuruşu, vuruş sarsıntısı.
+
+### Ritim / AMV modülü
+- Şarkının temposu ve vuruşları cihazda bulunur (BPM, ölçü başı). Vuruşlar zaman çizelgesinin cetvelinde turuncu işaretler olarak görünür ve kliplerin yapıştığı noktalar olur.
+- "Vuruşlarda kes": ana video izi her 1, 2, 4 (ölçü) veya 8 vuruşta bölünür.
+- "Vuruş montajı": ana izdeki klipler sırayla, şarkının vuruşlarına oturan kısa çekimlerle şarkı boyunca dizilir; istenirse klip sesleri kapatılır.
+- Vuruş efektleri kesim noktalarına tek tıkla eklenir/temizlenir.
+
+### Değiştirilebilir yerleşim
+- Alt çubuktaki yerleşim düğmesi artık bir menü: Referans (varsayılan), Panel solda, Geniş zaman çizelgesi, Odak (yalnızca önizleme); zaman çizelgesini gizle/göster.
+- Zaman çizelgesinin üst kenarı ve panelin iç kenarı sürüklenerek boyutlandırılır; çift tık sıfırlar. Seçimler ayarlarda saklanır. Telefon/kısa pencere düzeni değişmedi.
+
+### Diğer
+- AppImage GStreamer'ı içinde taşıyor; önizleme AppImage'da da oynuyor.
+- Ayarlar › Hakkında: kullanılan açık kaynak projelerin listesi ve lisansları (THIRD_PARTY_NOTICES.md).
+- Lisans notu: yeni modüller yalnızca izin verici lisanslı (MIT/Apache/ISC/OFL) bileşenlerle yazıldı. FFmpeg (GPL) önceden olduğu gibi ayrı, değiştirilmemiş bir program olarak gelir ve alt süreç olarak çalıştırılır.
+
+## v0.2.0 — 2026-10-24 (yayınlanmadı, v0.3.0 içinde)
 
 ### Performans (Linux'ta akıcı oynatma)
 - **Kasmanın sebebi bulundu:** WebKitGTK, video her kare değiştiğinde önizlemenin etrafındaki alanı yeniden boyuyor. Editörün arka planındaki üç CSS gradyanı, büyütülmüş poster görseli ve önizlemenin 50px bulanık gölgesi her karede yeniden hesaplanıyordu. React değil: oynatma sırasında saniyede ~0 render.
