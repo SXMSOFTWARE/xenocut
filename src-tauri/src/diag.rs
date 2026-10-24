@@ -47,6 +47,8 @@ pub struct MediaTransport {
     base: Option<String>,
     log_path: Option<String>,
     autotest: Option<String>,
+    /// Extra autotest knobs, `key=value,key=value` (grade, perf, secs).
+    autotest_opts: Option<String>,
 }
 
 #[tauri::command]
@@ -57,6 +59,7 @@ pub fn media_transport() -> MediaTransport {
         base: if force_asset { None } else { mediaserver::get().map(|s| s.base_url()) },
         log_path: LOG_PATH.get().map(|p| p.display().to_string()),
         autotest: std::env::var("XENOCUT_AUTOTEST").ok().filter(|s| !s.is_empty()),
+        autotest_opts: std::env::var("XENOCUT_AUTOTEST_OPTS").ok().filter(|s| !s.is_empty()),
     }
 }
 

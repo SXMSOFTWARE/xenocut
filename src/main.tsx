@@ -1,3 +1,4 @@
+import "./lib/perfHook";
 import React from "react";
 import ReactDOM from "react-dom/client";
 import "@fontsource/inter/latin-400.css";
