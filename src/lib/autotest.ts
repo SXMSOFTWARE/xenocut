@@ -17,7 +17,9 @@ import { applyPreset, type LayoutPreset } from "../pages/editor/layout";
 import { useRouter, type Page } from "../store/router";
 import { useAssets } from "../store/assets";
 import type { Grade } from "../project/grade";
-import { addEffectLayer, addTextClip, projectDuration, updateClip } from "../project/ops";
+import { addEffectLayer, addTextClip, projectDuration, splitClip, updateClip } from "../project/ops";
+import { applyTransitionDef, packTransitionDefs, resolveCut } from "../transitions/catalog";
+import { BUILTINS } from "../transitions";
 import type { ClipEffect, EffectKind } from "../project/effects";
 import type { Clip } from "../project/types";
 import { PRESETS } from "../project/presets";
@@ -92,6 +94,7 @@ export async function runAutotest(file: string) {
   await fxProbe();
   await animProbe();
   await lutProbe();
+  await transProbe();
   await perfProbe();
 }
 
@@ -223,6 +226,56 @@ async function lutProbe() {
   await sleep(400);
   log("autotest", "anim-ready");
   await sleep(800);
+  await exportProbe(o.export);
+}
+
+/**
+ * trans=<builtin id | packId/entryId>[,d=1][,hold=0][,export=…]: splits the first video clip in
+ * the middle, puts the transition on that cut (installing the pack from the catalog first),
+ * seeks into the window and logs whether the WebGL transition canvas is showing plus a pixel.
+ */
+async function transProbe() {
+  const o = opts();
+  if (!o.trans) return;
+  const project = useProject.getState().project!;
+  const clip = project.clips.find((c) => project.tracks.find((t) => t.id === c.trackId)?.kind === "video" && !c.text);
+  if (!clip) return log("autotest", "TRANS no clip");
+  const mid = clip.start + (clip.out - clip.in) / clip.speed / 2;
+  useProject.getState().commit((p) => splitClip(p, clip.id, mid).project);
+  let def = BUILTINS.find((b) => b.id === o.trans) ?? null;
+  if (!def && o.trans.includes("/")) {
+    const packId = o.trans.slice(0, o.trans.indexOf("/"));
+    const plugins = usePlugins.getState();
+    if (!plugins.installed.some((i) => i.manifest.id === packId)) {
+      await plugins.loadCatalog();
+      const entry = usePlugins.getState().catalog?.find((e) => e.id === packId);
+      if (!entry) return log("autotest", `TRANS no catalog entry ${packId} (${usePlugins.getState().catalogError})`);
+      await plugins.installFromCatalog(entry);
+    }
+    def = packTransitionDefs(usePlugins.getState().installed).find((d) => d.id === o.trans) ?? null;
+  }
+  if (!def) return log("autotest", `TRANS unknown ${o.trans}`);
+  const cut = resolveCut(useProject.getState().project, [clip.id], null);
+  if (!cut) return log("autotest", "TRANS no cut after split");
+  const ok = await applyTransitionDef(def, cut);
+  if (o.d) useProject.getState().commit((p) => updateClip(p, cut.from.id, { transition: { ...p.clips.find((c) => c.id === cut.from.id)!.transition!, duration: Number(o.d) } }));
+  const tr = useProject.getState().project!.clips.find((c) => c.id === cut.from.id)?.transition;
+  useProject.getState().select([cut.from.id]);
+  useEditorUi.setState({ panel: "trans", cut: cut.from.id });
+  engine.seek(cut.cut);
+  await sleep(2500);
+  const canvas = document.querySelector("canvas.stage-tr") as HTMLCanvasElement | null;
+  let pixel: number[] | null = null;
+  if (canvas && canvas.width > 0) {
+    const probe = document.createElement("canvas");
+    probe.width = probe.height = 1;
+    const ctx = probe.getContext("2d")!;
+    ctx.drawImage(canvas, canvas.width / 2, canvas.height / 2, 1, 1, 0, 0, 1, 1);
+    pixel = [...ctx.getImageData(0, 0, 1, 1).data];
+  }
+  log("autotest", `TRANS ${JSON.stringify({ applied: ok, id: tr?.id, duration: tr?.duration, glsl: !!tr?.glsl, cut: +cut.cut.toFixed(2), canvas: canvas ? [canvas.width, canvas.height, getComputedStyle(canvas).display] : null, pixel })}`);
+  log("autotest", "anim-ready");
+  await sleep(Number(o.hold ?? 0) * 1000 + 800);
   await exportProbe(o.export);
 }
 
