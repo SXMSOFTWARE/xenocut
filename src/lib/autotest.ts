@@ -11,7 +11,8 @@ import { useSettings } from "../store/settings";
 import { useEditorUi } from "../store/editorUi";
 import { useAssets } from "../store/assets";
 import type { Grade } from "../project/grade";
-import { addTextClip, projectDuration } from "../project/ops";
+import { addTextClip, projectDuration, updateClip } from "../project/ops";
+import type { EffectKind } from "../project/effects";
 import { textFromPreset } from "../project/text";
 import { renderTextLayer, discardTextLayer } from "../text/exportLayer";
 import { api } from "./backend";
@@ -72,7 +73,32 @@ export async function runAutotest(file: string) {
   snapshot("paused");
   await textProbe();
   await subsProbe();
+  await fxProbe();
   await perfProbe();
+}
+
+/** fx=blur:30+vignette:60[,at=2][,export=out.mp4]: puts effects on the first video clip. */
+async function fxProbe() {
+  const o = opts();
+  if (!o.fx) return;
+  const effects = o.fx.split("+").map((part) => {
+    const [kind, amount] = part.split(":");
+    return { kind: kind as EffectKind, amount: amount === undefined ? 1 : Number(amount) / 100 };
+  });
+  const project = useProject.getState().project!;
+  const clip = project.clips.find((c) => project.tracks.find((t) => t.id === c.trackId)?.kind === "video" && !c.text);
+  if (!clip) return log("autotest", "FX no clip");
+  useProject.getState().commit((p) => updateClip(p, clip.id, { effects }));
+  useProject.getState().select([clip.id]);
+  useEditorUi.setState({ panel: "effects" });
+  engine.seek(Number(o.at ?? 2));
+  await sleep(1500);
+  log("autotest", `FX ${JSON.stringify({ effects, filter: (document.querySelector("video.stage-media") as HTMLElement | null)?.style.filter, transform: (document.querySelector(".stage-layer") as HTMLElement | null)?.style.transform })}`);
+  document.querySelector(".fx-section")?.scrollIntoView({ block: "start" });
+  await sleep(300);
+  log("autotest", "fx-ready");
+  await sleep(800);
+  await exportProbe(o.export);
 }
 
 async function rafRate(ms: number): Promise<number> {
