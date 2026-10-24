@@ -196,7 +196,7 @@ export const en: Record<keyof typeof tr, string> = {
   "settings.perfMode": "Performance mode",
   "settings.perfModeText": "Turns off blur, shadows and the backdrop picture, skips the live colour grade in the preview (exports still apply it) and reduces animations.",
   "settings.proxy": "Light preview (540p)",
-  "settings.proxyText": "The preview plays a 540p copy made with FFmpeg. Exports always use the original.",
+  "settings.proxyText": "The preview plays a 540p copy made with FFmpeg. Exports always use the original. On by default on Linux.",
   "settings.cache": "Cache",
   "settings.cacheText": "Thumbnails, filmstrips and waveforms.",
   "settings.clear": "Clear",

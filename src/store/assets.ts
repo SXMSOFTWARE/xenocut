@@ -14,6 +14,7 @@ interface AssetState {
 }
 
 export const PROXY_HEIGHT = 540;
+let proxyChain: Promise<unknown> = Promise.resolve();
 
 const queue: MediaItem[] = [];
 let running = 0;
@@ -50,8 +51,9 @@ export const useAssets = create<AssetState>((set, get) => ({
   requestProxy: (media) => {
     if (media.kind !== "video" || media.height <= PROXY_HEIGHT || media.path in get().proxies) return;
     set((s) => ({ proxies: { ...s.proxies, [media.path]: null } }));
-    void api
-      .mediaProxy(media.path)
+    // One FFmpeg encode at a time so a big import never pins every core.
+    proxyChain = proxyChain
+      .then(() => api.mediaProxy(media.path))
       .then((proxy) => set((s) => ({ proxies: { ...s.proxies, [media.path]: proxy } })))
       .catch(() => {});
   },

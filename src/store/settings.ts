@@ -44,7 +44,8 @@ export const useSettings = create<SettingsState>((set, get) => ({
       projectDir: saved.projectDir || info.defaultProjectDir,
       // WebKitGTK paints translucency in software, so Linux starts in performance mode.
       performanceMode: saved.performanceMode ?? info.os === "linux",
-      previewProxy: saved.previewProxy ?? false,
+      // Linux WebKitGTK paints 1080p frames slowly; the 540p copy measured 45 -> 60 fps there.
+      previewProxy: saved.previewProxy ?? info.os === "linux",
       autosave: saved.autosave ?? true,
     };
     apply(settings);

@@ -206,7 +206,7 @@ export const tr = {
   "settings.perfMode": "Performans modu",
   "settings.perfModeText": "Bulanıklık, gölge ve arka plan görselini kapatır, renk efektini önizlemede göstermez (dışa aktarmada uygulanır), animasyonları azaltır.",
   "settings.proxy": "Hafif önizleme (540p)",
-  "settings.proxyText": "Videolar önizlemede FFmpeg ile hazırlanan 540p kopyadan oynatılır. Dışa aktarma her zaman orijinali kullanır.",
+  "settings.proxyText": "Videolar önizlemede FFmpeg ile hazırlanan 540p kopyadan oynatılır. Dışa aktarma her zaman orijinali kullanır. Linux'ta varsayılan olarak açıktır.",
   "settings.cache": "Önbellek",
   "settings.cacheText": "Küçük resimler, film şeritleri ve dalga formları.",
   "settings.clear": "Temizle",

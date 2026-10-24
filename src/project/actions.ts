@@ -34,7 +34,7 @@ function enterEditor(project: Project, path: string) {
   useAssets.getState();
   usePlayback.setState({ time: 0, playing: false });
   useProject.getState().open(project, path);
-  for (const media of project.media) useAssets.getState().request(media);
+  for (const media of project.media) requestAssets(media);
   useRouter.getState().go("editor");
 }
 
@@ -92,7 +92,7 @@ export async function importPaths(paths: string[]): Promise<MediaItem[]> {
   }
   if (added.length) {
     useProject.getState().commit((p) => ({ ...p, media: [...p.media, ...added] }));
-    for (const media of added) useAssets.getState().request(media);
+    for (const media of added) requestAssets(media);
     toast(t("editor.imported", { n: added.length }), "success");
   }
   return result;
@@ -189,4 +189,10 @@ export async function openMediaAsProject(path: string, name: string): Promise<bo
     toast(`${t("home.openFailed")}: ${messageOf(error)}`, "error");
     return false;
   }
+}
+
+/** Thumbnails/waveforms, and the 540p preview copy in the background when that option is on. */
+function requestAssets(media: MediaItem) {
+  useAssets.getState().request(media);
+  if (useSettings.getState().previewProxy) useAssets.getState().requestProxy(media);
 }
