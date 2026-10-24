@@ -34,6 +34,8 @@ const TITLES: Record<PanelId, Key> = {
   captions: "subs.title",
   lyrics: "lyrics.title",
   amv: "amv.title",
+  fx: "fx.title",
+  format: "mobile.format",
 };
 
 /** Floating rounded panel on the right of the preview; the rail picks its content. */
@@ -78,7 +80,7 @@ function useSelectedClip() {
   }, [project, selection]);
 }
 
-function VoicePanel() {
+export function VoicePanel() {
   const t = useT();
   const sel = useSelectedClip();
   const usable = sel && sel.media.kind === "video" && sel.media.hasAudio ? sel.media : null;
@@ -121,7 +123,7 @@ async function addLocalMusic() {
   }
 }
 
-function MusicPanel() {
+export function MusicPanel() {
   const t = useT();
   const sel = useSelectedClip();
   const mediaList = useProject((s) => s.project?.media);
@@ -167,7 +169,7 @@ function MusicPanel() {
   );
 }
 
-function AudioPanel() {
+export function AudioPanel() {
   const t = useT();
   const tracks = useProject((s) => s.project?.tracks) ?? NO_TRACKS;
   const sel = useSelectedClip();
@@ -217,7 +219,7 @@ export function setGrade(grade: Grade) {
   useProject.getState().commit((p) => ({ ...p, settings: { ...p.settings, grade: grade === "none" ? undefined : grade } }));
 }
 
-function ColorPanel() {
+export function ColorPanel() {
   const t = useT();
   const grade = useProject((s) => s.project?.settings.grade ?? "none");
   const thumb = usePosterThumb();

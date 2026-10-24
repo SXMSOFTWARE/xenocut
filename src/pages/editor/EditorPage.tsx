@@ -22,6 +22,8 @@ import { TitleBar } from "./TitleBar";
 import { Timeline } from "./timeline/Timeline";
 import { laneAtPoint } from "./timeline/geometry";
 import { layoutVars } from "./layout";
+import { isMobileUi } from "../../lib/platform";
+import { MobileEditor } from "./mobile/MobileEditor";
 
 export default function EditorPage() {
   const panelSide = useSettings((s) => s.panelSide);
@@ -126,6 +128,15 @@ export default function EditorPage() {
   );
 
   if (!hasProject) return null;
+
+  if (isMobileUi) {
+    return (
+      <>
+        <MobileEditor />
+        {exportOpen && <ExportDialog />}
+      </>
+    );
+  }
 
   return (
     <div className={`editor${panelOpen ? " panel-open" : ""}${panelSide === "left" ? " panel-left" : ""}${panelWidth ? " panel-sized" : ""}`} style={layoutVars(panelWidth)} ref={rootRef}>

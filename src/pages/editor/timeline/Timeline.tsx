@@ -1,4 +1,5 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState, type CSSProperties } from "react";
+import { isMobileUi } from "../../../lib/platform";
 import { AudioLines, Film, Magnet, Maximize2, Music2, Plus, Scissors, Trash2, Type, ZoomIn, ZoomOut } from "lucide-react";
 import { useT } from "../../../i18n";
 import { NEW_TRACK } from "../../../project/actions";
@@ -28,8 +29,9 @@ function useHeaderWidth() {
   }, []);
   return narrow ? 0 : HEADER_W;
 }
-const VIDEO_H = 46;
-const AUDIO_H = 32;
+// Bigger rows on the touch UI: clips are tapped, not clicked.
+const VIDEO_H = isMobileUi ? 58 : 46;
+const AUDIO_H = isMobileUi ? 42 : 32;
 
 /**
  * Compact timeline overlaid on the bottom of the preview: a thin overview scrubber with the
@@ -125,10 +127,10 @@ export function Timeline() {
       {!collapsed && <div className="tl-resize" onPointerDown={timelineResizeDown} onDoubleClick={() => useSettings.getState().update({ timelineFrac: 0 })} title={t("layout.resizeTimeline")} aria-hidden />}
       <div className="tl-bar">
         <div className="tl-tools">
-          <button className="tl-btn" onClick={splitAtPlayhead} title={`${t("inspector.split")} (S)`} aria-label={t("inspector.split")}>
+          <button className="tl-btn m-hide" onClick={splitAtPlayhead} title={`${t("inspector.split")} (S)`} aria-label={t("inspector.split")}>
             <Scissors />
           </button>
-          <button className="tl-btn" onClick={deleteSelection} disabled={!hasSelection} title={`${t("inspector.delete")} (Del)`} aria-label={t("inspector.delete")}>
+          <button className="tl-btn m-hide" onClick={deleteSelection} disabled={!hasSelection} title={`${t("inspector.delete")} (Del)`} aria-label={t("inspector.delete")}>
             <Trash2 />
           </button>
           <button
@@ -167,10 +169,10 @@ export function Timeline() {
         </div>
         <Scrubber duration={duration} />
         <div className="tl-tools">
-          <button className="tl-btn" onClick={() => zoomCentered(0.8)} aria-label={t("timeline.zoomOut")} title={t("timeline.zoomOut")}>
+          <button className="tl-btn m-hide" onClick={() => zoomCentered(0.8)} aria-label={t("timeline.zoomOut")} title={t("timeline.zoomOut")}>
             <ZoomOut />
           </button>
-          <button className="tl-btn" onClick={() => zoomCentered(1.25)} aria-label={t("timeline.zoomIn")} title={t("timeline.zoomIn")}>
+          <button className="tl-btn m-hide" onClick={() => zoomCentered(1.25)} aria-label={t("timeline.zoomIn")} title={t("timeline.zoomIn")}>
             <ZoomIn />
           </button>
           <button className="tl-btn" onClick={fitTimeline} title={t("timeline.fit")} aria-label={t("timeline.fit")}>

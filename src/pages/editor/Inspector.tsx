@@ -38,7 +38,7 @@ import { usePosterThumb } from "./SidePanel";
 import { EFFECT_DEF, EFFECTS, type ClipEffect, type EffectGroup, type EffectKind } from "../../project/effects";
 
 
-export function Inspector() {
+export function Inspector({ noFx = false }: { noFx?: boolean } = {}) {
   const t = useT();
   const project = useProject((s) => s.project);
   const selection = useProject((s) => s.selection);
@@ -63,7 +63,7 @@ export function Inspector() {
             </button>
           </div>
         ) : clip && media ? (
-          <ClipInspector project={project} clip={clip} media={media} />
+          <ClipInspector project={project} clip={clip} media={media} noFx={noFx} />
         ) : selection.length > 1 ? (
           <div className="inspector-note">
             <p>{t("inspector.multi", { n: selection.length })}</p>
@@ -91,7 +91,7 @@ function Row({ label, value }: { label: string; value: string }) {
   );
 }
 
-function ClipInspector({ project, clip, media }: { project: Project; clip: Clip; media: MediaItem }) {
+function ClipInspector({ project, clip, media, noFx }: { project: Project; clip: Clip; media: MediaItem; noFx?: boolean }) {
   const t = useT();
   const { beginGesture, endGesture, transient } = useProject.getState();
   const set = (patch: Partial<Clip>) => transient((p) => updateClip(p, clip.id, patch));
@@ -188,7 +188,7 @@ function ClipInspector({ project, clip, media }: { project: Project; clip: Clip;
         )}
       </div>
 
-      {visual && <EffectsSection clip={clip} />}
+      {visual && !noFx && <EffectsSection clip={clip} />}
 
       <div className="inspector-section">
         <h3 className="section-title">{t("inspector.fades")}</h3>
@@ -255,7 +255,7 @@ const FX_ICONS: Record<EffectKind, LucideIcon> = {
 const FX_GROUPS: EffectGroup[] = ["adjust", "look", "motion", "hit"];
 
 /** Per-clip effects: chips add / remove, applied ones get an amount slider. */
-function EffectsSection({ clip }: { clip: Clip }) {
+export function EffectsSection({ clip }: { clip: Clip }) {
   const t = useT();
   const { beginGesture, endGesture, transient, commit } = useProject.getState();
   const effects = clip.effects ?? [];

@@ -15,6 +15,9 @@ import "./styles/ui.css";
 import "./styles/app.css";
 import { App } from "./App";
 import { initBackend, log, transport } from "./lib/backend";
+import { isMobileUi } from "./lib/platform";
+
+document.documentElement.classList.toggle("mobile", isMobileUi);
 
 window.addEventListener("error", (e) => log("error", `window error: ${e.message} @ ${e.filename}:${e.lineno}`));
 window.addEventListener("unhandledrejection", (e) => log("error", `unhandled rejection: ${String(e.reason)}`));

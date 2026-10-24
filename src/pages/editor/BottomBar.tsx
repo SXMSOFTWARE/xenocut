@@ -17,9 +17,12 @@ import { applyPreset, currentPreset, LAYOUT_PRESETS, resetSizes } from "./layout
 import { useSettings } from "../../store/settings";
 import { setGrade } from "./SidePanel";
 
-const ASPECTS: Aspect[] = ["16:9", "9:16", "1:1", "4:5"];
-const RESOLUTIONS: Resolution[] = ["720p", "1080p", "1440p", "4K"];
+export const ASPECTS: Aspect[] = ["16:9", "9:16", "1:1", "4:5"];
+export const RESOLUTIONS: Resolution[] = ["720p", "1080p", "1440p", "4K"];
 const LENGTHS = [3, 5, 10, 15, 30];
+
+export const setFormat = (aspect: Aspect, resolution: Resolution) =>
+  useProject.getState().commit((p) => ({ ...p, settings: { ...settingsFor(aspect, resolution, p.settings.fps), grade: p.settings.grade } }));
 
 /** Transport · settings chips · layout/settings/export — the reference's bottom bar. */
 export function BottomBar() {
@@ -31,9 +34,6 @@ export function BottomBar() {
   const canRedo = useProject((s) => s.future.length > 0);
   const hasClips = useProject((s) => (s.project?.clips.length ?? 0) > 0);
   const grade = settings.grade ?? "none";
-
-  const setFormat = (aspect: Aspect, resolution: Resolution) =>
-    useProject.getState().commit((p) => ({ ...p, settings: { ...settingsFor(aspect, resolution, p.settings.fps), grade: p.settings.grade } }));
 
   return (
     <footer className="bottom-bar">
@@ -218,7 +218,7 @@ function MenuItem({ active, disabled, onClick, children }: { active?: boolean; d
 }
 
 /** Updates through a ref: the playhead never re-renders React components while playing. */
-function TimeReadout({ fps, duration }: { fps: number; duration: number }) {
+export function TimeReadout({ fps, duration }: { fps: number; duration: number }) {
   const ref = useRef<HTMLSpanElement>(null);
   useEffect(() => {
     const paint = (time: number) => {

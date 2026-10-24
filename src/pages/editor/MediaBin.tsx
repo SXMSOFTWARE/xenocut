@@ -122,6 +122,8 @@ const MediaCard = memo(function MediaCard({ media }: { media: MediaItem }) {
 function startMediaDrag(e: React.PointerEvent, media: MediaItem) {
   if (e.button !== 0) return;
   useProject.getState().selectMedia(media.id);
+  // Touch: tap selects, the always-visible + button adds; dragging from a sheet would fight scrolling.
+  if (e.pointerType === "touch") return;
   const sx = e.clientX;
   const sy = e.clientY;
   let dragging = false;

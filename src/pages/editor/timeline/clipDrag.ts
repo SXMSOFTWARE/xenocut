@@ -42,6 +42,9 @@ export function beginClipDrag(e: React.PointerEvent, clipId: string, mode: ClipD
     return;
   }
   if (!wasSelected) store.select([clipId]);
+  // Touch: the first tap only selects, so a swipe over clips still scrolls the timeline; a
+  // selected clip (touch-action: none) can then be dragged or trimmed.
+  if (e.pointerType === "touch" && !wasSelected) return;
 
   const ui = useEditorUi.getState();
   const pps = ui.pxPerSec;

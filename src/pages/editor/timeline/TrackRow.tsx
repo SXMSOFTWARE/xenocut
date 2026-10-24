@@ -92,7 +92,21 @@ export const TrackRow = memo(function TrackRow({ track, clips, media, pps, heigh
 export function lanePointerDown(e: React.PointerEvent<HTMLDivElement>) {
   if (e.button !== 0 || e.target !== e.currentTarget) return;
   useProject.getState().select([]);
+  if (e.pointerType === "touch") return tapToSeek(e.currentTarget, e.clientX, e.clientY);
   scrubFrom(e.currentTarget, e.clientX);
+}
+
+/** Touch on empty lane space: a tap seeks there, a swipe is left to the browser to scroll. */
+function tapToSeek(el: HTMLElement, sx: number, sy: number) {
+  const done = (ev: PointerEvent) => {
+    window.removeEventListener("pointerup", done);
+    window.removeEventListener("pointercancel", done);
+    if (ev.type !== "pointerup" || Math.hypot(ev.clientX - sx, ev.clientY - sy) > 10) return;
+    engine.pause();
+    engine.seek((ev.clientX - el.getBoundingClientRect().left) / useEditorUi.getState().pxPerSec);
+  };
+  window.addEventListener("pointerup", done);
+  window.addEventListener("pointercancel", done);
 }
 
 export function scrubFrom(el: HTMLElement, startX: number) {
