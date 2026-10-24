@@ -5,7 +5,7 @@ use std::path::PathBuf;
 use serde::{Deserialize, Serialize};
 use tauri::AppHandle;
 
-use super::srt;
+use super::{lrc, srt};
 use super::whisper::{self, Cue, ModelSize, Recognizer, Transcript};
 use crate::app::{cache_root, model_dir, ExportSink};
 use crate::audio::cancel;
@@ -132,7 +132,9 @@ pub fn subtitle_cancel() {
 #[tauri::command]
 pub fn subtitle_read(path: String) -> Result<Vec<Cue>, String> {
     let bytes = std::fs::read(&path).map_err(|e| e.to_string())?;
-    let cues = srt::parse(&String::from_utf8_lossy(&bytes));
+    let text = String::from_utf8_lossy(&bytes);
+    let is_lrc = path.to_lowercase().ends_with(".lrc") || (!text.contains("-->") && lrc::looks_like_lrc(&text));
+    let cues = if is_lrc { lrc::parse(&text) } else { srt::parse(&text) };
     if cues.is_empty() {
         return Err("No subtitles found in this file.".into());
     }
@@ -148,7 +150,8 @@ pub fn subtitle_write(path: String, cues: Vec<Cue>) -> Result<String, String> {
     if let Some(parent) = path.parent() {
         std::fs::create_dir_all(parent).map_err(|e| e.to_string())?;
     }
-    std::fs::write(&path, whisper::to_srt(&cues)).map_err(|e| e.to_string())?;
+    let is_lrc = path.extension().is_some_and(|e| e.eq_ignore_ascii_case("lrc"));
+    std::fs::write(&path, if is_lrc { lrc::write(&cues) } else { whisper::to_srt(&cues) }).map_err(|e| e.to_string())?;
     Ok(path.display().to_string())
 }
 
