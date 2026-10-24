@@ -1,5 +1,6 @@
 import { create } from "zustand";
 import { api, type AppInfo } from "../lib/backend";
+import { cleanTheme, cleanTweaks, type ThemeDef, type ThemeTweaks } from "../themes";
 
 export type Language = "tr" | "en";
 
@@ -25,11 +26,17 @@ export interface Settings {
   timelineFrac: number;
   /** Keyboard shortcut overrides: action id -> combos (see `editor/shortcuts.ts`). */
   shortcuts: Record<string, string[]>;
+  /** Editor theme id (built-in, user or pack). */
+  theme: string;
+  /** The user's tweaks on top of the chosen theme. */
+  themeTweaks: ThemeTweaks;
+  /** Themes the user saved. */
+  userThemes: ThemeDef[];
 }
 
 export type SubtitleModel = "tiny" | "base" | "small";
 
-const KEYS: (keyof Settings)[] = ["language", "outputDir", "projectDir", "performanceMode", "previewProxy", "autosave", "subtitleModel", "subtitleLanguage", "subtitleStyle", "panelSide", "panelWidth", "timelineFrac", "shortcuts"];
+const KEYS: (keyof Settings)[] = ["language", "outputDir", "projectDir", "performanceMode", "previewProxy", "autosave", "subtitleModel", "subtitleLanguage", "subtitleStyle", "panelSide", "panelWidth", "timelineFrac", "shortcuts", "theme", "themeTweaks", "userThemes"];
 
 interface SettingsState extends Settings {
   ready: boolean;
@@ -80,6 +87,9 @@ export const useSettings = create<SettingsState>((set, get) => ({
   panelWidth: 0,
   timelineFrac: 0,
   shortcuts: {},
+  theme: "xenocut",
+  themeTweaks: {},
+  userThemes: [],
   ready: false,
   info: null,
   load: async () => {
@@ -101,6 +111,9 @@ export const useSettings = create<SettingsState>((set, get) => ({
       panelWidth: clampPanelWidth(saved.panelWidth),
       timelineFrac: clampTimelineFrac(saved.timelineFrac),
       shortcuts: cleanShortcuts(saved.shortcuts),
+      theme: typeof saved.theme === "string" ? saved.theme : "xenocut",
+      themeTweaks: cleanTweaks(saved.themeTweaks),
+      userThemes: Array.isArray(saved.userThemes) ? saved.userThemes.slice(0, 32).map((t) => cleanTheme(t, "user")).filter((t): t is ThemeDef => t !== null) : [],
     };
     apply(settings);
     set({ ...settings, info, ready: true });

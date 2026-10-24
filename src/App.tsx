@@ -7,6 +7,7 @@ import { ContextMenuHost } from "./components/ContextMenu";
 import { HomePage } from "./pages/home/HomePage";
 import { messageOf } from "./lib/format";
 import { usePlugins } from "./lib/plugins";
+import { useApplyTheme } from "./themes/useTheme";
 
 const EditorPage = lazy(() => import("./pages/editor/EditorPage"));
 const MusicSwapPage = lazy(() => import("./pages/music/MusicSwapPage"));
@@ -18,6 +19,7 @@ export function App() {
   const ready = useSettings((s) => s.ready);
   const loadSettings = useSettings((s) => s.load);
   const loadRecent = useRecent((s) => s.load);
+  useApplyTheme();
 
   useEffect(() => {
     loadSettings()

@@ -21,7 +21,12 @@ document.documentElement.classList.toggle("mobile", isMobileUi);
 initDeviceMetrics();
 
 // Dev builds expose the stores to the browser test harness.
-if (import.meta.env.DEV) void import("./store/project").then(({ useProject }) => Object.assign(window, { __xcProject: () => useProject.getState().project, __xcStore: useProject }));
+if (import.meta.env.DEV) {
+  void import("./store/project").then(({ useProject }) => Object.assign(window, { __xcProject: () => useProject.getState().project, __xcStore: useProject }));
+  void Promise.all([import("./store/settings"), import("./store/router"), import("./lib/plugins"), import("./store/editorUi")]).then(([{ useSettings }, { useRouter }, { usePlugins }, { useEditorUi }]) =>
+    Object.assign(window, { __xcSettings: useSettings, __xcRouter: useRouter, __xcPlugins: usePlugins, __xcUi: useEditorUi }),
+  );
+}
 
 window.addEventListener("error", (e) => log("error", `window error: ${e.message} @ ${e.filename}:${e.lineno}`));
 window.addEventListener("unhandledrejection", (e) => log("error", `unhandled rejection: ${String(e.reason)}`));

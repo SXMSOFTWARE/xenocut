@@ -395,3 +395,186 @@ html.mobile .settings-page .icon-btn.sm {
   width: 40px;
   height: 40px;
 }
+
+/* ---------- themes ---------- */
+.th-intro {
+  font-size: var(--fs-sm);
+  margin: -2px 0 10px;
+}
+.th-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(176px, 1fr));
+  gap: 12px;
+  padding-bottom: 14px;
+}
+.th-card {
+  position: relative;
+}
+.th-pick {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 4px;
+  padding: 8px 8px 10px;
+  text-align: left;
+  border-radius: var(--r-md);
+  background: var(--surface-2);
+  border: 1px solid var(--line);
+  transition: border-color var(--t-fast), background var(--t-fast);
+}
+.th-pick:hover {
+  background: var(--surface-3);
+}
+.th-card.active .th-pick {
+  border-color: var(--theme-accent, var(--brand));
+  box-shadow: 0 0 0 1px var(--theme-accent, var(--brand));
+}
+.th-name {
+  font-weight: 600;
+  font-size: var(--fs-md);
+  margin-top: 4px;
+}
+.th-sub {
+  font-size: var(--fs-xs);
+  color: var(--text-3);
+  line-height: 1.35;
+}
+.th-del {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+}
+/* the schematic: a mini editor painted with the theme's own variables */
+.th-thumb {
+  position: relative;
+  aspect-ratio: 16 / 10;
+  border-radius: calc(var(--r-sm) * 0.8);
+  overflow: hidden;
+  background: var(--hero-bg, radial-gradient(120% 90% at 30% 20%, #5b3424 0%, #2c1913 55%, #160d0a 100%));
+  display: grid;
+  gap: 2px;
+}
+.th-thumb i {
+  display: block;
+  min-width: 0;
+  min-height: 0;
+}
+.th-thumb .th-rail {
+  grid-area: rail;
+  background: var(--surface-1);
+}
+.th-thumb .th-title {
+  grid-area: title;
+  background: var(--surface-1);
+}
+.th-thumb .th-bin {
+  grid-area: bin;
+  background: var(--panel-bg, var(--surface-2));
+}
+.th-thumb .th-stage {
+  grid-area: stage;
+  margin: 6%;
+  background: #000;
+  border-radius: 2px;
+}
+.th-thumb .th-panel {
+  grid-area: panel;
+  background: var(--glass-warm);
+  border-left: 2px solid var(--theme-accent, transparent);
+}
+.th-thumb .th-tl {
+  grid-area: tl;
+  background: var(--tl-bg, linear-gradient(180deg, #4a2a20 0%, #321a15 100%));
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 3px;
+  padding: 0 8%;
+}
+.th-thumb .th-tl b {
+  display: block;
+  height: 5px;
+  width: 60%;
+  border-radius: 3px;
+  background: var(--theme-accent, var(--clip-video));
+  opacity: 0.85;
+}
+.th-thumb .th-tl b + b {
+  width: 40%;
+  margin-left: 20%;
+  background: var(--clip-audio);
+}
+.th-xenocut {
+  grid-template-columns: 12% 1fr 34%;
+  grid-template-rows: 14% 1fr 30%;
+  grid-template-areas: "rail title panel" "rail stage panel" "tl tl tl";
+  padding: 0;
+}
+.th-xenocut .th-rail,
+.th-xenocut .th-title {
+  background: transparent;
+}
+.th-xenocut .th-panel {
+  margin: 8% 8% 8% 0;
+  border-radius: 4px;
+  border: 0;
+}
+.th-modern {
+  grid-template-columns: 7% 24% 1fr 26%;
+  grid-template-rows: 10% 1fr 34%;
+  grid-template-areas: "rail title title title" "rail bin stage panel" "rail tl tl tl";
+  background: var(--line-strong);
+}
+.th-modern .th-stage,
+.th-classic .th-stage,
+.th-basic .th-stage {
+  margin: 0;
+  border-radius: 0;
+  background: var(--hero-bg);
+  box-shadow: inset 0 0 0 9px var(--hero-bg), inset 0 0 0 40px #000;
+}
+.th-classic {
+  grid-template-columns: 7% 34% 1fr;
+  grid-template-rows: 8% 1fr 42%;
+  grid-template-areas: "rail title title" "rail panel stage" "rail tl tl";
+  background: var(--line-strong);
+}
+.th-basic {
+  grid-template-columns: 1fr 30%;
+  grid-template-rows: 9% 16% 1fr 30%;
+  grid-template-areas: "title title" "rail rail" "stage panel" "tl tl";
+  background: var(--line-strong);
+}
+.th-basic .th-rail {
+  background: repeating-linear-gradient(90deg, var(--surface-1) 0 8%, var(--surface-3) 8% 20%, var(--surface-1) 20% 22%);
+}
+.th-color {
+  width: 34px;
+  height: 28px;
+  padding: 0;
+  border: 1px solid var(--line-strong);
+  border-radius: var(--r-xs);
+  background: none;
+}
+.th-swatch {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  border: 2px solid transparent;
+}
+.th-swatch.on {
+  border-color: #fff;
+}
+.th-sliders {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.th-actions {
+  flex-wrap: wrap;
+}
+.th-name-input {
+  width: 150px;
+  height: 30px;
+}

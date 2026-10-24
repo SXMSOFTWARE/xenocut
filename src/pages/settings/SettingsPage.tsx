@@ -10,6 +10,7 @@ import { toast } from "../../store/toast";
 import { CREDITS } from "../../lib/credits";
 import { ModulesSection } from "./Modules";
 import { ShortcutsSection } from "./ShortcutsSection";
+import { ThemeSection } from "./ThemeSection";
 import "../../styles/settings.css";
 
 type ModelStatus = Awaited<ReturnType<typeof api.modelStatus>>;
@@ -117,6 +118,8 @@ export default function SettingsPage() {
               />
             </Row>
           </section>
+
+          <ThemeSection />
 
           <ShortcutsSection />
 
