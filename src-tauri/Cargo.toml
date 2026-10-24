@@ -24,6 +24,9 @@ rustfft = "6"
 reqwest = { version = "0.12", default-features = false, features = ["rustls-tls", "blocking"] }
 sha2 = "0.10"
 tauri-plugin-fs = "2"
+candle-core = "0.11"
+candle-nn = "0.11"
+candle-transformers = "0.11"
 
 # ONNX Runtime has no prebuilt Android binaries; vocal separation is desktop-only for now.
 [target.'cfg(not(target_os = "android"))'.dependencies]
