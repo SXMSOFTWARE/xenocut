@@ -2,6 +2,27 @@
 
 Tüm önemli değişiklikler bu dosyada. Sürümler GitHub'da ön sürüm (pre-release) olarak yayınlanır.
 
+## v0.4.0 — 2026-10-24
+
+Android sürümü için yeni, sade bir telefon arayüzü ve ayarlar sayfası düzeltmeleri.
+
+### Neden v0.3.0'da telefonda efektler, AMV vb. görünmüyordu
+- APK eski değildi; masaüstü düzeni telefona sıkıştırılmıştı. Medya sayfası açılışta alttaki küçük, etiketsiz yan ray düğmelerini (Renk, Metin, Altyazı, Şarkı sözleri, Ritim/AMV) örtüyordu; efektler ve hazır düzenlemeler yalnızca bir klip seçiliyken "Klip" panelinin içindeydi; medya ekleme düğmeleri yalnızca fareyle üzerine gelince çıkıyordu.
+
+### Telefon arayüzü (Android)
+- Telefonlar için ayrı düzenleyici: üstte büyük önizleme, sade üst çubuk (geri, proje adı, dışa aktar), büyük oynat düğmesi ve geri al/yinele.
+- Altta etiketli araç çubuğu: Düzenle, Ses, Metin, Efektler, Altyazı, Ritim. Her biri alttan açılan bir sayfa açar (aşağı kaydırarak kapanır); tüm özellikler buradan erişilebilir.
+- Klip seçilince araç çubuğu klip araçlarına dönüşür: Böl, Ayarla, Efektler (hazır düzenlemeler dahil), Metni düzenle, Sil.
+- Efektler sayfası, oynatma imlecinin altındaki klibi kendiliğinden seçer.
+- Dokunmaya uygun zaman çizelgesi: daha yüksek izler, dokununca imleç oraya gider, iki parmakla yakınlaştırma, seçili olmayan klip ilk dokunuşta kaymaz.
+- 48 dp dokunma alanları, çentik/gezinme çubuğu boşlukları, yatay modda önizleme solda ve araçlar sağda.
+- Arayüz genişliğe göre değil platforma göre seçilir: dar bir masaüstü penceresi masaüstü düzeninde kalır. Masaüstü arayüzü değişmedi.
+
+### Ayarlar
+- Dar ekranlarda taşmalar giderildi: modül kartları, uzun yollar ve etiketler, Hakkında bağlantıları, lisans etiketleri.
+- Telefonda anahtarlar etiketle aynı satırda; düğmeler parmakla rahat dokunulacak boyutta.
+- Dışa aktarma penceresinde özet satırı dar ekranda tek satıra iner.
+
 ## v0.3.0 — 2026-10-24
 
 İlk yayınlanan sürüm. v0.2.0 ayrı olarak yayınlanmadı; değişiklikleri (aşağıda) bu sürümün içinde.
