@@ -580,3 +580,16 @@ input[type="range"]:disabled {
   gap: 4px;
   min-width: 0;
 }
+
+/* narrow screens: footer summary gets its own line instead of wrapping word by word */
+@media (max-width: 520px) {
+  .modal-foot {
+    flex-wrap: wrap;
+  }
+  .modal-foot > .muted {
+    flex-basis: 100%;
+  }
+}
+html.mobile .modal-foot .btn {
+  min-height: 44px;
+}
