@@ -587,3 +587,117 @@
   padding-bottom: 12px;
   border-bottom: 1px solid rgba(255, 255, 255, 0.08);
 }
+
+/* ---------- stickers (Lottie) ---------- */
+.lt-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.lt-toolbar .tr-search {
+  flex: 1;
+  min-width: 0;
+}
+.lt-toolbar .btn {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+.lt-card canvas {
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+.lt-thumb {
+  background: radial-gradient(circle at 50% 40%, rgba(255, 255, 255, 0.1), rgba(255, 255, 255, 0.02) 70%);
+}
+.lt-card .fx-thumb > svg {
+  position: absolute;
+  color: var(--text-3);
+}
+.lt-offers {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.lt-offer {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 10px;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+.lt-offer > div {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.lt-offer strong {
+  font-size: var(--fs-sm);
+  color: var(--text);
+}
+.lt-offer span {
+  font-size: var(--fs-xs, 11px);
+  color: var(--text-3);
+}
+.lt-inspector .section-title {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.lt-inspector {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.lt-text {
+  gap: 4px;
+}
+.lt-text > span {
+  font-size: var(--fs-xs, 11px);
+  color: var(--text-3);
+}
+.lt-text textarea.input {
+  height: auto;
+  min-height: 32px;
+  padding: 6px 10px;
+  resize: vertical;
+  font: inherit;
+  font-size: var(--fs-sm);
+}
+.lt-place {
+  display: grid;
+  grid-template-columns: repeat(3, 22px);
+  gap: 4px;
+  padding: 6px;
+  width: max-content;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.05);
+}
+.lt-dot {
+  width: 22px;
+  height: 16px;
+  border-radius: 4px;
+  background: rgba(255, 255, 255, 0.1);
+}
+.lt-dot:hover {
+  background: rgba(255, 255, 255, 0.22);
+}
+.lt-dot.active {
+  background: var(--accent, #fff);
+}
+.lt-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: var(--fs-sm);
+  color: var(--text-2);
+}
+.clip.tone-text.lottie {
+  --tint: var(--clip-lottie, #b36ad8);
+}

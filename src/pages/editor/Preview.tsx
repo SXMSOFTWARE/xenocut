@@ -12,9 +12,9 @@ import { useProject } from "../../store/project";
 import { useAssets } from "../../store/assets";
 import { useSettings } from "../../store/settings";
 import { useEditorUi } from "../../store/editorUi";
-import { updateText } from "../../project/ops";
+import { updateLottie, updateText } from "../../project/ops";
 import { fontsFor } from "../../text/exportLayer";
-import { activeTexts, textAtPoint, textBox } from "../../text/render";
+import { activeLayers, layerBox, textAtPoint } from "../../text/render";
 
 /**
  * The project canvas, letterboxed (contain) into whatever room the hero leaves between the rail,
@@ -134,12 +134,13 @@ export function Preview() {
     const id = textAtPoint(project, time, start.x, start.y);
     if (!id) return;
     const clip = project.clips.find((c) => c.id === id);
-    if (!clip?.text) return;
+    const pos = clip?.text?.style ?? clip?.lottie;
+    if (!clip || !pos) return;
     engine.pause();
     draggedRef.current = true; // a press on text never toggles playback
     useProject.getState().select([id]);
-    useEditorUi.setState({ panel: "text" });
-    const origin = { x: clip.text.style.x, y: clip.text.style.y };
+    useEditorUi.setState({ panel: clip.lottie ? "stickers" : "text" });
+    const origin = { x: pos.x, y: pos.y };
     const { beginGesture, endGesture, transient } = useProject.getState();
     let moved = false;
     const move = (ev: PointerEvent) => {
@@ -154,7 +155,7 @@ export function Preview() {
       // Snap to the centre lines.
       if (Math.abs(x - 0.5) < 0.012) x = 0.5;
       if (Math.abs(y - 0.5) < 0.012) y = 0.5;
-      transient((p) => updateText(p, id, (tx) => ({ ...tx, style: { ...tx.style, x, y } })));
+      transient((p) => (clip.lottie ? updateLottie(p, id, { x, y }) : updateText(p, id, (tx) => ({ ...tx, style: { ...tx.style, x, y } }))));
     };
     const up = () => {
       window.removeEventListener("pointermove", move);
@@ -286,9 +287,9 @@ function TextSelection({ width, height }: { width: number; height: number }) {
   const project = useProject((s) => s.project);
   const selection = useProject((s) => s.selection);
   if (!project || playing || selection.length !== 1) return null;
-  const active = activeTexts(project, time).find((a) => a.clip.id === selection[0]);
-  if (!active) return null;
-  const b = textBox(active.text, width, height);
+  const active = activeLayers(project, time).find((a) => a.clip.id === selection[0]);
+  const b = active && layerBox(active.clip, width, height);
+  if (!b) return null;
   return (
     <div
       className="stage-text-box"

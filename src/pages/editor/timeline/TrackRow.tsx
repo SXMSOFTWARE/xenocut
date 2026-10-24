@@ -79,7 +79,7 @@ export const TrackRow = memo(function TrackRow({ track, clips, media, pps, heigh
       </div>
       <div className="tl-lane" data-lane="" data-track-id={track.id} onPointerDown={lanePointerDown} {...laneMenu}>
         {clips.map((clip, i) => {
-          if (clip.text) return <TextClipView key={clip.id} clip={clip} pps={pps} selected={selected.has(clip.id)} />;
+          if (clip.text || clip.lottie) return <TextClipView key={clip.id} clip={clip} pps={pps} selected={selected.has(clip.id)} />;
           if (track.kind === "effect") return <EffectLayerView key={clip.id} clip={clip} pps={pps} selected={selected.has(clip.id)} />;
           const m = media.get(clip.mediaId);
           const tint = track.kind === "video" ? TINTS[i % TINTS.length] : track.kind === "music" ? "gold" : "lavender";

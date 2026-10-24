@@ -1,6 +1,6 @@
 // Draws text clips on a 2D canvas. The live preview and the export share this code, so the
 // rendered video matches the preview frame for frame.
-import { drawLottie, lottieFrameKey, lottieVersion } from "../lottie/render";
+import { drawLottie, lottieBox, lottieHit, lottieFrameKey, lottieVersion } from "../lottie/render";
 import type { Clip, Project } from "../project/types";
 import { clipDuration, clipEnd } from "../project/ops";
 import type { AnimIn, AnimOut, TextContent, TextStyle } from "../project/text";
@@ -449,7 +449,7 @@ export function textStateKey(project: Project, t: number, frame: number): string
   for (const a of activeLayers(project, t)) {
     if (a.clip.lottie) {
       lottie = true;
-      parts.push(`${a.clip.id}~${lottieFrameKey(a.clip.lottie, a.lt)}`);
+      parts.push(`${a.clip.id}~${lottieFrameKey(a.clip.lottie, a.clip.in + a.lt * (a.clip.speed || 1))}`);
     } else if (a.clip.text) parts.push(isAnimatedAt(a.clip.text, a.lt, a.duration) ? `${a.clip.id}@${frame}` : a.clip.id);
   }
   if (lottie) parts.push(`v${lottieVersion()}`);
@@ -471,10 +471,26 @@ export function textBox(text: TextContent, width: number, height: number) {
 
 /** The top-most text clip visible at `t` whose box contains the point (project pixels). */
 export function textAtPoint(project: Project, t: number, x: number, y: number): string | null {
-  const active = activeTexts(project, t);
+  const active = activeLayers(project, t);
   for (let i = active.length - 1; i >= 0; i--) {
-    const b = textBox(active[i].text, project.settings.width, project.settings.height);
-    if (x >= b.left && x <= b.left + b.w && y >= b.top && y <= b.top + b.h) return active[i].clip.id;
+    const { clip } = active[i];
+    if (clip.lottie) {
+      if (lottieHit(clip.lottie, x, y, project.settings.width, project.settings.height)) return clip.id;
+      continue;
+    }
+    const b = layerBox(clip, project.settings.width, project.settings.height);
+    if (b && x >= b.left && x <= b.left + b.w && y >= b.top && y <= b.top + b.h) return clip.id;
   }
   return null;
+}
+
+/** On-frame box of a text or Lottie clip (project pixels; rotated Lottie gets its bounding box). */
+export function layerBox(clip: Clip, width: number, height: number): { left: number; top: number; w: number; h: number } | null {
+  if (clip.text) return textBox(clip.text, width, height);
+  if (!clip.lottie) return null;
+  const b = lottieBox(clip.lottie, width, height);
+  const a = (b.rotation * Math.PI) / 180;
+  const w = Math.abs(b.w * Math.cos(a)) + Math.abs(b.h * Math.sin(a));
+  const h = Math.abs(b.w * Math.sin(a)) + Math.abs(b.h * Math.cos(a));
+  return { left: b.cx - w / 2, top: b.cy - h / 2, w, h };
 }

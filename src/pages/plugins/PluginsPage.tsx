@@ -242,7 +242,7 @@ export default function PluginsPage() {
 
   const pick = async () => {
     // Android's picker can't filter by unknown extensions, so offer every file there.
-    const paths = await pickFiles(isAndroid ? [] : [{ name: "XenoCut pack / LUT", extensions: ["xcpack", "zip", "cube"] }], true);
+    const paths = await pickFiles(isAndroid ? [] : [{ name: "XenoCut pack / LUT / GLSL / Lottie", extensions: ["xcpack", "zip", "cube", "glsl", "json"] }], true);
     await installPaths(paths);
   };
 

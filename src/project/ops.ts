@@ -1,7 +1,7 @@
 // Pure project operations. Every function returns a new project; nothing mutates.
 import { uid } from "../lib/id";
 import type { ClipEffect } from "./effects";
-import type { Aspect, Clip, MediaItem, ProbeInfo, Project, ProjectSettings, Resolution, Track, TrackKind } from "./types";
+import type { Aspect, Clip, ClipLottie, MediaItem, ProbeInfo, Project, ProjectSettings, Resolution, Track, TrackKind } from "./types";
 import { TEXT_DEFAULT_SECONDS, type TextContent } from "./text";
 
 export const IMAGE_DEFAULT_SECONDS = 5;
@@ -261,6 +261,16 @@ export function updateText(project: Project, clipId: string, update: (text: Text
     ...project,
     clips: project.clips.map((c) => (c.id === clipId && c.text ? { ...c, text: update(c.text) } : c)),
   };
+}
+
+/** Put a Lottie clip at `at` on a free (non-subtitle) text track; a new track is added when every one is busy. */
+export function addLottieClip(project: Project, lottie: ClipLottie, at: number, duration: number): { project: Project; clipId: string } {
+  const { project: next, clipId } = addTextClip(project, { content: "" } as TextContent, at, duration);
+  return { project: { ...next, clips: next.clips.map((c) => (c.id === clipId ? { ...c, text: undefined, lottie, name: lottie.name } : c)) }, clipId };
+}
+
+export function updateLottie(project: Project, clipId: string, patch: Partial<ClipLottie>): Project {
+  return { ...project, clips: project.clips.map((c) => (c.id === clipId && c.lottie ? { ...c, lottie: { ...c.lottie, ...patch } } : c)) };
 }
 
 export const EFFECT_LAYER_SECONDS = 3;

@@ -3,7 +3,7 @@ import { create } from "zustand";
 export const MIN_PPS = 4;
 export const MAX_PPS = 400;
 
-export type PanelId = "media" | "voice" | "music" | "effects" | "audio" | "color" | "text" | "captions" | "lyrics" | "amv" | "fx" | "anim" | "trans" | "format";
+export type PanelId = "media" | "voice" | "music" | "effects" | "audio" | "color" | "text" | "captions" | "lyrics" | "amv" | "fx" | "anim" | "trans" | "stickers" | "format";
 
 interface EditorUiState {
   /** Floating context panel driven by the left rail; null = closed. */

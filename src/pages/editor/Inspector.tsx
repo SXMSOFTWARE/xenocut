@@ -1,4 +1,4 @@
-import { Layers, Scissors, SlidersHorizontal, Sparkles, Trash2, Type } from "lucide-react";
+import { Layers, Scissors, SlidersHorizontal, Sparkles, Trash2, Type, Sticker } from "lucide-react";
 import { keysOf } from "./shortcuts";
 import { KeyCombo } from "./ShortcutsDialog";
 import { Keyboard } from "lucide-react";
@@ -35,6 +35,14 @@ export function Inspector({ noFx = false }: { noFx?: boolean } = {}) {
             <button className="btn btn-sm" onClick={() => useEditorUi.setState({ panel: "text" })}>
               <Type />
               {t("text.openPanel")}
+            </button>
+          </div>
+        ) : clip?.lottie ? (
+          <div className="inspector-note">
+            <p>{t("lottie.inInspector")}</p>
+            <button className="btn btn-sm" onClick={() => useEditorUi.setState({ panel: "stickers" })}>
+              <Sticker />
+              {t("lottie.openPanel")}
             </button>
           </div>
         ) : clip && isEffectLayer(clip) ? (

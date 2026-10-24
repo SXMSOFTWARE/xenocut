@@ -303,10 +303,10 @@ function player(l: ClipLottie): Player {
   return fresh;
 }
 
-/** Keeps at most 24 players, dropping the least recently used. */
+/** Keeps at most 48 players, dropping the least recently used. */
 function prune() {
-  if (players.size <= 24) return;
-  const old = [...players.entries()].sort((a, b) => a[1].used - b[1].used).slice(0, players.size - 24);
+  if (players.size <= 48) return;
+  const old = [...players.entries()].sort((a, b) => a[1].used - b[1].used).slice(0, players.size - 48);
   for (const [key, p] of old) {
     p.anim?.destroy();
     players.delete(key);
@@ -348,6 +348,30 @@ export function lottieBox(l: ClipLottie, width: number, height: number) {
   return { cx: l.x * width, cy: l.y * height, w: l.w * fit, h: l.h * fit, rotation: l.rotation };
 }
 
+/**
+ * Whether the point (project pixels) lands on a drawn part of the clip's current frame (within
+ * a few pixels), so full-frame titles don't swallow clicks on empty areas of the stage.
+ */
+export function lottieHit(l: ClipLottie, x: number, y: number, width: number, height: number): boolean {
+  const p = players.get(playerKey(l));
+  const b = lottieBox(l, width, height);
+  const a = (-b.rotation * Math.PI) / 180;
+  const dx = x - b.cx, dy = y - b.cy;
+  const u = (dx * Math.cos(a) - dy * Math.sin(a)) / b.w + 0.5;
+  const v = (dx * Math.sin(a) + dy * Math.cos(a)) / b.h + 0.5;
+  if (u < 0 || u > 1 || v < 0 || v > 1) return false;
+  if (!p?.ready) return true;
+  const r = 6;
+  const px = Math.round(u * p.canvas.width), py = Math.round(v * p.canvas.height);
+  try {
+    const d = p.canvas.getContext("2d")!.getImageData(px - r, py - r, r * 2 + 1, r * 2 + 1).data;
+    for (let i = 3; i < d.length; i += 4) if (d[i] > 24) return true;
+    return false;
+  } catch {
+    return true;
+  }
+}
+
 /** Draws a Lottie clip at local time `lt`; false while its player is still loading. */
 export function drawLottie(ctx: CanvasRenderingContext2D | OffscreenCanvasRenderingContext2D, clip: Clip, width: number, height: number, lt: number): boolean {
   const l = clip.lottie;
@@ -355,7 +379,7 @@ export function drawLottie(ctx: CanvasRenderingContext2D | OffscreenCanvasRender
   const p = player(l);
   if (p.failed) return true;
   if (!p.ready || !p.anim) return false;
-  const frame = lottieFrame(l, lt);
+  const frame = lottieFrame(l, clip.in + lt * (clip.speed || 1));
   if (Math.abs(frame - p.frame) > 1e-4) {
     resetStyleCache(p.anim, p.canvas);
     p.anim.goToAndStop(frame, true);

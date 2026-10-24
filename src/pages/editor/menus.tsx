@@ -89,7 +89,7 @@ export function clipMenu(e: React.MouseEvent | { clientX: number; clientY: numbe
   const locked = !!track?.locked;
   const media = p.media.find((m) => m.id === clip.mediaId);
   const layer = isEffectLayer(clip);
-  const visual = !clip.text && !layer && media?.kind !== "audio";
+  const visual = !clip.text && !clip.lottie && !layer && media?.kind !== "audio";
   const clipboard = useClipboard.getState();
   const editable = editableSelection(p).length > 0;
   const nAdj = !!nextAdjacent(p, clip);

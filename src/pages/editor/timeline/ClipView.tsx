@@ -4,7 +4,7 @@ import { clipDuration, updateClip } from "../../../project/ops";
 import { windows } from "../../../project/anims";
 import type { Clip, MediaAssets, MediaItem, Project, TrackKind } from "../../../project/types";
 import { useAssets } from "../../../store/assets";
-import { ChevronLeft, ChevronRight, Sparkles, Type } from "lucide-react";
+import { ChevronLeft, ChevronRight, Sparkles, Sticker, Type } from "lucide-react";
 import { EFFECT_DEF } from "../../../project/effects";
 import { useEditorUi } from "../../../store/editorUi";
 import { useProject } from "../../../store/project";
@@ -124,10 +124,11 @@ function AnimBars({ clip, pps, selected }: { clip: Clip; pps: number; selected: 
 export const TextClipView = memo(function TextClipView({ clip, pps, selected }: { clip: Clip; pps: number; selected: boolean }) {
   const duration = clipDuration(clip);
   const width = Math.max(2, duration * pps);
-  const label = (clip.text?.content ?? "").replace(/\s+/g, " ").trim();
+  const label = clip.lottie ? clip.lottie.name : (clip.text?.content ?? "").replace(/\s+/g, " ").trim();
+  const Glyph = clip.lottie ? Sticker : Type;
   return (
     <div
-      className={`clip tone-text${selected ? " selected" : ""}${width < 36 ? " tiny" : ""}`}
+      className={`clip tone-text${clip.lottie ? " lottie" : ""}${selected ? " selected" : ""}${width < 36 ? " tiny" : ""}`}
       style={{ transform: `translateX(${clip.start * pps}px)`, width }}
       data-clip-id={clip.id}
       title={label}
@@ -135,7 +136,7 @@ export const TextClipView = memo(function TextClipView({ clip, pps, selected }: 
     >
       <div className="clip-body">
         <div className="clip-label">
-          <Type className="clip-text-glyph" />
+          <Glyph className="clip-text-glyph" />
           <span>{clip.name ?? (label || "…")}</span>
         </div>
       </div>
