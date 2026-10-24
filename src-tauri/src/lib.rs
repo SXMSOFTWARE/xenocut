@@ -100,6 +100,7 @@ pub fn run() {
             app::plugin_remove,
             app::plugin_set_enabled,
             app::plugin_lut,
+            app::plugin_asset,
             app::plugin_catalog,
         ])
         .run(tauri::generate_context!())

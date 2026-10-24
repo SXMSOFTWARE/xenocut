@@ -486,6 +486,11 @@ pub fn plugin_lut(app: AppHandle, path: String) -> Result<crate::plugins::Cube, 
 }
 
 #[tauri::command]
+pub fn plugin_asset(app: AppHandle, path: String) -> Result<String, String> {
+    plugin_store(&app).asset_text(std::path::Path::new(&path))
+}
+
+#[tauri::command]
 pub async fn plugin_catalog() -> Result<serde_json::Value, String> {
     tauri::async_runtime::spawn_blocking(crate::plugins::fetch_catalog)
         .await

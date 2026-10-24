@@ -742,6 +742,33 @@ impl Store {
         }
         parse_cube(&std::fs::read_to_string(&file).map_err(|e| e.to_string())?)
     }
+
+    /// A transition shader (`.glsl`) or Lottie animation (`.json`) from an installed pack,
+    /// re-validated on every read.
+    pub fn asset_text(&self, path: &Path) -> Result<String, String> {
+        let root = self
+            .root
+            .canonicalize()
+            .map_err(|_| "no plugins installed".to_string())?;
+        let file = path
+            .canonicalize()
+            .map_err(|_| "plugin file not found".to_string())?;
+        let ext = file
+            .extension()
+            .and_then(|e| e.to_str())
+            .unwrap_or("")
+            .to_ascii_lowercase();
+        if !file.starts_with(&root) || file.file_name().is_some_and(|n| n == "manifest.json") {
+            return Err("not a plugin asset".into());
+        }
+        let text = std::fs::read_to_string(&file).map_err(|e| e.to_string())?;
+        match ext.as_str() {
+            "glsl" => validate_glsl(&text)?,
+            "json" => validate_lottie(text.as_bytes())?,
+            _ => return Err("not a plugin asset".into()),
+        }
+        Ok(text)
+    }
 }
 
 fn walk(dir: &Path, f: &mut dyn FnMut(&Path, u64) -> Result<(), String>) -> Result<(), String> {
