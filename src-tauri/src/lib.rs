@@ -1,5 +1,6 @@
 pub mod app;
 pub mod audio;
+pub mod beats;
 pub mod content_import;
 pub mod diag;
 pub mod effects;
@@ -66,6 +67,7 @@ pub fn run() {
             subtitles::commands::subtitle_cancel,
             subtitles::commands::subtitle_read,
             subtitles::commands::subtitle_write,
+            beats::beat_detect,
         ])
         .run(tauri::generate_context!())
         .expect("error while running XenoCut");
