@@ -54,7 +54,27 @@ export type PackKind =
   | "earthquake"
   | "amvHit"
   | "beatGlitch"
-  | "widescreen";
+  | "widescreen"
+  | "moody"
+  | "vivid"
+  | "pastel"
+  | "goldenHour"
+  | "arctic"
+  | "bleachBypass"
+  | "silverScreen"
+  | "memory"
+  | "polaroid"
+  | "xray"
+  | "cyberGlitch"
+  | "tvStatic"
+  | "camcorder"
+  | "cinemaScope"
+  | "dreamGlow"
+  | "musicVideo"
+  | "handheld"
+  | "dramaZoom"
+  | "beatFlash"
+  | "beatZoom";
 
 export type EffectKind = PrimitiveKind | PackKind;
 
@@ -132,6 +152,26 @@ export const EFFECTS: EffectDef[] = [
   { kind: "punch", cats: ["amv", "motion"], initial: 0.6, hit: true },
   { kind: "hitShake", cats: ["amv", "motion"], initial: 0.6, hit: true },
   { kind: "amvHit", cats: ["amv"], initial: 1, hit: true },
+  { kind: "moody", cats: ["color"], initial: 1 },
+  { kind: "vivid", cats: ["color", "basic"], initial: 1 },
+  { kind: "pastel", cats: ["color"], initial: 1 },
+  { kind: "goldenHour", cats: ["color"], initial: 1 },
+  { kind: "arctic", cats: ["color"], initial: 1 },
+  { kind: "bleachBypass", cats: ["color"], initial: 1 },
+  { kind: "silverScreen", cats: ["retro", "color"], initial: 1 },
+  { kind: "memory", cats: ["retro", "blur"], initial: 1 },
+  { kind: "polaroid", cats: ["retro", "color"], initial: 1 },
+  { kind: "xray", cats: ["glitch", "color"], initial: 1 },
+  { kind: "cyberGlitch", cats: ["glitch"], initial: 1 },
+  { kind: "tvStatic", cats: ["retro", "glitch"], initial: 1 },
+  { kind: "camcorder", cats: ["retro"], initial: 1 },
+  { kind: "cinemaScope", cats: ["overlay", "color"], initial: 1 },
+  { kind: "dreamGlow", cats: ["blur", "color"], initial: 1 },
+  { kind: "musicVideo", cats: ["amv", "color"], initial: 1 },
+  { kind: "handheld", cats: ["motion"], initial: 1 },
+  { kind: "dramaZoom", cats: ["motion"], initial: 1 },
+  { kind: "beatFlash", cats: ["amv"], initial: 1, hit: true },
+  { kind: "beatZoom", cats: ["amv", "motion"], initial: 1, hit: true },
 ];
 
 export const EFFECT_DEF = Object.fromEntries(EFFECTS.map((d) => [d.kind, d])) as Record<EffectKind, EffectDef>;

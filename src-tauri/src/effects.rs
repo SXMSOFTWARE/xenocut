@@ -719,7 +719,7 @@ mod tests {
 mod demos {
     use super::*;
 
-    const KINDS: [&str; 42] = [
+    const KINDS: [&str; 62] = [
         "brightness",
         "contrast",
         "saturation",
@@ -762,6 +762,26 @@ mod demos {
         "punch",
         "hitShake",
         "amvHit",
+        "moody",
+        "vivid",
+        "pastel",
+        "goldenHour",
+        "arctic",
+        "bleachBypass",
+        "silverScreen",
+        "memory",
+        "polaroid",
+        "xray",
+        "cyberGlitch",
+        "tvStatic",
+        "camcorder",
+        "cinemaScope",
+        "dreamGlow",
+        "musicVideo",
+        "handheld",
+        "dramaZoom",
+        "beatFlash",
+        "beatZoom",
     ];
 
     /// Amount and range used for a demo: hits fire twice, fades take half the loop.
@@ -773,7 +793,7 @@ mod demos {
             to,
         };
         match kind {
-            "flash" | "punch" | "hitShake" | "amvHit" | "beatGlitch" => {
+            "flash" | "punch" | "hitShake" | "amvHit" | "beatGlitch" | "beatFlash" | "beatZoom" => {
                 let amount = if kind == "flash" { 0.8 } else { 1.0 };
                 vec![
                     e(amount, Some(0.25), Some(1.25)),
@@ -830,6 +850,10 @@ mod demos {
             }
             graph.push_str(",format=yuv420p[v]");
             let file = out.join(format!("{kind}.webp"));
+            // Existing demos stay as they are unless FX_DEMOS_ALL is set.
+            if file.is_file() && std::env::var_os("FX_DEMOS_ALL").is_none() {
+                continue;
+            }
             let status = std::process::Command::new(&bin)
                 .args(["-y", "-loglevel", "error"])
                 .args(&input)
