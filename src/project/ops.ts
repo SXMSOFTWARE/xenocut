@@ -174,8 +174,8 @@ export function snap(time: number, candidates: number[], threshold: number): { t
   return best === null ? { time, snapped: null } : { time: best, snapped: best };
 }
 
-export function snapCandidates(project: Project, playhead: number, ignore: ReadonlySet<string>): number[] {
-  const points = [0, playhead];
+export function snapCandidates(project: Project, playhead: number, ignore: ReadonlySet<string>, extra: number[] = []): number[] {
+  const points = [0, playhead, ...extra];
   for (const c of project.clips) {
     if (ignore.has(c.id)) continue;
     points.push(c.start, clipEnd(c));

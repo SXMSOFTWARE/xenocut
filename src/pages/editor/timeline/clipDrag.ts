@@ -14,6 +14,7 @@ import {
   updateClip,
 } from "../../../project/ops";
 import type { TrackKind } from "../../../project/types";
+import { visibleBeats } from "../../../store/beats";
 import { useEditorUi } from "../../../store/editorUi";
 import { usePlayback } from "../../../store/playback";
 import { useProject } from "../../../store/project";
@@ -46,7 +47,7 @@ export function beginClipDrag(e: React.PointerEvent, clipId: string, mode: ClipD
   const pps = ui.pxPerSec;
   const threshold = 8 / pps;
   const ignore = new Set([clipId]);
-  const candidates = snapCandidates(project, usePlayback.getState().time, ignore);
+  const candidates = snapCandidates(project, usePlayback.getState().time, ignore, visibleBeats(project, ignore));
   const sx = e.clientX;
   const duration = clipDuration(origin);
   const end = clipEnd(origin);

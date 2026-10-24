@@ -166,6 +166,8 @@ export const api = {
   subtitleModelDelete: (size: "tiny" | "base" | "small") => call<void>("subtitle_model_delete", { size }),
   subtitleTranscribe: (project: Project, options: TranscribeOptions) => call<{ language: string; cues: SubtitleCue[] }>("subtitle_transcribe", { project, options }),
   subtitleCancel: () => call<void>("subtitle_cancel"),
+  beatDetect: (path: string, start?: number, duration?: number) =>
+    call<import("../project/beats").BeatGrid>("beat_detect", { path, start, duration }),
   subtitleRead: (path: string) => call<SubtitleCue[]>("subtitle_read", { path }),
   subtitleWrite: (path: string, cues: SubtitleCue[]) => call<string>("subtitle_write", { path, cues }),
   mediaAllow: (paths: string[]) => (isTauri ? call<void>("media_allow", { paths }) : Promise.resolve()),

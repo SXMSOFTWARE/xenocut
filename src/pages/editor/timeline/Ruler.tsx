@@ -1,5 +1,8 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useMemo, useRef } from "react";
 import { rulerLabel } from "../../../lib/format";
+import { pickBeats, timelineBeats } from "../../../project/beats";
+import { songBeats, useBeats } from "../../../store/beats";
+import { useProject } from "../../../store/project";
 import { scrubFrom } from "./TrackRow";
 
 const STEPS = [0.1, 0.2, 0.5, 1, 2, 5, 10, 15, 30, 60, 120, 300, 600, 1200];
@@ -8,6 +11,17 @@ const STEPS = [0.1, 0.2, 0.5, 1, 2, 5, 10, 15, 30, 60, 120, 300, 600, 1200];
 export function Ruler({ pps, scroller, contentWidth }: { pps: number; scroller: HTMLDivElement | null; contentWidth: number }) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const hostRef = useRef<HTMLDivElement>(null);
+  const project = useProject((st) => st.project);
+  const grids = useBeats((st) => st.grids);
+  const show = useBeats((st) => st.show);
+  // Beat markers: every beat a short tick, bar starts (downbeats) taller.
+  const beats = useMemo(() => {
+    const song = show ? songBeats(project, grids) : null;
+    if (!song?.grid) return null;
+    const all = timelineBeats(song.clip, song.grid);
+    const first = song.grid.beats.findIndex((b) => b >= song.clip.in - 1e-3);
+    return { all, bars: new Set(pickBeats(all, 4, song.grid.downbeat, Math.max(0, first))) };
+  }, [project, grids, show]);
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -52,6 +66,19 @@ export function Ruler({ pps, scroller, contentWidth }: { pps: number; scroller: 
           ctx.fill();
         }
       }
+      if (beats) {
+        ctx.fillStyle = "rgba(255,138,76,0.9)";
+        for (const b of beats.all) {
+          if (b < left / pps - 1 || b > t1 + 1) continue;
+          const x = Math.round(b * pps - left);
+          const bar = beats.bars.has(b);
+          if (!bar && pps < 12) continue; // too dense to read when zoomed far out
+          const th = bar ? 7 : 4;
+          ctx.globalAlpha = bar ? 1 : 0.6;
+          ctx.fillRect(x - (bar ? 1 : 0.5), h - th, bar ? 2 : 1, th);
+        }
+        ctx.globalAlpha = 1;
+      }
     };
     const request = () => {
       if (!frame) frame = requestAnimationFrame(draw);
@@ -65,7 +92,7 @@ export function Ruler({ pps, scroller, contentWidth }: { pps: number; scroller: 
       scroller.removeEventListener("scroll", request);
       ro.disconnect();
     };
-  }, [pps, scroller, contentWidth]);
+  }, [pps, scroller, contentWidth, beats]);
 
   return (
     <div className="tl-ruler" ref={hostRef} style={{ width: contentWidth }} onPointerDown={(e) => e.button === 0 && scrubFrom(hostRef.current!, e.clientX)}>

@@ -7,6 +7,7 @@ import { addToTimeline, importDialog } from "../../project/actions";
 import { clipDuration, nearestFreeStart, newClip, removeMediaAndClips, snap, snapCandidates, trackAccepts } from "../../project/ops";
 import type { MediaItem, MediaKind } from "../../project/types";
 import { useAssets } from "../../store/assets";
+import { visibleBeats } from "../../store/beats";
 import { useEditorUi } from "../../store/editorUi";
 import { usePlayback } from "../../store/playback";
 import { useProject } from "../../store/project";
@@ -134,7 +135,7 @@ function startMediaDrag(e: React.PointerEvent, media: MediaItem) {
     const pps = useEditorUi.getState().pxPerSec;
     let time = lane.time;
     if (useEditorUi.getState().snapping) {
-      const candidates = snapCandidates(project, usePlayback.getState().time, new Set());
+      const candidates = snapCandidates(project, usePlayback.getState().time, new Set(), visibleBeats(project));
       const head = snap(time, candidates, 8 / pps);
       const tail = snap(time + duration, candidates, 8 / pps);
       if (head.snapped !== null) time = head.time;

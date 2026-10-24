@@ -81,6 +81,8 @@ export const SHARPEN_AMOUNT = 2;
 export const FLASH_DECAY = 0.25;
 export const PUNCH_RANGE = 0.12;
 export const PUNCH_DECAY = 0.35;
+/** Effects that play once at the clip start (the beat hits). */
+export const HIT_KINDS: EffectKind[] = ["flash", "punch", "hitShake"];
 export const HIT_SHAKE_RANGE = 0.04;
 export const HIT_SHAKE_DECAY = 0.4;
 const SHAKE_X: [number, number, number][] = [
