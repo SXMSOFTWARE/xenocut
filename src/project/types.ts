@@ -68,6 +68,21 @@ export interface Clip {
   anim?: ClipAnim;
   /** Colour LUT from a plugin pack (absolute `.cube` path), mixed in by `amount` 0..1. */
   lut?: ClipLut;
+  /** Transition into the next adjacent clip on the same track (see transitions/index.ts). */
+  transition?: ClipTransition;
+}
+
+export interface ClipTransition {
+  /** Built-ins: the xfade name. Pack shaders: "<packId>/<entryId>". */
+  id: string;
+  duration: number;
+  name?: string;
+  /** Shader transitions: gl-transitions GLSL copied from the pack. */
+  glsl?: string;
+  /** Shader uniform values (defaults come from the GLSL `// = value` comments). */
+  params?: Record<string, number | number[] | boolean>;
+  /** xfade used by the export when the shader can't be rendered. */
+  fallback?: string;
 }
 
 export interface ClipLut {

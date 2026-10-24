@@ -39,7 +39,8 @@ pub struct ClipTransition {
     pub fallback: Option<String>,
 }
 
-/// The FFmpeg `xfade` transitions offered as built-ins. Their ids are the xfade names.
+/// The FFmpeg `xfade` transitions offered as built-ins (all in FFmpeg 7.1, the oldest build the
+/// app ships). Their ids are the xfade names.
 pub const XFADE: &[&str] = &[
     "fade",
     "fadeblack",
@@ -91,6 +92,12 @@ pub const XFADE: &[&str] = &[
     "squeezeh",
     "squeezev",
     "zoomin",
+    "fadefast",
+    "fadeslow",
+    "hlwind",
+    "hrwind",
+    "vuwind",
+    "vdwind",
 ];
 
 pub fn is_xfade(id: &str) -> bool {

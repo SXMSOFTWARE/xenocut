@@ -13,6 +13,7 @@ vec4 A(vec2 p) { return getFromColor(vec2((p.x + 0.5) / resolution.x, 1.0 - (p.y
 vec4 B(vec2 p) { return getToColor(vec2((p.x + 0.5) / resolution.x, 1.0 - (p.y + 0.5) / resolution.y)); }
 vec4 cmix(vec4 a, vec4 b, float m) { return a * m + b * (1.0 - m); }
 float frand(vec2 p) { float r = sin(p.x * 12.9898 + p.y * 78.233) * 43758.545; return r - floor(r); }
+float xsmooth(float e0, float e1, float v) { float t = clamp((v - e0) / (e1 - e0), 0.0, 1.0); return t * t * (3.0 - 2.0 * t); }
 float luma(vec4 c) { return dot(c.rgb, vec3(0.299, 0.587, 0.114)); }
 #define HEAD vec2 q = px(uv); float x = q.x; float y = q.y; float W = resolution.x; float H = resolution.y; float pr = 1.0 - progress;
 `;
@@ -44,6 +45,12 @@ const smooth = (expr: string) => T(`float s = ${expr}; return cmix(B(q), A(q), s
 const slice = (coord: string) =>
   T(`float c = ${coord}; float s = smoothstep(-0.5, 0.0, c - pr * 1.5); float ss = s <= fract(10.0 * c) ? 0.0 : 1.0;
      return cmix(B(q), A(q), ss);`);
+
+const wind = (coord: string, rnd: string) =>
+  T(`float f = ${coord}; float r = frand(${rnd}); float s = f * 0.8 + 0.2 * r - (1.0 - pr) * 1.2;
+     return cmix(B(q), A(q), xsmooth(0.0, -0.2, s));`);
+const fadeCurve = (expr: string) =>
+  T(`vec4 a = A(q); vec4 b = B(q); vec4 m = pow(vec4(pr), 1.0 + log(${expr})); return a * m + b * (1.0 - m);`);
 
 /** id → GLSL body (without prelude). Ids are the xfade names (see transitions.rs XFADE). */
 export const XFADE_GLSL: Record<string, string> = {
@@ -108,6 +115,12 @@ export const XFADE_GLSL: Record<string, string> = {
     if (z < 0.0 || z > 1.0) return B(q); return A(vec2(x, floor(z * (H - 1.0) + 0.5)));`),
   squeezev: T(`float z = pr > 0.0 ? 0.5 + (x / W - 0.5) / pr : -1.0;
     if (z < 0.0 || z > 1.0) return B(q); return A(vec2(floor(z * (W - 1.0) + 0.5), y));`),
+  fadefast: fadeCurve("1.0 + abs(a - b)"),
+  fadeslow: fadeCurve("2.0 - abs(a - b)"),
+  hlwind: wind("1.0 - x / W", "vec2(0.0, y)"),
+  hrwind: wind("x / W", "vec2(0.0, y)"),
+  vuwind: wind("1.0 - y / H", "vec2(x, 0.0)"),
+  vdwind: wind("y / H", "vec2(x, 0.0)"),
   zoomin: T(`float zf = smoothstep(0.5, 1.0, pr); float u = 0.5 + (x / W - 0.5) * zf; float v = 0.5 + (y / H - 0.5) * zf;
     vec4 zv = A(vec2(ceil(u * (W - 1.0)), ceil(v * (H - 1.0)))); return cmix(zv, B(q), smoothstep(0.0, 0.5, pr));`),
 };
