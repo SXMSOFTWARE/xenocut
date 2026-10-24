@@ -2,6 +2,22 @@
 
 Tüm önemli değişiklikler bu dosyada. Sürümler GitHub'da ön sürüm (pre-release) olarak yayınlanır.
 
+## v0.5.0 — 2026-10-24
+
+CapCut tarzı efekt tarayıcısı, zaman aralıklı efektler, efekt katmanları ve telefonda ana sayfa düzeltmeleri.
+
+### Efektler
+- Yeni "Efektler" paneli (masaüstünde yan rayda, telefonda alttan açılan sayfa): Temel, Renk/Look, Glitch, Bulanıklık, Retro/VHS, Geçiş, Overlay, Hareket ve AMV/Beat kategorileri.
+- Her efekt kartında, efektin ne yaptığını gösteren kısa, döngüyle oynayan bir önizleme var. Önizlemeler, dışa aktarmada kullanılan filtrelerle üretildi.
+- Efektler artık klibin yalnızca bir bölümüne uygulanabilir: zaman çizelgesindeki tutamaçları sürükleyin ya da başlangıç ve bitiş saniyesini yazın ("Tüm klip", "Kafadan").
+- Efekt katmanı: "Yeni katman" ile efekt, kendi izinde ayrı bir şerit olarak eklenir. Altındaki tüm video ve görsel izlerini etkiler; taşınabilir, kırpılabilir, gizlenebilir.
+- Yeni efektler: tarama çizgileri, sinema şeritleri, karartarak giriş/çıkış ve hazır paketler (AMV vuruşu, VHS, sinematik vb.).
+- Önizleme ile dışa aktarma aynı sonucu verir. Aralıklar dışa aktarmada saniyesi saniyesine uygulanır.
+
+### Telefon (Android)
+- Ana sayfa telefona sığmıyordu. Uygulama kenardan kenara çiziliyordu ama güvenli alan boşlukları WebView'e 0 olarak geçiyordu. Ayrıca sistem yazı boyutu tüm arayüzü büyütüyordu, pencereler 100vh kullanıyordu ve son projeler kartları büyüktü. Güvenli alanlar ve yazı ölçeği artık uygulamaya doğrudan iletiliyor (ölçek en fazla 1,2). Pencereler dinamik yükseklik kullanıyor, son projeler kompakt satırlar halinde.
+- "Vokali tut, müziği değiştir" modülü telefonda "yakında" görünüyordu. Bunun nedeni, modülün Android'de bilerek kapatılmış olmasıydı. Vokal ayırma artık Android'de de onnxruntime ile çalışıyor (telefonda masaüstünden yavaş).
+
 ## v0.4.0 — 2026-10-24
 
 Android sürümü için yeni, sade bir telefon arayüzü ve ayarlar sayfası düzeltmeleri.

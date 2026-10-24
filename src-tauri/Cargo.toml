@@ -1,6 +1,6 @@
 [package]
 name = "xenocut"
-version = "0.4.0"
+version = "0.5.0"
 description = "XenoCut, a lightweight cross-platform video editor"
 authors = ["XenoCut"]
 edition = "2024"
